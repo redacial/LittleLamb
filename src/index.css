@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-cream text-charcoal font-sans antialiased;
+    font-feature-settings: 'ss01';
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display text-charcoal;
+    font-optical-sizing: auto;
+  }
+
+  /* Visible keyboard focus everywhere — accessibility floor */
+  :focus-visible {
+    @apply outline-none ring-2 ring-sage-500 ring-offset-2 ring-offset-cream;
+  }
+
+  ::selection {
+    @apply bg-sage-200 text-charcoal;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply font-sans text-eyebrow font-bold uppercase text-sage-600;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

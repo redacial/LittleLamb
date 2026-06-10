@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// Little Lamb Nannies — Cloud Storage security rules.
+// Default DENY. Profile photos and intro videos are opened in Phase 3 with
+// size/content-type limits. No open uploads.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Skeleton — locked down until Phase 3 wires per-path rules.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

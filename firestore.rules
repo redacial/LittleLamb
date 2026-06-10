@@ -1,0 +1,50 @@
+rules_version = '2';
+
+// Little Lamb Nannies — Firestore security rules.
+// Default posture: DENY everything. Each collection opens the minimum surface it needs.
+// Expanded per-collection in Phase 3. No open reads or writes anywhere (CLAUDE.md).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Helpers -------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // Role/approval read from the caller's own user document. Admin status is NEVER
+    // trusted from the client — it is read server-side from the users collection.
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(uid())).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(uid()))
+        && userDoc().role == 'admin';
+    }
+
+    function hasRole(role) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(uid()))
+        && userDoc().role == role;
+    }
+
+    function isApproved() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(uid()))
+        && userDoc().approved == true;
+    }
+
+    // ---- Skeleton: deny by default ------------------------------------------
+    // Collections are explicitly opened in Phase 3 (users, families, nannies,
+    // bookings, messages, invoices, reviews, referrals). Until then, nothing is
+    // readable or writable.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
