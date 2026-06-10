@@ -50,34 +50,52 @@ finishes and you get your cursor back.
 Type this and press Enter:
 
 ```
-npm run dev
+npm run preview:local
 ```
 
-After a moment you'll see a line like:
+This one command starts everything you need — the app **and** a local practice database
+loaded with sample accounts so you can actually log in and click around. It prints a lot of
+text; wait until you see a line like:
 
 ```
-➜  Local:   http://localhost:5173/
+➜  Local:   http://localhost:5180/
 ```
 
-**Hold `Cmd` and click that `http://localhost:5173/` link** (or copy it into your web browser).
+**Hold `Cmd` and click that `http://localhost:5180/` link** (or copy it into your web browser).
 The app opens. 🎉
+
+### Step 5 — Log in and explore
+
+On the login screen, use one of these ready-made practice accounts (password is `lamb1234`
+for all three). For Family or Nanny, click the matching "I am a Family" / "I am a Nanny"
+toggle first; Admin goes straight in.
+
+| Role | Email | Password |
+|------|-------|----------|
+| Family | `family@littlelamb.test` | `lamb1234` |
+| Nanny | `nanny@littlelamb.test` | `lamb1234` |
+| Admin | `admin@littlelamb.test` | `lamb1234` |
+
+These accounts live only on your computer, in the local practice database. They reset to a
+fresh, fully-populated state every time you run `npm run preview:local`.
 
 ### When you're done
 
-Click back on the Terminal window and press `Ctrl` + `C` to stop the app. To start it again
+Click back on the Terminal window and press `Ctrl` + `C` to stop everything. To start it again
 later, just do **Step 2** and **Step 4** again (you never have to repeat Steps 1 and 3).
 
 ---
 
 ## ⚠️ One important note
 
-To actually **log in, create accounts, or save data**, the app needs to be connected to our
-Firebase account (that's the secure database behind the scenes). Until David adds those
-connection keys, the app will open and you can see the design and layout, but signing in and
-saving won't work yet.
+The `npm run preview:local` command above runs against a **local practice database** on your
+own computer — that's why the sample accounts in Step 5 let you log in and click through
+everything right away. Anything you change there is just practice and resets each time you
+restart.
 
-David: copy `.env.example` to a new file named `.env` and fill in the values from the Firebase
-console. See **"For developers"** below.
+This is separate from the **real, live Firebase database** that the public website will use.
+Connecting that is a developer step (see **"For developers"** below) and isn't needed just to
+explore the app locally.
 
 ---
 
@@ -99,8 +117,13 @@ console. See **"For developers"** below.
 ```bash
 npm install                 # install dependencies
 cp .env.example .env        # then fill in real Firebase values
-npm run dev                 # start the dev server at http://localhost:5173
+npm run preview:local       # emulators + seed data + dev server, all at http://localhost:5180
 ```
+
+For local development against the Firebase Emulator Suite, `npm run preview:local` is the
+fastest path: it boots the emulators, seeds the temp accounts + sample data, and starts the
+dev server in one command (Ctrl+C tears it all down). See `docs/temp-accounts.md` for the
+seeded accounts and what's pre-loaded. Use plain `npm run dev` when pointing at a live project.
 
 ### Connecting Firebase
 1. In the [Firebase console](https://console.firebase.google.com), open the project's web app
@@ -116,7 +139,10 @@ npm run dev                 # start the dev server at http://localhost:5173
 ### Useful commands
 | Command | What it does |
 |---|---|
-| `npm run dev` | Start the local development server |
+| `npm run preview:local` | Emulators + seed data + dev server in one command (http://localhost:5180) |
+| `npm run dev` | Start the dev server only, at http://localhost:5180 |
+| `npm run emulators` | Start the Firebase emulators (auth, firestore, storage) |
+| `npm run seed` | Load temp accounts + sample data into the running emulators |
 | `npm run build` | Build the production bundle into `dist/` |
 | `npm run preview` | Preview the production build locally |
 | `npm test` | Run the test suite |
