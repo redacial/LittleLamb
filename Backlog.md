@@ -13,8 +13,10 @@
 - **Phase 1 — Foundation: ✅ COMPLETE & COMMITTED** (`feat: foundation — scaffold, firebase, design system`)
 - **Phase 2 — Auth: ✅ COMPLETE & COMMITTED** (`feat: auth — email, google, role routing, pending state`). Login + Signup pages, Google sign-in, role toggle, AuthProvider, guard chain, index/holding redirects, real router, 15 tests green, security re-check logged in DECISIONS.md.
 - **Phase 3 — Onboarding: ✅ COMPLETE & COMMITTED** (`feat: onboarding — family wizard, nanny wizard, firestore schema`). Full `firestore.rules` + `storage.rules` for every collection, `useProfile`/`storage`/`badges` libs, `WizardShell`/`AvailabilityEditor`, family 3-step wizard, nanny 4-step wizard, both holding pages, wired into router. Built solo (not via subagents) due to context budget — noted in DECISIONS D12. 15 tests green.
-- **Phase 4 — Core App: 👉 NEXT — START HERE**
+- **Phase 4 — Core App: 🚧 IN PROGRESS — slice 1 committed.** DONE: role-based `AppLayout` (sidebar + mobile drawer), `nav.ts`/`Icon.tsx`, `useBookings`/`useAdmin` hooks, `format.ts`, `SummaryCard`, and all THREE dashboards (Family, Nanny, Admin priority-stack) wired to live Firestore. Every nav route resolves inside the real shell via layout-aware `Placeholder`. Composite indexes added. REMAINING: see the Phase 4 checklist below — each placeholder route needs its real screen. Build the booking flows + calendars + messages + billing + analytics + settings + profiles + directory + bookings pages + reviews + referral surfaces.
 - **Phase 5 — Security Audit: ⬜ NOT STARTED**
+
+> **Phase 4 resume tactic:** every remaining screen already has a route rendering `<Placeholder>` inside `AppLayout`. Swap each placeholder for the real component — no routing changes needed. Reuse `useBookings`/`useAdmin`/`useProfile` hooks and `PageHeader`/`PageBody`/`SummaryCard`/`Card`/`StatusPill`. Add Firestore indexes for any new compound queries.
 
 Baseline is green: `tsc -b` clean, 8 sanitize tests pass, `vite build` succeeds (as of Phase 1 commit). The Phase 2 files added since are listed below; **they have not yet been typechecked together** — verify before committing Phase 2.
 

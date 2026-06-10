@@ -1,33 +1,24 @@
-import { useAuth } from '../context/AuthContext'
-import { signOut } from '../lib/auth'
-import { Button, Logo, Card, CardLabel } from '../components/ui'
+import { PageHeader, PageBody } from '../components/layout/AppLayout'
+import { Card, CardLabel } from '../components/ui'
 
 /**
- * Temporary scaffold screen for routes whose full implementation lands in Phase 3/4.
- * Lets the auth + role-routing flow be exercised end-to-end now. Replaced per-route later.
+ * Layout-aware scaffold for Phase 4 screens not yet built. Renders inside AppLayout's main
+ * column (no own chrome), so the sidebar + nav stay intact while the screen is filled in.
+ * Swapped out per route as each real screen lands. Tracked in Backlog.md.
  */
 export function Placeholder({ title, note }: { title: string; note?: string }) {
-  const { profile } = useAuth()
   return (
-    <main className="mx-auto max-w-prose px-6 py-12">
-      <div className="flex items-center justify-between">
-        <Logo />
-        <Button variant="ghost" size="sm" onClick={() => signOut()}>
-          Log out
-        </Button>
-      </div>
-      <h1 className="mt-10 text-display-md">{title}</h1>
-      {note && <p className="mt-3 text-charcoal-muted">{note}</p>}
-      {profile && (
-        <Card className="mt-8">
-          <CardLabel>Signed in as</CardLabel>
-          <p className="font-semibold">{profile.fullName}</p>
+    <>
+      <PageHeader title={title} subtitle={note} />
+      <PageBody>
+        <Card className="bg-cream-100">
+          <CardLabel>Coming together</CardLabel>
           <p className="text-sm text-charcoal-muted">
-            {profile.role} · {profile.approved ? 'approved' : 'pending review'} ·{' '}
-            {profile.wizardComplete ? 'onboarded' : 'setup incomplete'}
+            This screen is part of the core app build. The navigation, layout, and data wiring are
+            in place — the detailed view lands here next.
           </p>
         </Card>
-      )}
-    </main>
+      </PageBody>
+    </>
   )
 }
