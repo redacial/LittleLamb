@@ -11,8 +11,8 @@
 ## STATUS SNAPSHOT (as of last commit)
 
 - **Phase 1 — Foundation: ✅ COMPLETE & COMMITTED** (`feat: foundation — scaffold, firebase, design system`)
-- **Phase 2 — Auth: 🚧 IN PROGRESS** (uncommitted work in tree — see below)
-- **Phase 3 — Onboarding: ⬜ NOT STARTED**
+- **Phase 2 — Auth: ✅ COMPLETE & COMMITTED** (`feat: auth — email, google, role routing, pending state`). Login + Signup pages, Google sign-in, role toggle, AuthProvider, guard chain, index/holding redirects, real router, 15 tests green, security re-check logged in DECISIONS.md.
+- **Phase 3 — Onboarding: 👉 NEXT — START HERE**
 - **Phase 4 — Core App: ⬜ NOT STARTED**
 - **Phase 5 — Security Audit: ⬜ NOT STARTED**
 
