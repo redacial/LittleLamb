@@ -67,3 +67,25 @@ Ran the Authentication, Middleware, and RBAC sections of `docs/security-checklis
 
 ### D12. Firebase CLI unavailable in this environment → rules tested manually now, emulator in Phase 5
 **Why:** `firebase` CLI is not installed and installing it mid-build is out of scope. Rules are standard v2 CEL and were reviewed line-by-line against the access matrix. Emulator-based rule unit tests are queued for Phase 5 (noted in Backlog).
+
+---
+
+## Phase 5 — Security Audit
+
+### D13. Booking list authorization tightened to per-document `read`
+**Why:** The initial `bookings` rule allowed any approved member to `list`. Firestore list rules are all-or-nothing against the query, so that let a family run an unscoped query and read other families' bookings. Replaced the blanket `list` with a per-document `read` rule keyed on ownership (familyId/nannyId/admin/open-status-for-nannies). Firestore now only accepts list queries whose constraints guarantee every returned doc satisfies the rule — closing cross-tenant reads. Mirrored in `src/lib/access.ts` (+ tests) for the UI and as living documentation.
+
+### D14. Private user data kept non-listable; nanny name denormalized
+**Why:** `users/{uid}` holds phone, email, and referral attribution. The nanny directory originally listed `users` to get display names, which would have required opening that private collection. Instead `fullName` is denormalized onto the public `nannies/{uid}` profile doc; the directory and profile pages read only `nannies`. `users` stays admin-listable only.
+
+### D15. Verified badges immutable from the client
+**Why:** Admin-verified certifications (CPR, First Aid) are a trust signal. Rules now forbid a nanny from seeding `verifiedBadges` on create (must be empty/absent) or changing them on update — only admins assign them.
+
+### D16. firebase 10 → 12 to clear bundled-undici advisories
+**Why:** `npm audit` flagged 14 vulns; most were a vulnerable `undici` bundled inside firebase 10. Upgrading to firebase 12 (auth/firestore/storage APIs used are stable across the gap) cut it to 4, all dev-tooling-only (esbuild/vite/vitest), none in the shipped bundle. Clearing those needs a breaking vite 8 upgrade — deferred and documented.
+
+### D17. App Check + CSP added
+**Why:** Wired Firebase App Check (reCAPTCHA v3) for anti-abuse (§14), no-op without a site key so dev/emulator still work. Added a tight Content-Security-Policy to hosting headers (§9) scoped to the exact origins in use (Firebase, Google Fonts, reCAPTCHA, Calendly), with `object-src 'none'` and `frame-ancestors 'none'`.
+
+### D18. Rules emulator tests deferred (Firebase CLI unavailable)
+**Why:** The build environment has no `firebase` CLI and no network to install it, so `@firebase/rules-unit-testing` against the emulator couldn't run. Rules were reviewed line-by-line against the access matrix and the booking predicate is unit-tested via `access.ts`. Emulator rule tests are the #1 launch follow-up (Backlog).

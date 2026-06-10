@@ -79,6 +79,8 @@ export interface AvailabilityBlock {
 /** nannies/{uid} — public profile + availability. */
 export interface NannyProfile {
   uid: string
+  /** Denormalized display name so the directory reads only this (public) doc, not users/{uid}. */
+  fullName?: string
   photoURL?: string | null
   bio: string
   introVideoURL?: string | null

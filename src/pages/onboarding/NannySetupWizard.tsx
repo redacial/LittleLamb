@@ -89,6 +89,7 @@ export function NannySetupWizard() {
     if (!photoURL) return setError('Please add a profile photo.')
     if (bio.trim().length < 20) return setError('Please write at least a short bio.')
     await persist({
+      fullName: profile?.fullName ?? '',
       photoURL,
       bio: cleanText(bio, BIO_MAX),
       personalStatement: cleanText(bio, BIO_MAX),

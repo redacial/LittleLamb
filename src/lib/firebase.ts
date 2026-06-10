@@ -2,6 +2,7 @@
 // Never hardcode config here (CLAUDE.md security rule). Access control is enforced by
 // Firestore/Storage security rules, not by hiding these public identifiers.
 import { initializeApp, type FirebaseOptions } from 'firebase/app'
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
@@ -27,6 +28,18 @@ const firebaseConfig: FirebaseOptions = {
 }
 
 export const app = initializeApp(firebaseConfig)
+
+// App Check (checklist §14 — anti-abuse / rate-limiting). Attests requests come from our app
+// before Firebase backends accept them, mitigating credential-stuffing and scripted abuse.
+// No-op when no reCAPTCHA site key is configured (local dev / emulators).
+const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY
+if (appCheckSiteKey) {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(appCheckSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  })
+}
+
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const storage = getStorage(app)

@@ -81,13 +81,20 @@ service cloud.firestore {
     match /nannies/{nannyId} {
       allow get: if isApprovedMember() || (isSignedIn() && uid() == nannyId);
       allow list: if isApprovedMember();
-      allow create, update: if isSignedIn() && uid() == nannyId && hasRole('nanny')
+
+      // First write: owner provisions their profile but may NOT seed verified badges — those
+      // are admin-only certifications, so verifiedBadges must be absent or empty on create.
+      allow create: if isSignedIn() && uid() == nannyId && hasRole('nanny')
         && incoming().uid == nannyId
-        && strMax('bio', 600) && strMax('personalStatement', 1000)
-        // Owner may not self-assign admin-verified badges.
-        && (!('verifiedBadges' in incoming())
-            || incoming().verifiedBadges == existing().verifiedBadges
-            || (!exists(/databases/$(database)/documents/nannies/$(nannyId))));
+        && strMax('fullName', 80) && strMax('bio', 600) && strMax('personalStatement', 1000)
+        && (!('verifiedBadges' in incoming()) || incoming().verifiedBadges.size() == 0);
+
+      // Subsequent owner edits: verifiedBadges is immutable from the client side.
+      allow update: if isSignedIn() && uid() == nannyId && hasRole('nanny')
+        && incoming().uid == nannyId
+        && strMax('fullName', 80) && strMax('bio', 600) && strMax('personalStatement', 1000)
+        && (!('verifiedBadges' in incoming()) || incoming().verifiedBadges == existing().verifiedBadges);
+
       allow update, delete: if isAdmin();
     }
 
@@ -95,13 +102,16 @@ service cloud.firestore {
     // A family sees its own bookings; a nanny sees bookings assigned to them plus
     // open/unmatched ones they could pick up; admin sees all.
     match /bookings/{bookingId} {
-      allow get: if isSignedIn() && (
-        existing().familyId == uid()
+      // read = get + list. By gating on the doc itself, Firestore only accepts list queries
+      // whose constraints guarantee every returned doc satisfies this rule — i.e. a family can
+      // only run a familyId==self query, a nanny only nannyId==self or status in open/unmatched.
+      // An unscoped "read all bookings" query is rejected for non-admins. (Audit fix §3/§7.)
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || existing().familyId == uid()
         || existing().nannyId == uid()
-        || isAdmin()
         || (hasRole('nanny') && existing().status in ['open', 'unmatched'])
       );
-      allow list: if isApprovedMember();
 
       // Family creates its own booking request. Nanny/admin may not impersonate a family.
       allow create: if isSignedIn() && hasRole('family') && isApproved()

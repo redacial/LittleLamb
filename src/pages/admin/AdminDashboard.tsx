@@ -1,5 +1,4 @@
-import { useOpenBookings } from '../../hooks/useBookings'
-import { usePendingApplications, useAdminActions } from '../../hooks/useAdmin'
+import { usePendingApplications, useAdminActions, useAllBookings } from '../../hooks/useAdmin'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Button, Card, CardLabel } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
@@ -10,9 +9,9 @@ import { formatDate, formatTimeRange } from '../../lib/format'
  * → failed payments. Metrics live on Analytics, not here.
  */
 export function AdminDashboard() {
-  const open = useOpenBookings()
-  const sameDay = open.filter((b) => b.status === 'same_day_review')
-  const unmatched = open.filter((b) => b.status === 'unmatched')
+  const allBookings = useAllBookings()
+  const sameDay = allBookings.filter((b) => b.status === 'same_day_review')
+  const unmatched = allBookings.filter((b) => b.status === 'unmatched' || b.status === 'open')
   const pendingNannies = usePendingApplications('nanny')
   const pendingFamilies = usePendingApplications('family')
   const { approve, reject } = useAdminActions()
