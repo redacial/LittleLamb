@@ -1,15 +1,40 @@
 rules_version = '2';
 
 // Little Lamb Nannies — Cloud Storage security rules.
-// Default DENY. Profile photos and intro videos are opened in Phase 3 with
-// size/content-type limits. No open uploads.
+// Default DENY. Profile photos + intro videos are owner-writable with size/type limits.
 service firebase.storage {
   match /b/{bucket}/o {
-    function isSignedIn() {
-      return request.auth != null;
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)');
+    }
+    function isVideo() {
+      return request.resource.contentType.matches('video/(mp4|quicktime|webm)');
+    }
+    function underMB(n) { return request.resource.size < n * 1024 * 1024; }
+
+    // Profile photos (families + nannies). Public-readable (they appear on profiles to
+    // approved members), owner-writable, image-only, max 8 MB.
+    match /profile-photos/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) && isImage() && underMB(8);
+      allow delete: if isOwner(userId);
     }
 
-    // Skeleton — locked down until Phase 3 wires per-path rules.
+    // Nanny intro videos. Owner-writable, video-only, max 60 MB (≈1 min clip).
+    match /intro-videos/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) && isVideo() && underMB(60);
+      allow delete: if isOwner(userId);
+    }
+
+    // Invoices (PDFs) — written by admin/billing only; nothing client-writable here.
+    match /invoices/{allPaths=**} {
+      allow read, write: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

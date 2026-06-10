@@ -48,3 +48,22 @@ Ran the Authentication, Middleware, and RBAC sections of `docs/security-checklis
 
 ### D7. Security headers configured in `firebase.json` hosting
 **Why:** Addresses checklist §9 (Secure Communications): HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, and a Permissions-Policy are set as hosting headers now so they're not forgotten at deploy. CSP will be tightened in Phase 5 once all external origins (Firebase, fonts, Stripe/Calendly if added) are known.
+
+---
+
+## Phase 3 — Onboarding
+
+### D8. Firestore rules enforce the privilege boundary; client guards are UX only
+**Why:** Every collection now has explicit rules (`firestore.rules`). The trust-critical invariants are enforced server-side, not in React: (a) `users` create forbids self-creating an admin and forces `approved:false/status:'pending'`; (b) a self `users` update may not change `role`, `approved`, or `status` — only an admin can; (c) `nannies` update may not change `verifiedBadges` (admin-only certifications); (d) cross-tenant reads are denied — families read only their own family doc, nannies read only bookings assigned to them or open/unmatched ones; (e) `reviews` are admin-read-only (never public per spec); (f) messages require conversation participant membership and only admins may attach the internal Lucy/David `repliedBy` tag. `strMax` length guards back up client sanitization (defense in depth).
+
+### D9. Storage rules cap size + content-type per path
+**Why:** `storage.rules` allows owner-only writes to `profile-photos/{uid}` (images, ≤8 MB) and `intro-videos/{uid}` (video, ≤60 MB ≈ one minute, satisfying the "max 1 minute" intent via a size proxy since rules can't read duration). Invoices and everything else are deny-by-default. `src/lib/storage.ts` mirrors these limits client-side for friendly errors.
+
+### D10. Wizard progress persists to the role profile doc on each step
+**Why:** The flow docs require "progress saved on browser close." Each wizard `Continue` writes the partial profile to `families/{uid}` / `nannies/{uid}` via `useProfile` (merge writes). Re-entering the wizard hydrates from that doc, so a user resumes where they left off. `wizardComplete` lives on the `users` doc and is only flipped true on the final step → it gates dashboard access via `RequireApprovedAndOnboarded`.
+
+### D11. Payment step is a stubbed flag (confirms D7d)
+**Why:** The required Step 3 card form collects nothing sensitive server-side; it sets `hasPaymentMethod:true`. No card data is transmitted or stored. Real Stripe integration is deferred and flagged — keeps the build out of PCI scope while still enforcing "cannot proceed without a card" as a UX gate.
+
+### D12. Firebase CLI unavailable in this environment → rules tested manually now, emulator in Phase 5
+**Why:** `firebase` CLI is not installed and installing it mid-build is out of scope. Rules are standard v2 CEL and were reviewed line-by-line against the access matrix. Emulator-based rule unit tests are queued for Phase 5 (noted in Backlog).

@@ -1,48 +1,183 @@
 rules_version = '2';
 
 // Little Lamb Nannies — Firestore security rules.
-// Default posture: DENY everything. Each collection opens the minimum surface it needs.
-// Expanded per-collection in Phase 3. No open reads or writes anywhere (CLAUDE.md).
+// Default posture: DENY. Each collection opens only the minimum surface it needs.
+// Authorization is decided server-side from the caller's users/{uid} doc — the client's
+// claimed role/approval is never trusted. No open reads or writes anywhere (CLAUDE.md).
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // ---- Helpers -------------------------------------------------------------
-    function isSignedIn() {
-      return request.auth != null;
-    }
+    function isSignedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
 
-    function uid() {
-      return request.auth.uid;
-    }
-
-    // Role/approval read from the caller's own user document. Admin status is NEVER
-    // trusted from the client — it is read server-side from the users collection.
     function userDoc() {
       return get(/databases/$(database)/documents/users/$(uid())).data;
     }
+    function hasUserDoc() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(uid()));
+    }
+    function isAdmin() { return hasUserDoc() && userDoc().role == 'admin'; }
+    function isApproved() { return hasUserDoc() && userDoc().approved == true; }
+    function hasRole(role) { return hasUserDoc() && userDoc().role == role; }
 
-    function isAdmin() {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(uid()))
-        && userDoc().role == 'admin';
+    // Approved + non-admin members can browse the directory of approved nannies, etc.
+    function isApprovedMember() { return isApproved() || isAdmin(); }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // String length guard for sanitized writes (defense in depth alongside client sanitize).
+    function strMax(field, n) {
+      return !(field in incoming()) || (incoming()[field] is string && incoming()[field].size() <= n);
     }
 
-    function hasRole(role) {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(uid()))
-        && userDoc().role == role;
+    // ---- users ---------------------------------------------------------------
+    // The trust-critical doc. A user may create only their OWN doc, and only as a
+    // non-admin, non-approved pending account. They may update only safe self-service
+    // fields — never role, approved, or status (those are admin-only transitions).
+    match /users/{userId} {
+      allow get: if isSignedIn() && (uid() == userId || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if isSignedIn()
+        && uid() == userId
+        && incoming().uid == userId
+        && incoming().role in ['family', 'nanny']     // cannot self-create an admin
+        && incoming().approved == false                // cannot self-approve
+        && incoming().status == 'pending'
+        && incoming().wizardComplete == false
+        && strMax('fullName', 80) && strMax('email', 254) && strMax('phone', 32);
+
+      // Self updates: cannot touch role/approved/status (privilege fields).
+      allow update: if isSignedIn() && uid() == userId
+        && incoming().role == existing().role
+        && incoming().approved == existing().approved
+        && incoming().status == existing().status
+        && incoming().uid == existing().uid;
+
+      // Admin updates: full control (approve/reject, advance nanny stage, etc.).
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
-    function isApproved() {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(uid()))
-        && userDoc().approved == true;
+    // ---- families ------------------------------------------------------------
+    // A family's own profile + onboarding progress. Readable by the owner and admin only —
+    // family home addresses / children are never public.
+    match /families/{familyId} {
+      allow get: if isSignedIn() && (uid() == familyId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isSignedIn() && uid() == familyId && hasRole('family')
+        && incoming().uid == familyId
+        && strMax('homeAddress', 300) && strMax('neighborhood', 120)
+        && strMax('houseRules', 2000) && strMax('allergies', 1000);
+      allow update, delete: if isAdmin();
     }
 
-    // ---- Skeleton: deny by default ------------------------------------------
-    // Collections are explicitly opened in Phase 3 (users, families, nannies,
-    // bookings, messages, invoices, reviews, referrals). Until then, nothing is
-    // readable or writable.
+    // ---- nannies -------------------------------------------------------------
+    // Public-facing profile. Owner writes it; any APPROVED member (family/nanny) or admin
+    // can read it (the directory + profile pages). Verified badges are admin-controlled:
+    // a nanny update must not change verifiedBadges.
+    match /nannies/{nannyId} {
+      allow get: if isApprovedMember() || (isSignedIn() && uid() == nannyId);
+      allow list: if isApprovedMember();
+      allow create, update: if isSignedIn() && uid() == nannyId && hasRole('nanny')
+        && incoming().uid == nannyId
+        && strMax('bio', 600) && strMax('personalStatement', 1000)
+        // Owner may not self-assign admin-verified badges.
+        && (!('verifiedBadges' in incoming())
+            || incoming().verifiedBadges == existing().verifiedBadges
+            || (!exists(/databases/$(database)/documents/nannies/$(nannyId))));
+      allow update, delete: if isAdmin();
+    }
+
+    // ---- bookings ------------------------------------------------------------
+    // A family sees its own bookings; a nanny sees bookings assigned to them plus
+    // open/unmatched ones they could pick up; admin sees all.
+    match /bookings/{bookingId} {
+      allow get: if isSignedIn() && (
+        existing().familyId == uid()
+        || existing().nannyId == uid()
+        || isAdmin()
+        || (hasRole('nanny') && existing().status in ['open', 'unmatched'])
+      );
+      allow list: if isApprovedMember();
+
+      // Family creates its own booking request. Nanny/admin may not impersonate a family.
+      allow create: if isSignedIn() && hasRole('family') && isApproved()
+        && incoming().familyId == uid()
+        && strMax('notes', 1000) && strMax('address', 300);
+
+      // Family can update/cancel its own booking; assigned nanny can accept/decline; admin all.
+      allow update: if isSignedIn() && (
+        existing().familyId == uid()
+        || existing().nannyId == uid()
+        || (hasRole('nanny') && existing().status in ['open', 'unmatched'])
+        || isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ---- conversations + messages -------------------------------------------
+    // Only participants (or admin) may read a conversation or its messages. Messages are a
+    // subcollection; membership is checked against the parent conversation doc.
+    match /conversations/{convId} {
+      function convParticipants() {
+        return get(/databases/$(database)/documents/conversations/$(convId)).data.participantIds;
+      }
+      allow get, list: if isSignedIn() && (uid() in existing().participantIds || isAdmin());
+      allow create: if isSignedIn() && (uid() in incoming().participantIds || isAdmin());
+      allow update: if isSignedIn() && (uid() in existing().participantIds || isAdmin());
+      allow delete: if isAdmin();
+
+      match /messages/{msgId} {
+        allow get, list: if isSignedIn() && (uid() in convParticipants() || isAdmin());
+        allow create: if isSignedIn() && incoming().senderId == uid()
+          && (uid() in convParticipants() || isAdmin())
+          && strMax('body', 4000)
+          // Only admins may attach the internal Lucy/David attribution tag.
+          && (!('repliedBy' in incoming()) || incoming().repliedBy == null || isAdmin());
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // ---- invoices ------------------------------------------------------------
+    // Family reads its own invoices; only admin/billing system writes them.
+    match /invoices/{invoiceId} {
+      allow get: if isSignedIn() && (existing().familyId == uid() || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---- reviews -------------------------------------------------------------
+    // Reviews are ADMIN-ONLY to read (never public-facing, per spec). An author may create a
+    // review for a booking they were part of; nobody but admin can read them back.
+    match /reviews/{reviewId} {
+      allow get, list: if isAdmin();
+      allow create: if isSignedIn() && isApproved()
+        && incoming().authorId == uid()
+        && incoming().rating is int && incoming().rating >= 1 && incoming().rating <= 5
+        && strMax('comment', 2000);
+      allow update, delete: if isAdmin();
+    }
+
+    // ---- referrals -----------------------------------------------------------
+    // Owner reads their own referral record; admin reads all. Signup attribution is written
+    // through the users doc, so referral docs are admin-managed aggregates.
+    match /referrals/{code} {
+      allow get: if isSignedIn() && (existing().ownerId == uid() || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---- platform config (badges master list, email templates, policies, billing cfg) ----
+    // Public-readable config that admin maintains in Settings.
+    match /config/{docId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---- default deny --------------------------------------------------------
     match /{document=**} {
       allow read, write: if false;
     }

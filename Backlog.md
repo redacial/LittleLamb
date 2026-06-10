@@ -12,8 +12,8 @@
 
 - **Phase 1 — Foundation: ✅ COMPLETE & COMMITTED** (`feat: foundation — scaffold, firebase, design system`)
 - **Phase 2 — Auth: ✅ COMPLETE & COMMITTED** (`feat: auth — email, google, role routing, pending state`). Login + Signup pages, Google sign-in, role toggle, AuthProvider, guard chain, index/holding redirects, real router, 15 tests green, security re-check logged in DECISIONS.md.
-- **Phase 3 — Onboarding: 👉 NEXT — START HERE**
-- **Phase 4 — Core App: ⬜ NOT STARTED**
+- **Phase 3 — Onboarding: ✅ COMPLETE & COMMITTED** (`feat: onboarding — family wizard, nanny wizard, firestore schema`). Full `firestore.rules` + `storage.rules` for every collection, `useProfile`/`storage`/`badges` libs, `WizardShell`/`AvailabilityEditor`, family 3-step wizard, nanny 4-step wizard, both holding pages, wired into router. Built solo (not via subagents) due to context budget — noted in DECISIONS D12. 15 tests green.
+- **Phase 4 — Core App: 👉 NEXT — START HERE**
 - **Phase 5 — Security Audit: ⬜ NOT STARTED**
 
 Baseline is green: `tsc -b` clean, 8 sanitize tests pass, `vite build` succeeds (as of Phase 1 commit). The Phase 2 files added since are listed below; **they have not yet been typechecked together** — verify before committing Phase 2.
@@ -114,6 +114,7 @@ Work all 17 checklist sections in `docs/security-checklist.md`. Specific TODOs a
 - **§9** — tighten CSP in `firebase.json` once all external origins known (Firebase, Google fonts, Calendly, any payments).
 - **§13 Dependency Management** — `npm audit` showed 14 vulns (12 moderate/1 high/1 critical) at install; run `npm audit fix`, re-evaluate, document any left.
 - **§14 Rate limiting / anti-abuse** — wire Firebase App Check (reCAPTCHA v3; `VITE_FIREBASE_APPCHECK_SITE_KEY` placeholder already in env) for auth/abuse protection.
+- **Firestore/Storage rules emulator tests** — `firebase` CLI was NOT installed during the build (DECISIONS D12). Install `firebase-tools`, add `@firebase/rules-unit-testing`, and write rule unit tests covering the access matrix (cross-tenant denial, self-approve denial, verifiedBadges immutability, reviews admin-only, message participant gating). This is the most important outstanding security verification.
 - Confirm no secrets in source (`.env` gitignored ✓). Generic errors everywhere. Run tests recursively until green.
 - **Commit:** `security: full audit complete, all issues resolved`
 

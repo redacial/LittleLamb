@@ -9,6 +9,10 @@ import { IndexRedirect } from './pages/IndexRedirect'
 import { LoginPage } from './pages/auth/LoginPage'
 import { SignupPage } from './pages/auth/SignupPage'
 import { Placeholder } from './pages/Placeholder'
+import { FamilyHoldingPage } from './pages/onboarding/FamilyHoldingPage'
+import { NannyHoldingPage } from './pages/onboarding/NannyHoldingPage'
+import { FamilySetupWizard } from './pages/onboarding/FamilySetupWizard'
+import { NannySetupWizard } from './pages/onboarding/NannySetupWizard'
 
 /**
  * Route tree. Guard order is the SPA equivalent of layered middleware (checklist §2):
@@ -30,19 +34,8 @@ export function App() {
         <Route element={<RequireAuth />}>
           {/* Family */}
           <Route element={<RequireRole roles={['family']} />}>
-            <Route
-              path="/family/pending"
-              element={
-                <Placeholder
-                  title="Application under review"
-                  note="We'll email you the moment you're approved. (Holding page — Phase 3.)"
-                />
-              }
-            />
-            <Route
-              path="/family/setup"
-              element={<Placeholder title="Set up your family profile" note="Setup wizard — Phase 3." />}
-            />
+            <Route path="/family/pending" element={<FamilyHoldingPage />} />
+            <Route path="/family/setup" element={<FamilySetupWizard />} />
             <Route element={<RequireApprovedAndOnboarded />}>
               <Route path="/family" element={<Placeholder title="Family dashboard" note="Phase 4." />} />
             </Route>
@@ -50,19 +43,8 @@ export function App() {
 
           {/* Nanny */}
           <Route element={<RequireRole roles={['nanny']} />}>
-            <Route
-              path="/nanny/pending"
-              element={
-                <Placeholder
-                  title="Application received"
-                  note="Track your status here. (Holding page with progress bar — Phase 3.)"
-                />
-              }
-            />
-            <Route
-              path="/nanny/setup"
-              element={<Placeholder title="Set up your nanny profile" note="Setup wizard — Phase 3." />}
-            />
+            <Route path="/nanny/pending" element={<NannyHoldingPage />} />
+            <Route path="/nanny/setup" element={<NannySetupWizard />} />
             <Route element={<RequireApprovedAndOnboarded />}>
               <Route path="/nanny" element={<Placeholder title="Nanny dashboard" note="Phase 4." />} />
             </Route>
