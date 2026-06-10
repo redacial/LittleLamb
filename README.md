@@ -28,7 +28,7 @@ You only ever do this once.
 1. Open the **Terminal** app:
    - On a Mac: press `Cmd` + `Spacebar`, type **Terminal**, press Enter.
 2. Type `cd ` (the letters c, d, then a space — don't press Enter yet).
-3. Drag the **LittleLamb** project folder from Finder right onto the Terminal window. It will
+3. Drag the **LittleLamb.SourceCode** project folder from Finder right onto the Terminal window. It will
    paste the folder's location for you.
 4. Now press **Enter**.
 
