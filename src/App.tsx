@@ -17,6 +17,9 @@ import { NannySetupWizard } from './pages/onboarding/NannySetupWizard'
 import { FamilyDashboard } from './pages/family/FamilyDashboard'
 import { NannyDashboard } from './pages/nanny/NannyDashboard'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
+import { NanniesDirectory } from './pages/shared/NanniesDirectory'
+import { NannyProfilePage } from './pages/shared/NannyProfilePage'
+import { BookingsPage } from './pages/shared/BookingsPage'
 
 /**
  * Route tree. Guard order is the SPA equivalent of layered middleware (checklist §2):
@@ -46,8 +49,9 @@ export function App() {
               <Route element={<AppLayout />}>
                 <Route path="/family" element={<FamilyDashboard />} />
                 <Route path="/family/calendar" element={<Placeholder title="Calendar" note="Phase 4 — booking calendar." />} />
-                <Route path="/family/bookings" element={<Placeholder title="Bookings" note="Phase 4 — bookings list." />} />
-                <Route path="/family/nannies" element={<Placeholder title="Our Nannies" note="Phase 4 — directory." />} />
+                <Route path="/family/bookings" element={<BookingsPage role="family" />} />
+                <Route path="/family/nannies" element={<NanniesDirectory />} />
+                <Route path="/family/nannies/:id" element={<NannyProfilePage />} />
                 <Route path="/family/profile" element={<Placeholder title="My Profile" note="Phase 4 — editable profile." />} />
                 <Route path="/family/billing" element={<Placeholder title="Billing" note="Phase 4 — invoices." />} />
                 <Route path="/family/messages" element={<Placeholder title="Messages" note="Phase 4 — inbox." />} />
@@ -64,8 +68,9 @@ export function App() {
               <Route element={<AppLayout />}>
                 <Route path="/nanny" element={<NannyDashboard />} />
                 <Route path="/nanny/calendar" element={<Placeholder title="Calendar" note="Phase 4 — availability + bookings." />} />
-                <Route path="/nanny/bookings" element={<Placeholder title="Bookings" note="Phase 4." />} />
-                <Route path="/nanny/nannies" element={<Placeholder title="Our Nannies" note="Phase 4 — directory (no booking buttons)." />} />
+                <Route path="/nanny/bookings" element={<BookingsPage role="nanny" />} />
+                <Route path="/nanny/nannies" element={<NanniesDirectory />} />
+                <Route path="/nanny/nannies/:id" element={<NannyProfilePage />} />
                 <Route path="/nanny/profile" element={<Placeholder title="My Profile" note="Phase 4." />} />
                 <Route path="/nanny/messages" element={<Placeholder title="Messages" note="Phase 4." />} />
                 <Route path="/nanny/policies" element={<Placeholder title="Policies" note="Phase 4." />} />
