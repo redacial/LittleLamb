@@ -6,6 +6,12 @@ claude-opus-4-8
 ## Stack
 React, TypeScript, Vite, Firebase (auth + firestore + storage)
 
+## Context Management
+- Before context runs out, write all remaining incomplete tasks to Backlog.md
+- New sessions start by reading CLAUDE.md, DECISIONS.md, and Backlog.md
+- Then run git log --oneline to confirm what's built
+- Then continue from Backlog.md
+
 ## Active Plugins
 - ux-ui-mastery: use for ALL UI and design decisions
 - vibe-security: security checklist at docs/security-checklist.md — run on every auth, data, and API feature
