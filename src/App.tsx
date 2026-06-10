@@ -24,7 +24,9 @@ import { PoliciesPage } from './pages/shared/PoliciesPage'
 import { MessagesPage } from './pages/shared/MessagesPage'
 import { FamilyProfilePage } from './pages/family/FamilyProfilePage'
 import { FamilyBillingPage } from './pages/family/FamilyBillingPage'
+import { FamilyCalendarPage } from './pages/family/FamilyCalendarPage'
 import { NannyOwnProfilePage } from './pages/nanny/NannyProfilePage'
+import { NannyCalendarPage } from './pages/nanny/NannyCalendarPage'
 
 /**
  * Route tree. Guard order is the SPA equivalent of layered middleware (checklist §2):
@@ -53,7 +55,7 @@ export function App() {
             <Route element={<RequireApprovedAndOnboarded />}>
               <Route element={<AppLayout />}>
                 <Route path="/family" element={<FamilyDashboard />} />
-                <Route path="/family/calendar" element={<Placeholder title="Calendar" note="Phase 4 — booking calendar." />} />
+                <Route path="/family/calendar" element={<FamilyCalendarPage />} />
                 <Route path="/family/bookings" element={<BookingsPage role="family" />} />
                 <Route path="/family/nannies" element={<NanniesDirectory />} />
                 <Route path="/family/nannies/:id" element={<NannyProfilePage />} />
@@ -72,7 +74,7 @@ export function App() {
             <Route element={<RequireApprovedAndOnboarded />}>
               <Route element={<AppLayout />}>
                 <Route path="/nanny" element={<NannyDashboard />} />
-                <Route path="/nanny/calendar" element={<Placeholder title="Calendar" note="Phase 4 — availability + bookings." />} />
+                <Route path="/nanny/calendar" element={<NannyCalendarPage />} />
                 <Route path="/nanny/bookings" element={<BookingsPage role="nanny" />} />
                 <Route path="/nanny/nannies" element={<NanniesDirectory />} />
                 <Route path="/nanny/nannies/:id" element={<NannyProfilePage />} />
