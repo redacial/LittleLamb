@@ -31,6 +31,37 @@ export function usePendingApplications(role: Role) {
   return items
 }
 
+/** All users of a role (any status) for the admin management tabs. */
+export function useUsersByRole(role: Role) {
+  const [users, setUsers] = useState<UserDoc[]>([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    const q = query(collection(db, 'users'), where('role', '==', role))
+    return onSnapshot(
+      q,
+      (snap) => {
+        setUsers(snap.docs.map((d) => d.data() as UserDoc))
+        setLoading(false)
+      },
+      () => setLoading(false),
+    )
+  }, [role])
+  return { users, loading }
+}
+
+/** Every booking on the platform (admin Bookings page). */
+export function useAllBookings() {
+  const [bookings, setBookings] = useState<import('../types').Booking[]>([])
+  useEffect(() => {
+    return onSnapshot(
+      collection(db, 'bookings'),
+      (snap) => setBookings(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as import('../types').Booking)),
+      () => setBookings([]),
+    )
+  }, [])
+  return bookings
+}
+
 export function useAdminActions() {
   const approve = useCallback(async (uid: string) => {
     await updateDoc(doc(db, 'users', uid), {

@@ -12,7 +12,7 @@ export type NannyStage =
   | 'interview_scheduled'
   | 'decision_made'
 
-export type ApplicationStatus = 'pending' | 'approved' | 'rejected'
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected' | 'inactive'
 
 /** Base account document at users/{uid}. Holds the trust-critical role + approval flags. */
 export interface UserDoc {

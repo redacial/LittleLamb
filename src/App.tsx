@@ -9,7 +9,6 @@ import { AppLayout } from './components/layout/AppLayout'
 import { IndexRedirect } from './pages/IndexRedirect'
 import { LoginPage } from './pages/auth/LoginPage'
 import { SignupPage } from './pages/auth/SignupPage'
-import { Placeholder } from './pages/Placeholder'
 import { FamilyHoldingPage } from './pages/onboarding/FamilyHoldingPage'
 import { NannyHoldingPage } from './pages/onboarding/NannyHoldingPage'
 import { FamilySetupWizard } from './pages/onboarding/FamilySetupWizard'
@@ -27,6 +26,11 @@ import { FamilyBillingPage } from './pages/family/FamilyBillingPage'
 import { FamilyCalendarPage } from './pages/family/FamilyCalendarPage'
 import { NannyOwnProfilePage } from './pages/nanny/NannyProfilePage'
 import { NannyCalendarPage } from './pages/nanny/NannyCalendarPage'
+import { AdminPeoplePage } from './pages/admin/AdminPeoplePage'
+import { AdminBookingsPage } from './pages/admin/AdminBookingsPage'
+import { AdminBillingPage } from './pages/admin/AdminBillingPage'
+import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage'
+import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
 
 /**
  * Route tree. Guard order is the SPA equivalent of layered middleware (checklist §2):
@@ -35,8 +39,7 @@ import { NannyCalendarPage } from './pages/nanny/NannyCalendarPage'
  * Holding pages and setup wizards sit inside the role gate but outside the approved+onboarded
  * gate, so pending/unfinished users can reach them but not the app shell.
  *
- * Screens still being built in Phase 4 render <Placeholder> inside the real layout, so the app
- * is fully navigable now and each screen is swapped in without touching routing. See Backlog.md.
+ * Every screen is a real component; the app is fully navigable for all three roles.
  */
 export function App() {
   return (
@@ -89,13 +92,13 @@ export function App() {
           <Route element={<RequireRole roles={['admin']} />}>
             <Route element={<AppLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/analytics" element={<Placeholder title="Analytics" note="Phase 4 — 5 metric tabs." />} />
-              <Route path="/admin/nannies" element={<Placeholder title="Nannies" note="Phase 4 — management tabs." />} />
-              <Route path="/admin/families" element={<Placeholder title="Families" note="Phase 4 — management tabs." />} />
-              <Route path="/admin/bookings" element={<Placeholder title="Bookings" note="Phase 4 — platform-wide + create." />} />
-              <Route path="/admin/billing" element={<Placeholder title="Billing & Accounting" note="Phase 4 — 4 tabs." />} />
+              <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+              <Route path="/admin/nannies" element={<AdminPeoplePage role="nanny" />} />
+              <Route path="/admin/families" element={<AdminPeoplePage role="family" />} />
+              <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+              <Route path="/admin/billing" element={<AdminBillingPage />} />
               <Route path="/admin/messages" element={<MessagesPage />} />
-              <Route path="/admin/settings" element={<Placeholder title="Settings" note="Phase 4 — config editors." />} />
+              <Route path="/admin/settings" element={<AdminSettingsPage />} />
             </Route>
           </Route>
         </Route>
