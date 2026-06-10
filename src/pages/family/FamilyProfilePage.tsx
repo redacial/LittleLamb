@@ -5,6 +5,7 @@ import { uploadProfilePhoto } from '../../lib/storage'
 import { cleanLine, cleanText } from '../../lib/sanitize'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Card, CardLabel, Input, Textarea, Button, Avatar } from '../../components/ui'
+import { ReferralCard } from '../../components/ReferralCard'
 import type { Child } from '../../types'
 
 /** Family My Profile — editable any time after onboarding (CLAUDE.md §10.1). */
@@ -128,6 +129,8 @@ export function FamilyProfilePage() {
             <Button onClick={onSave} loading={busy}>Save changes</Button>
             {saved && <span className="text-sm font-semibold text-sage-600">Saved ✓</span>}
           </div>
+
+          {profile?.referralCode && <ReferralCard code={profile.referralCode} />}
         </div>
       </PageBody>
     </>

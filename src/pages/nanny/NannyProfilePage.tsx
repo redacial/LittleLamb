@@ -7,6 +7,7 @@ import { SELF_BADGES, badgeLabel } from '../../lib/badges'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { AvailabilityEditor } from '../../components/onboarding/AvailabilityEditor'
 import { Card, CardLabel, Textarea, Button, Avatar, Badge } from '../../components/ui'
+import { ReferralCard } from '../../components/ReferralCard'
 import { cn } from '../../lib/cn'
 import type { AvailabilityBlock } from '../../types'
 
@@ -153,6 +154,8 @@ export function NannyOwnProfilePage() {
             <Button onClick={onSave} loading={busy}>Save changes</Button>
             {saved && <span className="text-sm font-semibold text-sage-600">Saved ✓</span>}
           </div>
+
+          {profile?.referralCode && <ReferralCard code={profile.referralCode} />}
         </div>
       </PageBody>
     </>

@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useMyBookings } from '../../hooks/useBookings'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { SummaryCard } from '../../components/SummaryCard'
+import { ReviewModal } from '../../components/ReviewModal'
 import { Button, Card, CardLabel, StatusPill } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import type { Booking } from '../../types'
@@ -14,6 +16,7 @@ function isUpcoming(b: Booking) {
 export function FamilyDashboard() {
   const { profile, user } = useAuth()
   const { bookings } = useMyBookings(user?.uid, 'family')
+  const [reviewing, setReviewing] = useState<Booking | null>(null)
 
   const upcoming = bookings.filter(isUpcoming).sort((a, b) => a.date.localeCompare(b.date))
   const next = upcoming[0]
@@ -58,9 +61,7 @@ export function FamilyDashboard() {
                   <p className="text-sm text-charcoal-muted">{formatDate(b.date)}</p>
                 </div>
                 <div className="flex gap-2">
-                  <Link to="/family/bookings">
-                    <Button size="sm">Leave a review</Button>
-                  </Link>
+                  <Button size="sm" onClick={() => setReviewing(b)}>Leave a review</Button>
                   <Button size="sm" variant="ghost">Skip</Button>
                 </div>
               </Card>
@@ -106,6 +107,14 @@ export function FamilyDashboard() {
           </Card>
         </div>
       </PageBody>
+
+      <ReviewModal
+        open={!!reviewing}
+        onClose={() => setReviewing(null)}
+        booking={reviewing}
+        authorId={user?.uid ?? ''}
+        authorRole="family"
+      />
     </>
   )
 }
