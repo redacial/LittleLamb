@@ -36,7 +36,7 @@ export function AdminBookingsPage() {
         </div>
 
         {filtered.length === 0 ? (
-          <Card className="bg-cream-100"><p className="text-sm text-charcoal-muted">No bookings match.</p></Card>
+          <Card className="bg-ll-cream"><p className="text-sm text-ll-warm-gray">No bookings match.</p></Card>
         ) : (
           <div className="space-y-3">
             {filtered.map((b) => (
@@ -46,7 +46,7 @@ export function AdminBookingsPage() {
                     <p className="font-semibold">{b.familyName} → {b.nannyName ?? 'Unmatched'}</p>
                     <StatusPill status={b.status} tone={b.status === 'confirmed' ? 'confirmed' : b.status === 'cancelled' ? 'cancelled' : 'pending'} />
                   </div>
-                  <p className="text-sm text-charcoal-muted">{formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)} · {b.address}</p>
+                  <p className="text-sm text-ll-warm-gray">{formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)} · {b.address}</p>
                 </div>
                 {b.status !== 'cancelled' && (
                   <Button size="sm" variant="secondary" onClick={() => setStatus(b.id, 'cancelled')}>Cancel</Button>

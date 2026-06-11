@@ -11,17 +11,51 @@ React, TypeScript, Vite, Firebase (auth + firestore + storage)
 - New sessions start by reading CLAUDE.md, DECISIONS.md, and Backlog.md
 - Then run git log --oneline to confirm what's built
 - Then continue from Backlog.md
+- For any design or UI work: also read DESIGN_SYSTEM.md before touching a single component
 
 ## Active Plugins
-- ux-ui-mastery: use for ALL UI and design decisions
+- ux-ui-mastery: use for ALL UI and design decisions — cognitive psychology, heuristics, accessibility
+- chef-sumi: use for design generation and grading — /fix, /grade, /style on every design session
 - vibe-security: security checklist at docs/security-checklist.md — run on every auth, data, and API feature
 
 ## Design Direction
-- Aesthetic: Warm Editorial — soft neutrals, serif headings, human-forward, premium and trustworthy
-- NEVER use: Inter, Roboto, Arial, Space Grotesk
+- Full design system lives in DESIGN_SYSTEM.md — read it before touching any component
+- Aesthetic: Premium Playful — hand-drawn illustration style, bouncy spring physics, wobbly borders, trust-earned not sterile
+- Fonts: Caveat (display/headlines) + DM Sans (body) + DM Mono (badges, trust labels) — loaded via Google Fonts
+- NEVER use: Inter, Roboto, Arial, Space Grotesk, Fraunces, Nunito (old system — fully replaced)
 - Mobile-first always
-- WCAG AA minimum
-- No generic SaaS card grids, no purple gradients, no stacked card layouts
+- WCAG AA minimum on all color combinations
+- No generic SaaS card grids, no purple gradients, no flat corporate layouts
+- Tailwind tokens: see DESIGN_SYSTEM.md §Tailwind Config — use token names exactly as specified there
+
+## Plugin Setup — Run Once Per Machine
+If ~/.claude/plugins/ux-ui-mastery does not exist:
+  mkdir -p ~/.claude/plugins && git clone https://github.com/phazurlabs/ux-ui-mastery.git ~/.claude/plugins/ux-ui-mastery
+
+If ~/.claude/plugins/sumi does not exist:
+  mkdir -p ~/.claude/plugins && git clone https://github.com/phazurlabs/sumi.git ~/.claude/plugins/sumi
+
+After cloning, restart Claude Code. Plugins load automatically every session.
+
+## Design Sweep — run when triggered by "design sweep"
+Execute this loop autonomously, no confirmation between steps:
+
+LOOP:
+1. /grade         → record baseline scores for all 7 dimensions, append to design-audit.md with timestamp
+2. /fix           → rewrite any AI-default or generic UI patterns found
+3. /cognitive-check → flag Hick's Law, Fitts's Law, Miller's Law violations
+4. /ux-audit      → Nielsen heuristics, severity-rated per finding
+5. /a11y          → WCAG 2.2 AA — flag with file + line number, auto-fix where safe
+6. /qa            → design token compliance — verify all components use DESIGN_SYSTEM.md tokens
+7. Trust audit    → "For a nanny booking platform where parents share home access with a stranger,
+                     list every missing trust signal in the current UI, ranked by parent anxiety level"
+8. /grade         → re-score, compute delta vs step 1, append delta to design-audit.md
+
+DECISION after each loop:
+- If delta ≥ 10 OR any P0/critical finding remains → run loop again
+- If delta < 10 AND no critical findings → output final fix list ranked by trust impact, stop
+
+OUTPUT: append all findings to design-audit.md. Final output is a prioritized fix list.
 
 ## Security Rules
 - Firebase config via .env only, never hardcoded

@@ -27,16 +27,16 @@ export function FamilyBillingPage() {
 
         <Card className="mt-6">
           <CardLabel>How billing works</CardLabel>
-          <ul className="mt-2 space-y-1 text-sm text-charcoal">
-            <li>· {money(SUBSCRIPTION)} flat platform subscription per quarter</li>
-            <li>· {money(PER_BOOKING)} per confirmed booking, accumulated through the quarter</li>
+          <ul className="mt-2 space-y-1 text-sm text-ll-ink">
+            <li>· <span className="font-mono">{money(SUBSCRIPTION)}</span> flat platform subscription per quarter</li>
+            <li>· <span className="font-mono">{money(PER_BOOKING)}</span> per confirmed booking, accumulated through the quarter</li>
             <li>· Auto-charged every 90 days; a PDF invoice is emailed and stored here</li>
           </ul>
         </Card>
 
         <Card className="mt-6">
           <CardLabel>Invoice history</CardLabel>
-          <p className="mt-2 text-sm text-charcoal-muted">
+          <p className="mt-2 text-sm text-ll-warm-gray">
             Your past invoices will appear here once your first billing cycle closes.
           </p>
           <div className="mt-3">

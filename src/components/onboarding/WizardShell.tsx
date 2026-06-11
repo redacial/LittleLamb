@@ -15,11 +15,11 @@ interface WizardShellProps {
  */
 export function WizardShell({ steps, current, children, voluntary }: WizardShellProps) {
   return (
-    <div className="min-h-screen bg-cream">
-      <header className="border-b border-charcoal/10 bg-cream/80 px-6 py-4 backdrop-blur">
+    <div className="min-h-screen bg-ll-cream">
+      <header className="border-b border-ll-ink/10 bg-ll-cream/80 px-6 py-4 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <Logo />
-          <span className="text-sm text-charcoal-muted">
+          <span className="font-mono text-sm text-ll-warm-gray">
             Step {current + 1} of {steps.length}
           </span>
         </div>
@@ -36,16 +36,16 @@ export function WizardShell({ steps, current, children, voluntary }: WizardShell
                 <span
                   aria-current={active ? 'step' : undefined}
                   className={cn(
-                    'grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ring-1',
-                    done && 'bg-sage-500 text-white ring-sage-500',
-                    active && 'bg-white text-sage-700 ring-sage-500',
-                    !done && !active && 'bg-cream-200 text-charcoal-faint ring-charcoal/10',
+                    'grid h-7 w-7 shrink-0 place-items-center rounded-full font-mono text-xs font-bold border-1.5',
+                    done && 'bg-ll-sage text-white border-ll-sage',
+                    active && 'bg-white text-ll-sage-deep border-ll-sage',
+                    !done && !active && 'bg-ll-cream-dark text-ll-warm-gray border-ll-ink/10',
                   )}
                 >
                   {done ? '✓' : i + 1}
                 </span>
                 {i < steps.length - 1 && (
-                  <span className={cn('h-px flex-1', done ? 'bg-sage-400' : 'bg-charcoal/10')} />
+                  <span className={cn('h-px flex-1', done ? 'bg-ll-sage' : 'bg-ll-ink/10')} />
                 )}
               </li>
             )

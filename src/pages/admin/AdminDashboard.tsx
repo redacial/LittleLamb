@@ -1,6 +1,8 @@
+import { motion } from 'framer-motion'
 import { usePendingApplications, useAdminActions, useAllBookings } from '../../hooks/useAdmin'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Button, Card, CardLabel } from '../../components/ui'
+import { useSpringIn } from '../../lib/motion'
 import { formatDate, formatTimeRange } from '../../lib/format'
 
 /**
@@ -15,23 +17,27 @@ export function AdminDashboard() {
   const pendingNannies = usePendingApplications('nanny')
   const pendingFamilies = usePendingApplications('family')
   const { approve, reject } = useAdminActions()
+  const springIn = useSpringIn()
 
   return (
     <>
       <PageHeader title="Admin dashboard" subtitle="Everything that needs your attention, in priority order." />
       <PageBody>
-        {/* 1. Same-day banner — visually dominant */}
+        {/* 1. Same-day banner — visually dominant ll-terra call-out */}
         {sameDay.length > 0 && (
-          <div className="mb-6 rounded-2xl bg-terracotta-500 p-5 text-white shadow-lift">
+          <motion.div
+            {...springIn}
+            className="mb-6 rounded-ll-card bg-ll-terra p-5 text-white shadow-lift"
+          >
             <p className="text-eyebrow font-bold uppercase tracking-[0.14em] text-white/80">
               Same-day requests
             </p>
             <p className="mt-1 font-display text-2xl">
-              {sameDay.length} same-day booking{sameDay.length > 1 ? 's' : ''} need manual processing
+              <span className="font-mono">{sameDay.length}</span> same-day booking{sameDay.length > 1 ? 's' : ''} need manual processing
             </p>
             <div className="mt-4 space-y-2">
               {sameDay.map((b) => (
-                <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/15 px-4 py-2">
+                <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-ll-input bg-white/15 px-4 py-2">
                   <span className="font-semibold">
                     {b.familyName} · {formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)}
                   </span>
@@ -39,7 +45,7 @@ export function AdminDashboard() {
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
 
         <div className="space-y-6">
@@ -54,7 +60,7 @@ export function AdminDashboard() {
                   <Card key={b.id} className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-semibold">{b.familyName}</p>
-                      <p className="text-sm text-charcoal-muted">
+                      <p className="text-sm text-ll-warm-gray">
                         {formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)} · {b.address}
                       </p>
                     </div>
@@ -122,7 +128,7 @@ function ApplicationList({
             <Card key={a.uid} className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-semibold">{a.fullName}</p>
-                <p className="text-sm text-charcoal-muted">{a.email}</p>
+                <p className="text-sm text-ll-warm-gray">{a.email}</p>
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => onApprove(a.uid)}>Approve</Button>
@@ -138,9 +144,9 @@ function ApplicationList({
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <Card className="bg-cream-100">
+    <Card className="bg-ll-cream">
       <CardLabel>All clear</CardLabel>
-      <p className="text-sm text-charcoal-muted">{children}</p>
+      <p className="text-sm text-ll-warm-gray">{children}</p>
     </Card>
   )
 }

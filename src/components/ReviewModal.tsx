@@ -46,12 +46,12 @@ export function ReviewModal({
     <Modal open={open} onClose={onClose} title={done ? 'Thank you' : 'Leave a review'}>
       {done ? (
         <div className="space-y-4">
-          <p className="text-charcoal-muted">Your feedback goes straight to the Little Lamb team — it’s never public.</p>
+          <p className="text-ll-warm-gray">Your feedback goes straight to the Little Lamb team — it’s never public.</p>
           <Button onClick={onClose}>Done</Button>
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm text-charcoal-muted">
+          <p className="text-sm text-ll-warm-gray">
             Reviews are shared with the Little Lamb team only, to keep matches great.
           </p>
           <div className="flex gap-1" role="radiogroup" aria-label="Rating">
@@ -63,7 +63,7 @@ export function ReviewModal({
                 aria-checked={rating === n}
                 aria-label={`${n} star${n > 1 ? 's' : ''}`}
                 onClick={() => setRating(n)}
-                className={cn('text-3xl', n <= rating ? 'text-terracotta-400' : 'text-charcoal/20')}
+                className={cn('text-3xl', n <= rating ? 'text-ll-terra' : 'text-ll-ink/20')}
               >
                 ★
               </button>

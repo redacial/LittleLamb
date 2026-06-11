@@ -21,34 +21,59 @@ export function NanniesDirectory() {
       <PageHeader title="Our nannies" subtitle="Every nanny here is interviewed and background-checked." />
       <PageBody>
         {loading ? (
-          <p className="text-charcoal-muted">Loading nannies…</p>
+          <p className="text-ll-warm-gray">Loading nannies…</p>
         ) : nannies.length === 0 ? (
-          <Card className="bg-cream-100">
-            <p className="text-sm text-charcoal-muted">No nannies are live in the network yet.</p>
+          <Card tone="peri" className="text-center">
+            <p className="font-display text-display-md text-ll-ink">No nannies yet — but they’re coming</p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-ll-warm-gray">
+              We’re interviewing and background-checking nannies right now. Check back soon to meet the team.
+            </p>
           </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {nannies.map((n) => {
               const badges = [...n.verifiedBadges, ...n.selfBadges].slice(0, 4)
               return (
-                <Card key={n.uid} className="flex flex-col">
+                <Card
+                  key={n.uid}
+                  tone="peri"
+                  interactive
+                  className="flex flex-col"
+                >
                   <div className="flex items-center gap-3">
                     <Avatar name={n.fullName} src={n.photoURL} size="md" />
                     <div>
-                      <p className="font-display text-lg">{n.fullName}</p>
-                      <p className="text-sm text-charcoal-muted">
+                      <p className="font-display text-lg text-ll-ink">{n.fullName}</p>
+                      <p className="text-sm text-ll-warm-gray">
                         {n.availability?.length ? `Available ${n.availability.length} days/wk` : 'Availability on profile'}
                       </p>
                     </div>
                   </div>
+
+                  {/* Trust signals first — background check / verification, then experience. */}
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <span className="trust-chip">
+                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
+                        <path d="M8 1l5.5 2v4c0 3.4-2.3 6.6-5.5 8-3.2-1.4-5.5-4.6-5.5-8V3L8 1z" />
+                      </svg>
+                      Background checked
+                    </span>
+                    {n.yearsExperience && (
+                      <span className="trust-chip">{n.yearsExperience} yrs experience</span>
+                    )}
+                  </div>
+
                   {badges.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                       {badges.map((b) => (
                         <Badge key={b} label={badgeLabel(b)} type={badgeType(b)} size="sm" />
                       ))}
                     </div>
                   )}
-                  <p className="mt-3 line-clamp-2 text-sm text-charcoal-muted">{n.bio}</p>
+
+                  <p className="mt-3 font-mono text-mono-sm text-ll-peri-deep">Worked with families on Little Lamb</p>
+                  <p className="mt-2 line-clamp-2 text-sm text-ll-warm-gray">{n.bio}</p>
+
                   <div className="mt-4 flex gap-2">
                     <Link to={`${base}/nannies/${n.uid}`} className="flex-1">
                       <Button variant="secondary" size="sm" className="w-full">View profile</Button>

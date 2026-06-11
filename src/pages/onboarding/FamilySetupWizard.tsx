@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { useFamilyProfile, completeWizard } from '../../hooks/useProfile'
 import { uploadProfilePhoto } from '../../lib/storage'
 import { cleanLine, cleanText } from '../../lib/sanitize'
 import { WizardShell } from '../../components/onboarding/WizardShell'
+import { useSpring } from '../../lib/motion'
 import { Button, Input, Textarea, Avatar } from '../../components/ui'
 import type { Child, FamilyProfile } from '../../types'
 
@@ -20,6 +22,7 @@ export function FamilySetupWizard() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const stepTransition = useSpring('gentle')
 
   // Local form state, hydrated from any saved progress.
   const [photoURL, setPhotoURL] = useState<string | null>(null)
@@ -128,7 +131,7 @@ export function FamilySetupWizard() {
     return (
       <WizardShell steps={STEPS} current={STEPS.length - 1}>
         <h1 className="text-display-md">You’re all set — welcome to Little Lamb</h1>
-        <p className="mt-3 text-charcoal-muted">Your family profile is complete.</p>
+        <p className="mt-3 text-ll-warm-gray">Your family profile is complete.</p>
         <Button className="mt-6" onClick={() => navigate('/family', { replace: true })}>
           Go to your dashboard
         </Button>
@@ -138,12 +141,20 @@ export function FamilySetupWizard() {
 
   return (
     <WizardShell steps={STEPS} current={step}>
+      <AnimatePresence mode="wait">
       {step === 0 && (
-        <div className="space-y-5">
+        <motion.div
+          key="step-0"
+          className="space-y-5"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -12 }}
+          transition={stepTransition}
+        >
           <h1 className="text-display-md">Tell us about your family</h1>
           <div className="flex items-center gap-4">
             <Avatar name={profile?.fullName ?? 'Family'} src={photoURL} size="lg" />
-            <label className="cursor-pointer text-sm font-bold text-sage-600 hover:underline">
+            <label className="cursor-pointer text-sm font-bold text-ll-sage-mid hover:underline">
               {photoURL ? 'Change photo' : 'Add a family photo'}
               <input
                 type="file"
@@ -174,34 +185,48 @@ export function FamilySetupWizard() {
           <Textarea label="House rules & important notes" hint="Optional" value={houseRules} onChange={(e) => setHouseRules(e.target.value)} />
           <Input label="Home address" value={homeAddress} onChange={(e) => setHomeAddress(e.target.value)} />
 
-          {error && <p role="alert" className="text-sm font-semibold text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <Button onClick={nextFromStep0} loading={busy}>Continue</Button>
-        </div>
+        </motion.div>
       )}
 
       {step === 1 && (
-        <div className="space-y-5">
+        <motion.div
+          key="step-1"
+          className="space-y-5"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -12 }}
+          transition={stepTransition}
+        >
           <h1 className="text-display-md">How can we reach you?</h1>
           <Input label="Primary email" value={profile?.email ?? ''} disabled />
           <Input label="Phone number" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <Input label="Spouse / co-parent name" hint="Optional" value={coParentName} onChange={(e) => setCoParentName(e.target.value)} />
           <Input label="Spouse / co-parent email" hint="Optional" type="email" value={coParentEmail} onChange={(e) => setCoParentEmail(e.target.value)} />
-          {error && <p role="alert" className="text-sm font-semibold text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => setStep(0)}>Back</Button>
             <Button onClick={nextFromStep1} loading={busy}>Continue</Button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {step === 2 && (
-        <div className="space-y-5">
+        <motion.div
+          key="step-2"
+          className="space-y-5"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -12 }}
+          transition={stepTransition}
+        >
           <h1 className="text-display-md">Add a payment card</h1>
-          <p className="text-charcoal-muted">
+          <p className="text-ll-warm-gray">
             Your card is stored securely for quarterly billing — $25 per quarter plus $1 per
             confirmed booking. You won’t be charged today.
           </p>
-          <div className="rounded-2xl border border-dashed border-charcoal/20 bg-white p-5">
+          <div className="rounded-ll-card border-1.5 border-dashed border-ll-warm-gray bg-white p-5">
             {/* Stubbed card capture — no real card data leaves the browser (see DECISIONS D7d). */}
             <Input label="Name on card" placeholder="Jane Appleseed" />
             <div className="mt-3 grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
@@ -210,17 +235,18 @@ export function FamilySetupWizard() {
               <Input label="CVC" placeholder="123" inputMode="numeric" />
             </div>
             <label className="mt-4 flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={hasPaymentMethod} onChange={(e) => setHasPaymentMethod(e.target.checked)} className="h-4 w-4 rounded accent-sage-500" />
+              <input type="checkbox" checked={hasPaymentMethod} onChange={(e) => setHasPaymentMethod(e.target.checked)} className="h-4 w-4 rounded accent-ll-sage" />
               Save this card for quarterly billing
             </label>
           </div>
-          {error && <p role="alert" className="text-sm font-semibold text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => setStep(1)}>Back</Button>
             <Button onClick={finish} loading={busy}>Finish setup</Button>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </WizardShell>
   )
 }

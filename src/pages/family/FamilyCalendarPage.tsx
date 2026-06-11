@@ -113,7 +113,7 @@ export function FamilyCalendarPage() {
             </Select>
             <Textarea label="Notes for your nanny" hint="e.g. Dinner at 6, bedtime at 8" value={notes} onChange={(e) => setNotes(e.target.value)} />
             {pickedDay === today && (
-              <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <p className="rounded-ll-input border-1.5 border-ll-peri-soft bg-ll-peri-light px-3 py-2 text-sm text-ll-peri-deep">
                 Same-day bookings are confirmed by our team — we’ll reach out shortly.
               </p>
             )}
@@ -132,8 +132,8 @@ export function FamilyCalendarPage() {
                   <StatusPill status={viewBooking.status} tone={viewBooking.status === 'confirmed' ? 'confirmed' : 'pending'} />
                 </div>
               </div>
-              <p className="text-sm text-charcoal-muted">{formatDate(viewBooking.date)} · {formatTimeRange(viewBooking.startTime, viewBooking.endTime)}</p>
-              <p className="text-sm text-charcoal-muted">{viewBooking.address}</p>
+              <p className="text-sm text-ll-warm-gray">{formatDate(viewBooking.date)} · {formatTimeRange(viewBooking.startTime, viewBooking.endTime)}</p>
+              <p className="text-sm text-ll-warm-gray">{viewBooking.address}</p>
               {viewBooking.notes && <p className="text-sm">“{viewBooking.notes}”</p>}
             </div>
           )}

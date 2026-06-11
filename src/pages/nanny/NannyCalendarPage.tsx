@@ -8,6 +8,7 @@ import { MonthGrid } from '../../components/calendar/MonthGrid'
 import { Card, CardLabel, Button } from '../../components/ui'
 import { DAYS } from '../../components/onboarding/AvailabilityEditor'
 import { to12h } from '../../lib/format'
+import { cn } from '../../lib/cn'
 
 /** Nanny calendar — booked sessions in the month grid + a read-out of weekly availability. */
 export function NannyCalendarPage() {
@@ -46,13 +47,13 @@ export function NannyCalendarPage() {
           <MonthGrid year={year} month={month} today={today} bookings={bookings} />
           <Card>
             <CardLabel>Weekly availability</CardLabel>
-            <ul className="mt-2 divide-y divide-charcoal/5 text-sm">
+            <ul className="mt-2 divide-y divide-ll-cream-dark text-sm">
               {DAYS.map((label, day) => {
                 const block = nanny?.availability?.find((a) => a.day === day)
                 return (
                   <li key={label} className="flex items-center justify-between py-1.5">
                     <span className="font-semibold">{label.slice(0, 3)}</span>
-                    <span className={block ? 'text-sage-700' : 'text-charcoal-faint'}>
+                    <span className={cn('font-mono', block ? 'text-ll-sage-mid' : 'text-ll-warm-gray')}>
                       {block ? `${to12h(block.start)}–${to12h(block.end)}` : '—'}
                     </span>
                   </li>

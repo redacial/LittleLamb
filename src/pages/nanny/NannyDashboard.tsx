@@ -45,7 +45,7 @@ export function NannyDashboard() {
               <Card key={b.id} className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-semibold">{b.familyName}</p>
-                  <p className="text-sm text-charcoal-muted">
+                  <p className="text-sm text-ll-warm-gray">
                     {formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)}
                   </p>
                 </div>
@@ -65,7 +65,7 @@ export function NannyDashboard() {
               <Card key={b.id} className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-semibold">{b.familyName}</p>
-                  <p className="text-sm text-charcoal-muted">
+                  <p className="text-sm text-ll-warm-gray">
                     {formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)} · {b.address}
                   </p>
                 </div>
@@ -82,7 +82,7 @@ export function NannyDashboard() {
 
         <Card className="mt-6">
           <CardLabel>Messages</CardLabel>
-          <Link to="/nanny/messages" className="mt-2 inline-block text-sm font-bold text-sage-600 hover:underline">
+          <Link to="/nanny/messages" className="mt-2 inline-block text-sm font-bold text-ll-peri hover:underline">
             Open messages →
           </Link>
         </Card>

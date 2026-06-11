@@ -1,71 +1,82 @@
 /** @type {import('tailwindcss').Config} */
+// Premium Playful design system — see DESIGN_SYSTEM.md (locked v1.0).
+// Replaces the old Warm Editorial (Fraunces/Nunito, sage-*/cream-*/terracotta-* numeric scales).
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        // Warm Editorial palette — sage primary, cream ground, terracotta accent, charcoal ink
-        sage: {
-          50: '#f1f6f2',
-          100: '#dde9e0',
-          200: '#bcd3c2',
-          300: '#9bbda4',
-          400: '#7bae8a', // primary
-          500: '#5f936e',
-          600: '#4a7656',
-          700: '#3c5e46',
-          800: '#324c3a',
-          900: '#2a3f31',
-        },
-        cream: {
-          DEFAULT: '#faf6ef',
-          50: '#fdfbf7',
-          100: '#faf6ef',
-          200: '#f3ebdd',
-          300: '#e9ddc9',
-        },
-        terracotta: {
-          50: '#fbf0ec',
-          100: '#f4d8ce',
-          200: '#e8b3a1',
-          300: '#dc8e74',
-          400: '#cf7351', // accent
-          500: '#bd5b3a',
-          600: '#a0492e',
-          700: '#813a26',
-        },
-        charcoal: {
-          DEFAULT: '#2f2b28',
-          muted: '#6b645d',
-          faint: '#9a938b',
-        },
-        // Semantic booking states
-        confirmed: '#5f936e',
-        pending: '#d99746',
-        booked: '#5b7da6',
+        // Neutrals
+        'll-cream':      '#F5F0E8',
+        'll-cream-dark': '#EDE6D8',
+        'll-warm-gray':  '#6B5E4E',
+        'll-ink':        '#2C2416',
+        // Sage — primary brand
+        'll-sage-light': '#C8DEC4',
+        'll-sage':       '#8FAF8A',
+        'll-sage-mid':   '#5C7F57',
+        'll-sage-deep':  '#3D5C3A',
+        // Periwinkle — trust, calm, information
+        'll-peri-light': '#DDE3F0',
+        'll-peri-soft':  '#B0BCE0',
+        'll-peri':       '#8B9DC3',
+        'll-peri-deep':  '#5B6E99',
+        'll-peri-ink':   '#2C3E6B',
+        // Terracotta — CTA, accent, warmth
+        'll-terra-light':'#F0DFD0',
+        'll-terra-soft': '#D4AA85',
+        'll-terra':      '#C4956A',
+        'll-terra-deep': '#9B6A3F',
+        // Semantic booking states — map onto the palette above
+        // confirmed = sage, pending = warm amber-terra, booked = periwinkle
+        confirmed: '#8FAF8A',
+        pending:   '#C4956A',
+        booked:    '#8B9DC3',
       },
       fontFamily: {
-        // Display: warm editorial serif. Body/UI: Nunito (rounded, approachable).
-        display: ['Fraunces', 'Georgia', 'serif'],
-        sans: ['Nunito', 'system-ui', 'sans-serif'],
+        // Display/headlines: Caveat. Body/UI: DM Sans. Trust labels/badges/IDs: DM Mono.
+        display: ['Caveat', 'cursive'],
+        sans:    ['DM Sans', 'system-ui', 'sans-serif'],
+        mono:    ['DM Mono', 'ui-monospace', 'monospace'],
       },
       fontSize: {
-        // Editorial type scale
-        'display-xl': ['clamp(2.75rem, 6vw, 4.5rem)', { lineHeight: '1.02', letterSpacing: '-0.02em' }],
-        'display-lg': ['clamp(2.25rem, 4.5vw, 3.25rem)', { lineHeight: '1.05', letterSpacing: '-0.015em' }],
-        'display-md': ['clamp(1.75rem, 3vw, 2.25rem)', { lineHeight: '1.1', letterSpacing: '-0.01em' }],
-        eyebrow: ['0.8125rem', { lineHeight: '1', letterSpacing: '0.14em' }],
+        // Premium Playful type scale (DESIGN_SYSTEM.md §Type Scale)
+        'display-xl': ['clamp(2.75rem, 6vw, 3.5rem)', { lineHeight: '1.0', letterSpacing: '0' }],
+        'display-lg': ['clamp(2rem, 4.5vw, 2.5rem)',  { lineHeight: '1.05', letterSpacing: '0' }],
+        'display-md': ['1.75rem', { lineHeight: '1.1' }],
+        'display-sm': ['1.375rem', { lineHeight: '1.15' }],
+        'mono-sm': ['0.75rem', { lineHeight: '1.2', letterSpacing: '0.02em' }],
+        label: ['0.8125rem', { lineHeight: '1.2', letterSpacing: '0' }],
+        eyebrow: ['0.75rem', { lineHeight: '1', letterSpacing: '0.08em' }],
       },
       borderRadius: {
-        xl: '1rem',
-        '2xl': '1.5rem',
+        'll-card':  '20px',
+        'll-input': '14px',
+        'll-modal': '24px',
+        'll-tag':   '8px',
+        // legacy aliases kept so any stray xl/2xl usages still resolve to the new scale
+        xl: '20px',
+        '2xl': '24px',
+      },
+      borderWidth: {
+        // Chunky hand-drawn borders — 1.5px default per DESIGN_SYSTEM.md §Border Style
+        '1.5': '1.5px',
       },
       boxShadow: {
-        soft: '0 1px 2px rgba(47,43,40,0.04), 0 8px 24px -12px rgba(47,43,40,0.12)',
-        lift: '0 2px 4px rgba(47,43,40,0.05), 0 18px 40px -16px rgba(47,43,40,0.18)',
+        soft: '0 1px 2px rgba(44,36,22,0.04), 0 8px 24px -12px rgba(44,36,22,0.14)',
+        lift: '0 2px 4px rgba(44,36,22,0.05), 0 18px 40px -16px rgba(44,36,22,0.20)',
       },
       maxWidth: {
         prose: '68ch',
+      },
+      animation: {
+        'spring-in': 'springIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      },
+      keyframes: {
+        springIn: {
+          '0%':   { opacity: '0', transform: 'scale(0.92)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
       },
     },
   },

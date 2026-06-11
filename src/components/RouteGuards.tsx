@@ -6,12 +6,12 @@ import { Logo } from './ui'
 
 function FullScreenLoader() {
   return (
-    <div className="grid min-h-screen place-items-center bg-cream">
+    <div className="grid min-h-screen place-items-center bg-ll-cream">
       <div className="flex flex-col items-center gap-4">
         <Logo withSubline />
         <span
           aria-label="Loading"
-          className="h-5 w-5 animate-spin rounded-full border-2 border-sage-400 border-t-transparent"
+          className="h-5 w-5 animate-spin rounded-full border-2 border-ll-sage border-t-transparent"
         />
       </div>
     </div>

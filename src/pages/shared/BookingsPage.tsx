@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useMyBookings, useBookingActions } from '../../hooks/useBookings'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
@@ -24,9 +25,21 @@ export function BookingsPage({ role }: { role: 'family' | 'nanny' }) {
       <PageHeader title="Bookings" subtitle={role === 'family' ? 'All your past and upcoming bookings.' : 'Your sessions, past and upcoming.'} />
       <PageBody>
         {loading ? (
-          <p className="text-charcoal-muted">Loading…</p>
+          <p className="text-ll-warm-gray">Loading…</p>
         ) : bookings.length === 0 ? (
-          <Card className="bg-cream-100"><p className="text-sm text-charcoal-muted">No bookings yet.</p></Card>
+          <Card tone="sage" className="text-center">
+            <p className="font-display text-display-md text-ll-ink">No bookings yet</p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-ll-warm-gray">
+              {role === 'family'
+                ? 'When you book a nanny, your upcoming and past sessions will live here.'
+                : 'Your confirmed sessions will appear here once families start booking you.'}
+            </p>
+            {role === 'family' && (
+              <Link to="/family/nannies" className="mt-4 inline-block">
+                <Button>Browse nannies</Button>
+              </Link>
+            )}
+          </Card>
         ) : (
           <div className="space-y-3">
             {bookings.map((b) => (
@@ -57,11 +70,11 @@ function BookingRow({
           <p className="font-semibold">{otherName ?? (role === 'family' ? 'Finding a nanny' : 'Family')}</p>
           <StatusPill status={b.status} tone={tone(b.status)} />
         </div>
-        <p className="text-sm text-charcoal-muted">
+        <p className="text-sm text-ll-warm-gray">
           {formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)}
         </p>
-        <p className="text-sm text-charcoal-muted">{b.address}</p>
-        {b.notes && <p className="mt-1 text-sm text-charcoal-muted">“{b.notes}”</p>}
+        <p className="text-sm text-ll-warm-gray">{b.address}</p>
+        {b.notes && <p className="mt-1 text-sm text-ll-warm-gray">“{b.notes}”</p>}
       </div>
       <div className="flex gap-2">
         {role === 'nanny' && b.status === 'pending' && (

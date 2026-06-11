@@ -37,7 +37,7 @@ export function AdminBillingPage() {
               return (
                 <div className="space-y-3">
                   {families.filter((f) => f.approved).length === 0 ? (
-                    <Card className="bg-cream-100"><p className="text-sm text-charcoal-muted">No active families yet.</p></Card>
+                    <Card className="bg-ll-cream"><p className="text-sm text-ll-warm-gray">No active families yet.</p></Card>
                   ) : (
                     families
                       .filter((f) => f.approved)
@@ -45,7 +45,7 @@ export function AdminBillingPage() {
                         <Card key={f.uid} className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <p className="font-semibold">{f.fullName}</p>
-                            <p className="text-sm text-charcoal-muted">Subscription {money(SUBSCRIPTION)}/qtr</p>
+                            <p className="text-sm text-ll-warm-gray">Subscription <span className="font-mono">{money(SUBSCRIPTION)}</span>/qtr</p>
                           </div>
                           <div className="flex gap-2">
                             <Button size="sm" variant="secondary">Trigger invoice</Button>
@@ -59,9 +59,9 @@ export function AdminBillingPage() {
 
             if (active === 'Invoice history')
               return (
-                <Card className="bg-cream-100">
+                <Card className="bg-ll-cream">
                   <CardLabel>Invoice history</CardLabel>
-                  <p className="text-sm text-charcoal-muted">Invoices appear here as billing cycles close. Searchable by family and date; per-invoice PDF download.</p>
+                  <p className="text-sm text-ll-warm-gray">Invoices appear here as billing cycles close. Searchable by family and date; per-invoice PDF download.</p>
                 </Card>
               )
 
@@ -69,13 +69,13 @@ export function AdminBillingPage() {
               <div className="space-y-4">
                 <Card>
                   <CardLabel>Quarterly donation tracker</CardLabel>
-                  <p className="mt-1 font-display text-3xl">{money(donation)}</p>
-                  <p className="text-sm text-charcoal-muted">Auto-calculated as 10% of this quarter’s revenue.</p>
+                  <p className="mt-1 font-mono text-3xl">{money(donation)}</p>
+                  <p className="text-sm text-ll-warm-gray">Auto-calculated as 10% of this quarter’s revenue.</p>
                   <Button className="mt-3" size="sm">Mark as donated</Button>
                 </Card>
-                <Card className="bg-cream-100">
+                <Card className="bg-ll-cream">
                   <CardLabel>Donation history</CardLabel>
-                  <p className="text-sm text-charcoal-muted">Date, amount, and quarter for every past donation. Included in the Excel export.</p>
+                  <p className="text-sm text-ll-warm-gray">Date, amount, and quarter for every past donation. Included in the Excel export.</p>
                 </Card>
               </div>
             )

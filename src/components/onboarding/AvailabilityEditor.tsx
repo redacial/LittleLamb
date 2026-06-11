@@ -39,8 +39,8 @@ export function AvailabilityEditor({
           <div
             key={label}
             className={cn(
-              'flex flex-wrap items-center gap-3 rounded-xl border p-3',
-              on ? 'border-sage-300 bg-sage-50' : 'border-charcoal/10 bg-white',
+              'flex flex-wrap items-center gap-3 rounded-ll-input border-1.5 p-3',
+              on ? 'border-ll-sage bg-ll-sage-light' : 'border-ll-ink/10 bg-white',
             )}
           >
             <label className="flex w-32 items-center gap-2 font-semibold">
@@ -48,7 +48,7 @@ export function AvailabilityEditor({
                 type="checkbox"
                 checked={on}
                 onChange={(e) => toggle(day, e.target.checked)}
-                className="h-4 w-4 rounded accent-sage-500"
+                className="h-4 w-4 rounded accent-ll-sage"
               />
               {label}
             </label>
@@ -61,7 +61,7 @@ export function AvailabilityEditor({
                   onChange={(e) => setDay(day, { start: e.target.value })}
                   className="w-32"
                 />
-                <span className="text-charcoal-muted">to</span>
+                <span className="text-ll-warm-gray">to</span>
                 <Input
                   type="time"
                   aria-label={`${label} end`}

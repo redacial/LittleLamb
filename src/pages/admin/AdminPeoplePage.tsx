@@ -32,25 +32,30 @@ export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'famil
     <>
       <PageHeader title={role === 'nanny' ? 'Nannies' : 'Families'} subtitle="Review applications and manage accounts." />
       <PageBody>
-        <div className="mb-4 flex gap-1 rounded-full bg-cream-200 p-1">
-          {(['pending', 'active', 'inactive', 'rejected'] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={cn(
-                'flex-1 rounded-full px-3 py-1.5 text-sm font-bold capitalize transition-colors',
-                tab === t ? 'bg-white text-charcoal shadow-soft' : 'text-charcoal-muted',
-              )}
-            >
-              {t}
-            </button>
-          ))}
+        <div role="tablist" className="mb-4 flex gap-1 rounded-full bg-ll-cream-dark p-1">
+          {(['pending', 'active', 'inactive', 'rejected'] as Tab[]).map((t) => {
+            const selected = tab === t
+            return (
+              <button
+                key={t}
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setTab(t)}
+                className={cn(
+                  'flex-1 rounded-full px-3 py-1.5 text-sm font-bold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ll-sage focus-visible:ring-offset-2 focus-visible:ring-offset-ll-cream',
+                  selected ? 'bg-ll-sage text-ll-sage-deep shadow-soft' : 'text-ll-warm-gray hover:text-ll-ink',
+                )}
+              >
+                {t}
+              </button>
+            )
+          })}
         </div>
 
         {loading ? (
-          <p className="text-charcoal-muted">Loading…</p>
+          <p className="text-ll-warm-gray">Loading…</p>
         ) : filtered.length === 0 ? (
-          <Card className="bg-cream-100"><p className="text-sm text-charcoal-muted">Nobody in this list.</p></Card>
+          <Card className="bg-ll-cream"><p className="text-sm text-ll-warm-gray">Nobody in this list.</p></Card>
         ) : (
           <div className="space-y-3">
             {filtered.map((u) => (
@@ -94,9 +99,9 @@ function PersonRow({
         <Avatar name={u.fullName} size="md" />
         <div>
           <p className="font-semibold">{u.fullName}</p>
-          <p className="text-sm text-charcoal-muted">{u.email}</p>
+          <p className="text-sm text-ll-warm-gray">{u.email}</p>
           {role === 'nanny' && u.stage && (
-            <p className="mt-0.5 text-xs text-sage-700">{STAGE_LABEL[u.stage]}</p>
+            <p className="mt-0.5 text-xs text-ll-sage-mid">{STAGE_LABEL[u.stage]}</p>
           )}
         </div>
       </div>

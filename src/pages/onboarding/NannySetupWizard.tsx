@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { useNannyProfile, completeWizard } from '../../hooks/useProfile'
 import { uploadProfilePhoto, uploadIntroVideo } from '../../lib/storage'
@@ -7,6 +8,7 @@ import { cleanText, cleanLine } from '../../lib/sanitize'
 import { SELF_BADGES } from '../../lib/badges'
 import { WizardShell } from '../../components/onboarding/WizardShell'
 import { AvailabilityEditor } from '../../components/onboarding/AvailabilityEditor'
+import { useSpring, useChipHover } from '../../lib/motion'
 import { Button, Input, Textarea, Avatar, Badge } from '../../components/ui'
 import { cn } from '../../lib/cn'
 import type { AvailabilityBlock, NannyProfile } from '../../types'
@@ -24,6 +26,8 @@ export function NannySetupWizard() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const stepTransition = useSpring('gentle')
+  const chipHover = useChipHover()
 
   const [photoURL, setPhotoURL] = useState<string | null>(null)
   const [bio, setBio] = useState('')
@@ -126,7 +130,7 @@ export function NannySetupWizard() {
     return (
       <WizardShell steps={STEPS} current={STEPS.length - 1}>
         <h1 className="text-display-md">You’re all set — welcome to Little Lamb</h1>
-        <p className="mt-3 text-charcoal-muted">Your profile is live for families to discover.</p>
+        <p className="mt-3 text-ll-warm-gray">Your profile is live for families to discover.</p>
         <Button className="mt-6" onClick={() => navigate('/nanny', { replace: true })}>
           Go to your dashboard
         </Button>
@@ -136,12 +140,20 @@ export function NannySetupWizard() {
 
   return (
     <WizardShell steps={STEPS} current={step}>
+      <AnimatePresence mode="wait">
       {step === 0 && (
-        <div className="space-y-5">
+        <motion.div
+          key="step-0"
+          className="space-y-5"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -12 }}
+          transition={stepTransition}
+        >
           <h1 className="text-display-md">Your photo & bio</h1>
           <div className="flex items-center gap-4">
             <Avatar name={profile?.fullName ?? 'Nanny'} src={photoURL} size="lg" />
-            <label className="cursor-pointer text-sm font-bold text-sage-600 hover:underline">
+            <label className="cursor-pointer text-sm font-bold text-ll-sage-mid hover:underline">
               {photoURL ? 'Change photo' : 'Add a profile photo'}
               <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />
             </label>
@@ -159,41 +171,55 @@ export function NannySetupWizard() {
             value={bio}
             onChange={(e) => setBio(e.target.value)}
           />
-          {error && <p role="alert" className="text-sm font-semibold text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <Button onClick={nextFromBio} loading={busy}>Continue</Button>
-        </div>
+        </motion.div>
       )}
 
       {step === 1 && (
-        <div className="space-y-5">
+        <motion.div
+          key="step-1"
+          className="space-y-5"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -12 }}
+          transition={stepTransition}
+        >
           <h1 className="text-display-md">Record a one-minute intro</h1>
-          <p className="text-charcoal-muted">
+          <p className="text-ll-warm-gray">
             Say your name, your years of experience, and a little about yourself. Keep it under a
             minute — families love seeing a friendly face before they book.
           </p>
           {videoURL ? (
-            <video src={videoURL} controls className="w-full rounded-2xl bg-charcoal/5" />
+            <video src={videoURL} controls className="w-full rounded-ll-card bg-ll-ink/5" />
           ) : (
-            <div className="grid place-items-center rounded-2xl border border-dashed border-charcoal/20 bg-white p-10 text-center text-charcoal-muted">
+            <div className="grid place-items-center rounded-ll-card border-1.5 border-dashed border-ll-warm-gray bg-white p-10 text-center text-ll-warm-gray">
               No video yet
             </div>
           )}
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-sage-500 px-6 py-2.5 font-semibold text-white hover:bg-sage-600">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-ll-sage px-6 py-2.5 font-semibold text-ll-sage-deep hover:bg-ll-sage-mid hover:text-white">
             {videoURL ? 'Replace video' : 'Upload video'}
             <input type="file" accept="video/*" className="sr-only" onChange={(e) => e.target.files?.[0] && onVideo(e.target.files[0])} />
           </label>
-          {error && <p role="alert" className="text-sm font-semibold text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => setStep(0)}>Back</Button>
             <Button onClick={nextFromVideo} loading={busy}>Continue</Button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {step === 2 && (
-        <div className="space-y-5">
+        <motion.div
+          key="step-2"
+          className="space-y-5"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -12 }}
+          transition={stepTransition}
+        >
           <h1 className="text-display-md">Select your badges</h1>
-          <p className="text-charcoal-muted">
+          <p className="text-ll-warm-gray">
             Pick the traits that describe you. Certifications like CPR and First Aid are verified
             and added by our team after your interview.
           </p>
@@ -201,20 +227,21 @@ export function NannySetupWizard() {
             {SELF_BADGES.map((b) => {
               const on = selfBadges.includes(b.id)
               return (
-                <button
+                <motion.button
                   key={b.id}
                   type="button"
                   onClick={() => toggleBadge(b.id)}
                   aria-pressed={on}
+                  {...chipHover}
                   className={cn(
-                    'rounded-full px-3 py-1.5 text-sm font-semibold ring-1 transition-colors',
+                    'rounded-full px-3 py-1.5 font-mono text-mono-sm font-medium border-1.5 transition-colors',
                     on
-                      ? 'bg-terracotta-50 text-terracotta-700 ring-terracotta-300'
-                      : 'bg-white text-charcoal-muted ring-charcoal/15 hover:ring-terracotta-200',
+                      ? 'bg-ll-terra-light text-ll-terra-deep border-ll-terra-soft'
+                      : 'bg-white text-ll-warm-gray border-ll-cream-dark hover:border-ll-terra-soft',
                   )}
                 >
                   {b.label}
-                </button>
+                </motion.button>
               )
             })}
           </div>
@@ -226,29 +253,37 @@ export function NannySetupWizard() {
               <Badge label="Background Checked" type="verified" />
             </div>
           </div>
-          {error && <p role="alert" className="text-sm font-semibold text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => setStep(1)}>Back</Button>
             <Button onClick={nextFromBadges} loading={busy}>Continue</Button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {step === 3 && (
-        <div className="space-y-5">
+        <motion.div
+          key="step-3"
+          className="space-y-5"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -12 }}
+          transition={stepTransition}
+        >
           <h1 className="text-display-md">Set your weekly availability</h1>
-          <p className="text-charcoal-muted">
+          <p className="text-ll-warm-gray">
             Choose the days and hours you’re generally free. You can fine-tune any specific date
             later from your calendar.
           </p>
           <AvailabilityEditor value={availability} onChange={setAvailability} />
-          {error && <p role="alert" className="text-sm font-semibold text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => setStep(2)}>Back</Button>
             <Button onClick={finish} loading={busy}>Finish setup</Button>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </WizardShell>
   )
 }

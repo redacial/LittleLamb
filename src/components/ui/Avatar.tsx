@@ -24,7 +24,7 @@ export function Avatar({ name, src, size = 'md', className }: AvatarProps) {
       <img
         src={src}
         alt={name}
-        className={cn('rounded-full object-cover ring-1 ring-charcoal/10', sizes[size], className)}
+        className={cn('rounded-full object-cover border-1.5 border-ll-sage-light', sizes[size], className)}
       />
     )
   }
@@ -32,7 +32,7 @@ export function Avatar({ name, src, size = 'md', className }: AvatarProps) {
     <span
       aria-hidden
       className={cn(
-        'grid place-items-center rounded-full bg-sage-100 font-display font-semibold text-sage-700 ring-1 ring-sage-300',
+        'grid place-items-center rounded-full bg-ll-sage-light font-sans font-medium text-ll-sage-deep border-1.5 border-ll-sage',
         sizes[size],
         className,
       )}

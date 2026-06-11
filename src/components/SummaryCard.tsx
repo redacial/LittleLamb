@@ -1,6 +1,9 @@
+import { motion } from 'framer-motion'
 import { Card, CardLabel } from './ui'
+import { useSpringIn } from '../lib/motion'
+import { cn } from '../lib/cn'
 
-/** Compact metric/summary card used across dashboards. */
+/** Compact metric/summary card used across dashboards. Springs in on mount. */
 export function SummaryCard({
   label,
   value,
@@ -12,11 +15,14 @@ export function SummaryCard({
   hint?: string
   accent?: boolean
 }) {
+  const springIn = useSpringIn()
   return (
-    <Card className={accent ? 'bg-sage-50 ring-sage-200' : undefined}>
-      <CardLabel>{label}</CardLabel>
-      <p className="font-display text-3xl leading-tight text-charcoal">{value}</p>
-      {hint && <p className="mt-1 text-sm text-charcoal-muted">{hint}</p>}
-    </Card>
+    <motion.div {...springIn}>
+      <Card tone={accent ? 'sage' : 'default'} className={cn(accent && 'bg-ll-sage-light')}>
+        <CardLabel>{label}</CardLabel>
+        <p className="font-mono text-3xl font-medium leading-tight text-ll-ink">{value}</p>
+        {hint && <p className="mt-1 text-sm text-ll-warm-gray">{hint}</p>}
+      </Card>
+    </motion.div>
   )
 }

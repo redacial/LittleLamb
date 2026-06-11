@@ -58,7 +58,7 @@ export function FamilyDashboard() {
               <Card key={b.id} className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-semibold">{b.nannyName}</p>
-                  <p className="text-sm text-charcoal-muted">{formatDate(b.date)}</p>
+                  <p className="text-sm text-ll-warm-gray">{formatDate(b.date)}</p>
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => setReviewing(b)}>Leave a review</Button>
@@ -73,16 +73,16 @@ export function FamilyDashboard() {
           <Card>
             <CardLabel>Upcoming</CardLabel>
             {upcoming.length === 0 ? (
-              <p className="mt-2 text-sm text-charcoal-muted">
+              <p className="mt-2 text-sm text-ll-warm-gray">
                 Nothing booked yet. Tap “Book a nanny” to find someone for your next date.
               </p>
             ) : (
-              <ul className="mt-3 divide-y divide-charcoal/5">
+              <ul className="mt-3 divide-y divide-ll-cream-dark">
                 {upcoming.slice(0, 5).map((b) => (
                   <li key={b.id} className="flex items-center justify-between py-2.5">
                     <div>
                       <p className="font-semibold">{b.nannyName ?? 'Finding a nanny'}</p>
-                      <p className="text-sm text-charcoal-muted">
+                      <p className="text-sm text-ll-warm-gray">
                         {formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)}
                       </p>
                     </div>
@@ -98,10 +98,10 @@ export function FamilyDashboard() {
 
           <Card>
             <CardLabel>Messages</CardLabel>
-            <p className="mt-2 text-sm text-charcoal-muted">
+            <p className="mt-2 text-sm text-ll-warm-gray">
               Your latest conversations with the Little Lamb team and your nannies.
             </p>
-            <Link to="/family/messages" className="mt-3 inline-block text-sm font-bold text-sage-600 hover:underline">
+            <Link to="/family/messages" className="mt-3 inline-block text-sm font-bold text-ll-peri hover:underline">
               Open messages →
             </Link>
           </Card>

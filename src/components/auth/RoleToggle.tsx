@@ -13,7 +13,7 @@ export function RoleToggle({ value, onChange }: RoleToggleProps) {
     <div
       role="radiogroup"
       aria-label="I am a"
-      className="grid grid-cols-2 gap-1 rounded-full bg-cream-200 p-1"
+      className="grid grid-cols-2 gap-1 rounded-full bg-ll-cream-dark p-1"
     >
       {(['family', 'nanny'] as const).map((role) => {
         const active = value === role
@@ -26,7 +26,7 @@ export function RoleToggle({ value, onChange }: RoleToggleProps) {
             onClick={() => onChange(role)}
             className={cn(
               'rounded-full px-4 py-2 text-sm font-bold transition-colors',
-              active ? 'bg-white text-charcoal shadow-soft' : 'text-charcoal-muted hover:text-charcoal',
+              active ? 'bg-white text-ll-ink shadow-soft' : 'text-ll-warm-gray hover:text-ll-ink',
             )}
           >
             {role === 'family' ? "I'm a Family" : "I'm a Nanny"}

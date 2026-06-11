@@ -89,3 +89,27 @@ Ran the Authentication, Middleware, and RBAC sections of `docs/security-checklis
 
 ### D18. Rules emulator tests deferred (Firebase CLI unavailable)
 **Why:** The build environment has no `firebase` CLI and no network to install it, so `@firebase/rules-unit-testing` against the emulator couldn't run. Rules were reviewed line-by-line against the access matrix and the booking predicate is unit-tested via `access.ts`. Emulator rule tests are the #1 launch follow-up (Backlog).
+
+---
+
+## Phase 6 — Design System Migration (Warm Editorial → Premium Playful)
+
+Context: `DESIGN_SYSTEM.md` was locked at v1.0 with a **new** "Premium Playful" system that fully supersedes the old "Warm Editorial" one the app was originally built on (D2). CLAUDE.md was updated to match ("NEVER use … Fraunces, Nunito (old system — fully replaced)"). The committed app still used the old tokens, so this phase migrates every component.
+
+### D19. iCloud conflict file reconciled into canonical CLAUDE.md
+**Why:** The working tree had `CLAUDE.md` deleted and an untracked `CLAUDE (1).md` (an iCloud sync-conflict duplicate) that was newer and a strict superset — it added the DESIGN_SYSTEM.md reference, the Premium Playful direction, the plugin-setup block, and the design-sweep loop. Promoted `CLAUDE (1).md` to `CLAUDE.md` and removed the duplicate so there is one authoritative spec.
+
+### D20. Token strategy: hard replacement, not an alias layer
+**Why:** CLAUDE.md/DESIGN_SYSTEM.md require the old fonts/tokens to not appear anywhere. `tailwind.config.js` was rewritten to the locked `ll-*` palette + Caveat/DM Sans/DM Mono. Rather than keep old-name aliases (which would let stale tokens linger invisibly), every `sage-N`/`cream-N`/`terracotta-N`/`charcoal*` class was swept to its `ll-*` equivalent per `docs/migration-token-map.md`. Final `grep` over `src/` confirms **zero** old-token references. The `confirmed`/`pending`/`booked` semantic booking tokens were kept (remapped onto sage/terra/peri).
+
+### D21. Periwinkle is the trust color
+**Why:** The new system adds a periwinkle family with a specific job (DESIGN_SYSTEM.md §Trust Signal Hierarchy): background-check-confirmed chips, verification badges, credential chips, and nanny-card borders. Verified badges moved from sage→periwinkle; self-reported traits use sage. Trust chips render in DM Mono (the "trust label" treatment) and are never hidden/truncated on mobile.
+
+### D22. Motion via a reduced-motion-safe helper module
+**Why:** DESIGN_SYSTEM.md §Motion mandates spring physics on all interactive elements and `useReducedMotion()` wrapping. Added `src/lib/motion.ts` (springStandard/Gentle/Snappy + `useButtonHover`/`useCardHover`/`useChipHover`/`useSpringIn`), each returning an instant opacity-only transition when reduced motion is preferred. Motion is applied to buttons, interactive cards, chips, modals, drawers, and wizard step transitions — **not** to dense tables, data lists, or calendar day cells (where it would read as noise). `<Button>` springs by default; `<Card>` springs only with `interactive`.
+
+### D23. framer-motion@11 added; audit delta is dev-only
+**Why:** Installing framer-motion re-evaluated the dependency tree and `npm audit` rose from 4→11, but every new advisory is in dev tooling (esbuild via the bundler, uuid inside firebase-tools) — none in framer-motion's runtime or the shipped bundle. Consistent with D16: clearing them needs the breaking vite 8 upgrade, still deferred. The React/framer-motion event-type clash on `motion.button` (onDrag/onAnimation*) is resolved by omitting those handlers from the Button prop type.
+
+### D24. The migration was fanned out to subagents; foundation done solo
+**Why:** Per CLAUDE.md ("use subagents for all parallelizable work"), the design foundation (config, fonts, CSS, motion lib) and the high-reuse UI primitives + AppLayout were migrated solo first (everything depends on them), then the ~30 page/component files were swept by four parallel subagents over disjoint file sets. Verified green after merge: `tsc -b` clean, 21 tests pass, `vite build` succeeds, zero old tokens.

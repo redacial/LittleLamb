@@ -26,7 +26,7 @@ export function AdminSettingsPage() {
               return (
                 <Card className="max-w-2xl space-y-3">
                   <CardLabel>Automated emails</CardLabel>
-                  <p className="text-sm text-charcoal-muted">Edit the copy for any automated email without a developer.</p>
+                  <p className="text-sm text-ll-warm-gray">Edit the copy for any automated email without a developer.</p>
                   <Input label="Subject — Application approved" defaultValue="Welcome to Little Lamb — you’re approved!" />
                   <Textarea label="Body" defaultValue="Hi {{name}}, your account is now live. Log in to finish your profile and start booking." />
                   <Button>Save template</Button>
@@ -36,7 +36,7 @@ export function AdminSettingsPage() {
               return (
                 <Card className="max-w-2xl space-y-3">
                   <CardLabel>Badge master list</CardLabel>
-                  <p className="text-sm text-charcoal-muted">Self-reported (terracotta) and admin-verified (sage). Changes reflect everywhere.</p>
+                  <p className="text-sm text-ll-warm-gray">Self-reported (sage) and admin-verified (periwinkle). Changes reflect everywhere.</p>
                   <div className="flex flex-wrap gap-2">
                     {VERIFIED_BADGES.map((b) => <Badge key={b.id} label={b.label} type="verified" size="sm" />)}
                     {SELF_BADGES.map((b) => <Badge key={b.id} label={b.label} type="self" size="sm" />)}
@@ -69,7 +69,7 @@ export function AdminSettingsPage() {
             return (
               <Card className="max-w-lg space-y-4">
                 <CardLabel>Calendly integration</CardLabel>
-                <p className="text-sm text-charcoal-muted">The interview scheduling link used in nanny status emails and the holding page.</p>
+                <p className="text-sm text-ll-warm-gray">The interview scheduling link used in nanny status emails and the holding page.</p>
                 <Input label="Calendly link" defaultValue="https://calendly.com/littlelamb/interview" />
                 <Button>Save</Button>
               </Card>

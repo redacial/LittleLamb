@@ -2,9 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Premium Playful design system — see DESIGN_SYSTEM.md (locked v1.0). */
+
 @layer base {
   :root {
     color-scheme: light;
+    /* CSS custom properties mirror the Tailwind ll-* tokens for raw CSS/SVG use */
+    --ll-cream: #f5f0e8;
+    --ll-cream-dark: #ede6d8;
+    --ll-warm-gray: #6b5e4e;
+    --ll-ink: #2c2416;
+    --ll-sage: #8faf8a;
+    --ll-peri: #8b9dc3;
+    --ll-terra: #c4956a;
   }
 
   html {
@@ -12,28 +22,34 @@
   }
 
   body {
-    @apply bg-cream text-charcoal font-sans antialiased;
-    font-feature-settings: 'ss01';
+    @apply bg-ll-cream text-ll-ink font-sans antialiased;
   }
 
+  /* Caveat is the display voice — headlines, section heroes, personality moments */
   h1, h2, h3, h4 {
-    @apply font-display text-charcoal;
-    font-optical-sizing: auto;
+    @apply font-display text-ll-ink;
   }
 
-  /* Visible keyboard focus everywhere — accessibility floor */
+  /* Visible keyboard focus everywhere — accessibility floor (WCAG 2.2 AA) */
   :focus-visible {
-    @apply outline-none ring-2 ring-sage-500 ring-offset-2 ring-offset-cream;
+    @apply outline-none ring-2 ring-ll-sage ring-offset-2 ring-offset-ll-cream;
   }
 
   ::selection {
-    @apply bg-sage-200 text-charcoal;
+    @apply bg-ll-sage-light text-ll-ink;
   }
 }
 
 @layer components {
+  /* Mono eyebrow / trust label */
   .eyebrow {
-    @apply font-sans text-eyebrow font-bold uppercase text-sage-600;
+    @apply font-mono text-eyebrow font-medium uppercase text-ll-sage-mid;
+  }
+
+  /* Trust / verification chip — the most important signal on nanny surfaces */
+  .trust-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border-1.5 border-ll-peri-soft
+           bg-ll-peri-light px-2.5 py-1 font-mono text-mono-sm font-medium text-ll-peri-deep;
   }
 }
 

@@ -52,16 +52,16 @@ export function MessagesPage() {
       <PageHeader title="Messages" />
       <div className="grid h-[calc(100vh-7.5rem)] grid-cols-1 sm:grid-cols-[20rem_1fr]">
         {/* Conversation list */}
-        <div className={cn('flex flex-col border-r border-charcoal/10', active && 'hidden sm:flex')}>
+        <div className={cn('flex flex-col border-r border-ll-cream-dark', active && 'hidden sm:flex')}>
           {isAdmin && (
-            <div className="flex gap-1 border-b border-charcoal/10 p-2">
+            <div className="flex gap-1 border-b border-ll-cream-dark p-2">
               {(['all', 'family_admin', 'nanny_admin'] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
                   className={cn(
-                    'flex-1 rounded-lg px-2 py-1.5 text-xs font-bold',
-                    filter === f ? 'bg-sage-100 text-sage-700' : 'text-charcoal-muted hover:bg-cream-200',
+                    'flex-1 rounded-full px-2 py-1.5 font-mono text-mono-sm font-medium',
+                    filter === f ? 'bg-ll-sage-light text-ll-sage-deep' : 'text-ll-warm-gray hover:bg-ll-cream-dark',
                   )}
                 >
                   {f === 'all' ? 'All' : f === 'family_admin' ? 'Families' : 'Nannies'}
@@ -71,7 +71,7 @@ export function MessagesPage() {
           )}
           <div className="flex-1 overflow-y-auto">
             {visible.length === 0 ? (
-              <p className="p-4 text-sm text-charcoal-muted">No conversations yet.</p>
+              <p className="p-4 text-sm text-ll-warm-gray">No conversations yet.</p>
             ) : (
               visible.map((c) => (
                 <button
@@ -81,15 +81,15 @@ export function MessagesPage() {
                     if (c.status === 'unread') setStatus(c.id, 'read')
                   }}
                   className={cn(
-                    'flex w-full flex-col items-start gap-0.5 border-b border-charcoal/5 px-4 py-3 text-left hover:bg-cream-100',
-                    activeId === c.id && 'bg-cream-200',
+                    'flex w-full flex-col items-start gap-0.5 border-b border-ll-cream-dark px-4 py-3 text-left hover:bg-ll-cream-dark',
+                    activeId === c.id && 'bg-ll-cream-dark',
                   )}
                 >
                   <div className="flex w-full items-center justify-between">
-                    <span className="font-semibold">{otherName(c)}</span>
-                    {c.status === 'unread' && <span className="h-2 w-2 rounded-full bg-terracotta-400" />}
+                    <span className="font-semibold text-ll-ink">{otherName(c)}</span>
+                    {c.status === 'unread' && <span className="h-2 w-2 rounded-full bg-ll-terra" />}
                   </div>
-                  <span className="line-clamp-1 text-sm text-charcoal-muted">{c.lastMessage || 'No messages yet'}</span>
+                  <span className="line-clamp-1 text-sm text-ll-warm-gray">{c.lastMessage || 'No messages yet'}</span>
                 </button>
               ))
             )}
@@ -99,14 +99,14 @@ export function MessagesPage() {
         {/* Thread */}
         <div className={cn('flex flex-col', !active && 'hidden sm:flex')}>
           {!active ? (
-            <div className="grid flex-1 place-items-center text-charcoal-muted">
+            <div className="grid flex-1 place-items-center text-ll-warm-gray">
               Select a conversation
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-3 border-b border-charcoal/10 px-4 py-3">
+              <div className="flex items-center gap-3 border-b border-ll-cream-dark px-4 py-3">
                 <button className="sm:hidden" onClick={() => setActiveId(null)} aria-label="Back">←</button>
-                <span className="font-semibold">{otherName(active)}</span>
+                <span className="font-semibold text-ll-ink">{otherName(active)}</span>
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto p-4">
                 {messages.map((m) => {
@@ -116,12 +116,12 @@ export function MessagesPage() {
                     <div key={m.id} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
                       <div
                         className={cn(
-                          'max-w-[75%] rounded-2xl px-4 py-2',
-                          mine ? 'bg-sage-500 text-white' : 'bg-white ring-1 ring-charcoal/10',
+                          'max-w-[75%] rounded-ll-card px-4 py-2',
+                          mine ? 'bg-ll-sage-light text-ll-ink' : 'bg-ll-cream-dark text-ll-ink',
                         )}
                       >
                         {!mine && (
-                          <p className="mb-0.5 text-xs font-bold opacity-70">
+                          <p className="mb-0.5 font-mono text-mono-sm font-medium text-ll-warm-gray">
                             {fromAdmin ? (isAdmin && m.repliedBy ? `${m.repliedBy} · Admin` : 'Admin Team') : ''}
                           </p>
                         )}
@@ -131,17 +131,17 @@ export function MessagesPage() {
                   )
                 })}
               </div>
-              <div className="border-t border-charcoal/10 p-3">
+              <div className="border-t border-ll-cream-dark p-3">
                 {isAdmin && (
-                  <div className="mb-2 flex items-center gap-2 text-xs">
-                    <span className="text-charcoal-muted">Replying as</span>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="font-mono text-mono-sm text-ll-warm-gray">Replying as</span>
                     {(['Lucy', 'David'] as const).map((who) => (
                       <button
                         key={who}
                         onClick={() => setReplier(who)}
                         className={cn(
-                          'rounded-full px-2.5 py-1 font-bold',
-                          replier === who ? 'bg-sage-100 text-sage-700' : 'text-charcoal-muted',
+                          'rounded-full px-2.5 py-1 font-mono text-mono-sm font-medium',
+                          replier === who ? 'bg-ll-sage-light text-ll-sage-deep' : 'text-ll-warm-gray',
                         )}
                       >
                         {who}
@@ -155,7 +155,7 @@ export function MessagesPage() {
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onSend())}
                     placeholder="Write a message…"
-                    className="flex-1 rounded-xl bg-white px-4 py-2.5 ring-1 ring-inset ring-charcoal/15 focus:ring-2 focus:ring-sage-500"
+                    className="flex-1 rounded-ll-input border-1.5 border-ll-warm-gray bg-white px-4 py-2.5 focus:border-ll-sage focus:outline-none"
                   />
                   <Button onClick={onSend}>Send</Button>
                 </div>

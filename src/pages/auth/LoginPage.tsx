@@ -67,14 +67,14 @@ export function LoginPage() {
       footer={
         <p>
           New here?{' '}
-          <Link to="/signup" className="font-bold text-sage-600 underline-offset-2 hover:underline">
+          <Link to="/signup" className="font-bold text-ll-sage-mid underline-offset-2 hover:underline">
             Create an account
           </Link>
         </p>
       }
     >
       <h1 className="text-display-md">Welcome back</h1>
-      <p className="mt-2 text-charcoal-muted">Log in to manage your bookings and schedule.</p>
+      <p className="mt-2 text-ll-warm-gray">Log in to manage your bookings and schedule.</p>
 
       <div className="mt-7">
         <RoleToggle value={role} onChange={setRole} />
@@ -98,7 +98,7 @@ export function LoginPage() {
           required
         />
         {error && (
-          <p role="alert" className="text-sm font-semibold text-terracotta-600">
+          <p role="alert" className="text-sm font-semibold text-red-600">
             {error}
           </p>
         )}
@@ -107,10 +107,10 @@ export function LoginPage() {
         </Button>
       </form>
 
-      <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-charcoal-faint">
-        <span className="h-px flex-1 bg-charcoal/10" />
+      <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-ll-warm-gray">
+        <span className="h-px flex-1 bg-ll-ink/10" />
         or
-        <span className="h-px flex-1 bg-charcoal/10" />
+        <span className="h-px flex-1 bg-ll-ink/10" />
       </div>
 
       <GoogleButton onClick={handleGoogle} loading={busy} />

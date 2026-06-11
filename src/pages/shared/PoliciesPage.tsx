@@ -13,7 +13,7 @@ export function PoliciesPage({ role }: { role: 'family' | 'nanny' }) {
         <div className="max-w-prose space-y-6">
           <Card>
             <CardLabel>Little Lamb policies</CardLabel>
-            <div className="prose-sm mt-2 space-y-2 text-charcoal">
+            <div className="prose-sm mt-2 space-y-2 text-ll-ink">
               <p>Treat every member of the community with kindness and respect.</p>
               <p>Communicate through the platform so the Little Lamb team can support you if anything comes up.</p>
               <p>Every nanny is background-checked and personally interviewed before their profile goes live.</p>
@@ -22,7 +22,7 @@ export function PoliciesPage({ role }: { role: 'family' | 'nanny' }) {
 
           <Card>
             <CardLabel>{role === 'family' ? 'Family policies' : 'Nanny policies'}</CardLabel>
-            <div className="prose-sm mt-2 space-y-2 text-charcoal">
+            <div className="prose-sm mt-2 space-y-2 text-ll-ink">
               {role === 'family' ? (
                 <>
                   <p>Cancellations are made from your Calendar or Bookings page; your nanny is notified automatically.</p>

@@ -3,15 +3,19 @@ import type { BadgeType } from '../../types'
 
 interface BadgeProps {
   label: string
-  /** 'verified' = admin-confirmed (sage); 'self' = self-reported (terracotta). Color-coded per spec. */
+  /**
+   * 'verified' = admin-confirmed credential (periwinkle — the trust color);
+   * 'self' = self-reported trait (sage). Color-coded per spec so families can tell
+   * a vetted certification (CPR, First Aid) from a self-reported trait at a glance.
+   */
   type?: BadgeType
   size?: 'sm' | 'md'
 }
 
 /**
- * Nanny trait/certification badge. The two badge types are deliberately color-coded so
- * families can tell an admin-verified certification (CPR, First Aid) from a self-reported
- * trait (Pet-Friendly, Ages 0–2) at a glance.
+ * Nanny trait/certification badge. DM Mono gives credential chips the "trust label"
+ * treatment from DESIGN_SYSTEM.md §Trust Badges. Verified → periwinkle (the dedicated
+ * trust color); self-reported → sage.
  */
 export function Badge({ label, type = 'self', size = 'md' }: BadgeProps) {
   const verified = type === 'verified'
@@ -19,15 +23,15 @@ export function Badge({ label, type = 'self', size = 'md' }: BadgeProps) {
     <span
       title={verified ? 'Verified by Little Lamb' : 'Self-reported'}
       className={cn(
-        'inline-flex items-center gap-1 rounded-full font-semibold',
-        size === 'sm' ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1 text-sm',
+        'inline-flex items-center gap-1 rounded-full border-1.5 font-mono font-medium',
+        size === 'sm' ? 'px-2.5 py-0.5 text-mono-sm' : 'px-3 py-1 text-mono-sm',
         verified
-          ? 'bg-sage-100 text-sage-700 ring-1 ring-inset ring-sage-300'
-          : 'bg-terracotta-50 text-terracotta-700 ring-1 ring-inset ring-terracotta-200',
+          ? 'bg-ll-peri-light text-ll-peri-deep border-ll-peri-soft'
+          : 'bg-ll-sage-light text-ll-sage-deep border-ll-sage',
       )}
     >
       {verified && (
-        <svg viewBox="0 0 16 16" className="h-3 w-3" fill="currentColor" aria-hidden>
+        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
           <path d="M8 1l1.8 1.3 2.2-.2.9 2 2 .9-.2 2.2L16 11l-1.3 1.8.2 2.2-2 .9-.9 2-2.2-.2L8 19l-1.8-1.3-2.2.2-.9-2-2-.9.2-2.2L0 11l1.3-1.8L1.1 7l2-.9.9-2 2.2.2L8 1z" />
         </svg>
       )}
@@ -42,18 +46,18 @@ interface StatusPillProps {
 }
 
 const tones: Record<string, string> = {
-  confirmed: 'bg-sage-100 text-sage-700',
-  pending: 'bg-amber-100 text-amber-800',
-  cancelled: 'bg-charcoal/10 text-charcoal-muted',
-  open: 'bg-terracotta-50 text-terracotta-700',
-  neutral: 'bg-cream-200 text-charcoal-muted',
+  confirmed: 'bg-ll-sage-light text-ll-sage-deep',
+  pending: 'bg-ll-terra-light text-ll-terra-deep',
+  cancelled: 'bg-ll-cream-dark text-ll-warm-gray',
+  open: 'bg-ll-peri-light text-ll-peri-deep',
+  neutral: 'bg-ll-cream-dark text-ll-warm-gray',
 }
 
 export function StatusPill({ status, tone = 'neutral' }: StatusPillProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide',
+        'inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-mono-sm font-medium uppercase tracking-wide',
         tones[tone],
       )}
     >

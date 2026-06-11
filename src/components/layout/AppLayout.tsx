@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { signOut } from '../../lib/auth'
+import { springGentle } from '../../lib/motion'
 import { navFor } from './nav'
 import { Icon } from './Icon'
 import { Logo, Avatar } from '../ui'
@@ -15,6 +17,7 @@ import { cn } from '../../lib/cn'
 export function AppLayout() {
   const { profile } = useAuth()
   const [drawer, setDrawer] = useState(false)
+  const prefersReduced = useReducedMotion()
   if (!profile) return null
   const items = navFor(profile.role)
 
@@ -26,8 +29,8 @@ export function AppLayout() {
       <div className="flex items-center gap-3 px-5 pb-4">
         <Avatar name={profile.fullName} size="sm" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold">{profile.fullName}</p>
-          <p className="text-xs capitalize text-charcoal-faint">{profile.role}</p>
+          <p className="truncate text-sm font-medium text-ll-ink">{profile.fullName}</p>
+          <p className="text-xs capitalize text-ll-warm-gray">{profile.role}</p>
         </div>
       </div>
       <nav className="flex-1 space-y-1 px-3">
@@ -39,10 +42,10 @@ export function AppLayout() {
             onClick={() => setDrawer(false)}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors',
+                'flex items-center gap-3 rounded-ll-input px-3 py-2.5 text-label font-medium transition-colors',
                 isActive
-                  ? 'bg-sage-100 text-sage-700'
-                  : 'text-charcoal-muted hover:bg-cream-200 hover:text-charcoal',
+                  ? 'bg-ll-sage-light text-ll-sage-deep'
+                  : 'text-ll-warm-gray hover:bg-ll-cream-dark hover:text-ll-ink',
               )
             }
           >
@@ -51,10 +54,10 @@ export function AppLayout() {
           </NavLink>
         ))}
       </nav>
-      <div className="border-t border-charcoal/10 p-3">
+      <div className="border-t-1.5 border-ll-cream-dark p-3">
         <button
           onClick={() => signOut()}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-charcoal-muted hover:bg-cream-200 hover:text-charcoal"
+          className="flex w-full items-center gap-3 rounded-ll-input px-3 py-2.5 text-label font-medium text-ll-warm-gray hover:bg-ll-cream-dark hover:text-ll-ink"
         >
           <Icon name="settings" />
           Log out
@@ -64,19 +67,19 @@ export function AppLayout() {
   )
 
   return (
-    <div className="min-h-screen bg-cream lg:grid lg:grid-cols-[16rem_1fr]">
+    <div className="min-h-screen bg-ll-cream lg:grid lg:grid-cols-[16rem_1fr]">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen border-r border-charcoal/10 bg-white lg:block">
+      <aside className="sticky top-0 hidden h-screen border-r-1.5 border-ll-cream-dark bg-ll-cream lg:block">
         {sidebar}
       </aside>
 
       {/* Mobile top bar */}
-      <header className="flex items-center justify-between border-b border-charcoal/10 bg-white px-4 py-3 lg:hidden">
+      <header className="flex items-center justify-between border-b-1.5 border-ll-cream-dark bg-ll-cream px-4 py-3 lg:hidden">
         <Logo withSubline={false} />
         <button
           aria-label="Open menu"
           onClick={() => setDrawer(true)}
-          className="rounded-lg p-2 text-charcoal hover:bg-cream-200"
+          className="rounded-ll-tag p-2 text-ll-ink hover:bg-ll-cream-dark"
         >
           <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
@@ -85,12 +88,30 @@ export function AppLayout() {
       </header>
 
       {/* Mobile drawer */}
-      {drawer && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button className="absolute inset-0 bg-charcoal/40" aria-label="Close menu" onClick={() => setDrawer(false)} />
-          <div className="absolute left-0 top-0 h-full w-72 bg-white shadow-lift">{sidebar}</div>
-        </div>
-      )}
+      <AnimatePresence>
+        {drawer && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <motion.button
+              className="absolute inset-0 bg-ll-ink/40"
+              aria-label="Close menu"
+              onClick={() => setDrawer(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            />
+            <motion.div
+              className="absolute left-0 top-0 h-full w-72 bg-ll-cream shadow-lift"
+              initial={prefersReduced ? { opacity: 0 } : { x: '-100%' }}
+              animate={prefersReduced ? { opacity: 1 } : { x: 0 }}
+              exit={prefersReduced ? { opacity: 0 } : { x: '-100%' }}
+              transition={prefersReduced ? { duration: 0.15 } : springGentle}
+            >
+              {sidebar}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <main className="min-w-0">
         <Outlet />
@@ -102,10 +123,10 @@ export function AppLayout() {
 /** Standard page header used inside the layout's main column. */
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4 border-b border-charcoal/10 px-6 py-6 sm:px-8">
+    <div className="flex flex-wrap items-end justify-between gap-4 border-b-1.5 border-ll-cream-dark px-6 py-6 sm:px-8">
       <div>
-        <h1 className="text-display-md">{title}</h1>
-        {subtitle && <p className="mt-1 text-charcoal-muted">{subtitle}</p>}
+        <h1 className="text-display-lg leading-none">{title}</h1>
+        {subtitle && <p className="mt-1 text-ll-warm-gray">{subtitle}</p>}
       </div>
       {action}
     </div>

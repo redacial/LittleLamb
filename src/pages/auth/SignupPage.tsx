@@ -92,21 +92,21 @@ export function SignupPage() {
       footer={
         <p>
           Already have an account?{' '}
-          <Link to="/login" className="font-bold text-sage-600 underline-offset-2 hover:underline">
+          <Link to="/login" className="font-bold text-ll-sage-mid underline-offset-2 hover:underline">
             Log in
           </Link>
         </p>
       }
     >
       <h1 className="text-display-md">Join Little Lamb</h1>
-      <p className="mt-2 text-charcoal-muted">
+      <p className="mt-2 text-ll-warm-gray">
         {role === 'family'
           ? 'Create your family account. We review every application before your account goes live.'
           : 'Apply to join the nanny network. We review and interview before approval.'}
       </p>
 
       {referralCode && (
-        <p className="mt-4 rounded-xl bg-sage-50 px-3 py-2 text-sm text-sage-700 ring-1 ring-sage-200">
+        <p className="mt-4 rounded-ll-input bg-ll-sage-light px-3 py-2 text-sm text-ll-sage-deep border-1.5 border-ll-sage-light">
           You were referred — welcome! We'll note who sent you.
         </p>
       )}
@@ -148,7 +148,7 @@ export function SignupPage() {
           required
         />
         {error && (
-          <p role="alert" className="text-sm font-semibold text-terracotta-600">
+          <p role="alert" className="text-sm font-semibold text-red-600">
             {error}
           </p>
         )}
@@ -157,10 +157,10 @@ export function SignupPage() {
         </Button>
       </form>
 
-      <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-charcoal-faint">
-        <span className="h-px flex-1 bg-charcoal/10" />
+      <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-ll-warm-gray">
+        <span className="h-px flex-1 bg-ll-ink/10" />
         or
-        <span className="h-px flex-1 bg-charcoal/10" />
+        <span className="h-px flex-1 bg-ll-ink/10" />
       </div>
 
       <GoogleButton onClick={handleGoogle} loading={busy} label="Sign up with Google" />
