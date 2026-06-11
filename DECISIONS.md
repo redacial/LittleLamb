@@ -113,3 +113,37 @@ Context: `DESIGN_SYSTEM.md` was locked at v1.0 with a **new** "Premium Playful" 
 
 ### D24. The migration was fanned out to subagents; foundation done solo
 **Why:** Per CLAUDE.md ("use subagents for all parallelizable work"), the design foundation (config, fonts, CSS, motion lib) and the high-reuse UI primitives + AppLayout were migrated solo first (everything depends on them), then the ~30 page/component files were swept by four parallel subagents over disjoint file sets. Verified green after merge: `tsc -b` clean, 21 tests pass, `vite build` succeeds, zero old tokens.
+
+---
+
+## Phase 7 — Deferred Phase 4 Polish (the 7 backlog items)
+
+### D25. Reviews were already wired for family; extended to nanny + Bookings
+**Why:** `ReviewModal` + `useSubmitReview` existed and were wired into the family dashboard only. Per spec, reviews are for both roles and accessible "at any time" from the Bookings page even after skipping the dashboard prompt. Added the same review-prompt-card pattern to the nanny dashboard and a "Leave a review" action on past booking rows in the shared `BookingsPage` (authorRole derived from the page's `role`).
+
+### D26. Automated emails + calendar invites = a typed no-op stub layer (`notifications.ts`)
+**Why:** Email provider (SendGrid vs Resend) and the Calendar API (Google vs iCal) are both **blocking open items** (#13/#14) — no real provider can be wired. Instead `src/lib/notifications.ts` defines a discriminated-union `NotificationEvent` covering every automated email in CLAUDE.md (Part 19 / §6 / §8) and a single `deliver()` no-op that logs in dev. Every booking write path in `useBookings` now fires the correct event (fire-and-forget, wrapped so a notify failure can never reject the booking). Wiring a real provider later is a one-function change. `calendarInvite()` is a matching documented stub.
+
+### D27. Recurring 48h auto-cancel detection is pure + unit-tested; execution deferred
+**Why:** `src/lib/recurring.ts` `findRecurringConflicts()` implements the §11.4 rule (recurring booking whose nanny dropped covering availability AND starts within 48h) as a pure function with `nowISO` injected for testability — 5 vitest cases in `recurring.test.ts`. The scheduled execution (a cron / Cloud Function that runs it, cancels, and notifies) is deferred because it needs server infra + the email provider; the detection logic is ready to drop in.
+
+### D28. Exports are dependency-free CSV + print-to-PDF (`exporters.ts`)
+**Why:** Rather than add a heavy SheetJS/PDF dependency, `exporters.ts` ships RFC-4180 CSV (Excel opens `.csv` directly) via a Blob download, and a branded print-ready invoice window that uses the browser's "Save as PDF". Wired into the admin billing "Download billing table (Excel)" button (real per-family CSV) and the family billing "Download this quarter (PDF)" button. Server-side `.xlsx`/PDF rendering is a documented future upgrade.
+
+### D29. Admin Create Booking is a full override (no availability check)
+**Why:** Added a "Create booking" modal to `AdminBookingsPage` (§7.3): select family + nanny + date/time + notes, status forced to `confirmed`, no availability restriction. Address defaults to empty (admin confirms offline / edits later) — surfaced in the form hint. Families/nannies come from `useUsersByRole('family')` and `useNannyDirectory`.
+
+### D30. MonthGrid gains drag-to-select-range, click still works
+**Why:** Added pointer-drag range selection to `MonthGrid` via an optional `onPickRange(start,end)` callback. A no-distance press still fires `onPickDay`, and keyboard activation always does single-day pick — so the calendar-first click flow and the nanny calendar are unchanged (backward compatible). A11y preserved (`aria-pressed`, Enter/Space handlers).
+
+### D31. Public marketing site built; signed-out `/` is now the homepage
+**Why:** Built `src/pages/public/` — `HomePage` (trust-forward hero, 3-step process, trust strip, teased nanny preview, CTA), `FamilyInfoPage` (`/for-families`), `NannyInfoPage` (`/for-nannies`, distinct content), and `ApplicationPage` (`/apply`, the real combined application + account-creation form per §2.1/§2.2 — reuses the SignupPage `createAccount`/Google/referral wiring; richer fields collected for UX, persisted again in the wizard). `IndexRedirect` now renders `HomePage` for signed-out visitors instead of bouncing to `/login`. Routes added in `App.tsx`. The design follows the locked Premium Playful system; periwinkle DM-Mono trust chips are the signature motif, addressing §Trust Hierarchy ("parents share home access with a stranger").
+
+### D32. Auth loader watchdog — never trap users on an infinite spinner
+**Why:** `AuthProvider` gated the whole app on Firebase resolving `onAuthStateChanged`; if the backend is slow/unreachable, users saw an infinite `FullScreenLoader`. Added an 8s watchdog: after the grace period, fall through as signed-out so the public site still loads (a real auth callback still takes precedence). Surfaced while verifying the homepage rendered without a reachable backend.
+
+### D33. Hero entrance uses a CSS keyframe, not JS opacity gating
+**Why:** The homepage hero initially used framer-motion `initial:{opacity:0}` → `animate:{opacity:1}`. If the JS animation loop never commits (stalled load, some headless/embedded contexts), the most important content stayed invisible. Switched the hero entrance to the `motion-safe:animate-spring-in` CSS keyframe, which commits its visible end state on its own and is disabled under `prefers-reduced-motion` via index.css. Content is now never gated on an animation completing. (Framer Motion still drives genuinely-interactive hover/tap elsewhere.)
+
+### D34. Design tooling reconciled: ux-ui-mastery present, sumi cloned
+**Why:** CLAUDE.md references a "design sweep" of `/grade /fix /style /qa /a11y` commands attributed to ux-ui-mastery + chef-sumi. In reality ux-ui-mastery (already installed) exposes different command names (`/design-review`, `/accessibility-check`, `/ai-ux-audit`…), and sumi was not installed at all. Cloned sumi from `github.com/phazurlabs/sumi` (it provides the actual `/grade /fix /style /qa /a11y /audit /roast /tokens` verbs). Plugin slash-commands only register at session startup, so the sweep is run by reading the command markdown directly this session; sumi `/grade` requires real screenshots, so the audit runs at the end against rendered screens.

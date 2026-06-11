@@ -20,6 +20,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserDoc | null>(null)
   const [authReady, setAuthReady] = useState(false)
   const [profileReady, setProfileReady] = useState(false)
+  // Resilience: if Firebase never responds (offline / unreachable backend), don't trap the
+  // user on an infinite loader. After a grace period, fall through as signed-out so the public
+  // site still loads. A later real auth callback still takes precedence and routes correctly.
+  const [timedOut, setTimedOut] = useState(false)
 
   // Track Firebase auth state.
   useEffect(() => {
@@ -33,6 +37,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfileReady(false)
       }
     })
+  }, [])
+
+  // Loader watchdog — 8s is well beyond a healthy auth round-trip but short enough to
+  // recover gracefully from a stalled backend.
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 8000)
+    return () => clearTimeout(t)
   }, [])
 
   // Live-subscribe to the user's own doc so role/approval changes (e.g. admin approves the
@@ -54,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsub
   }, [user])
 
-  const loading = !authReady || !profileReady
+  const loading = (!authReady || !profileReady) && !timedOut
 
   return <AuthContext.Provider value={{ user, profile, loading }}>{children}</AuthContext.Provider>
 }

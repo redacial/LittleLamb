@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useMyBookings, useBookingActions } from '../../hooks/useBookings'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
+import { ReviewModal } from '../../components/ReviewModal'
 import { Card, Button, StatusPill } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import type { Booking, BookingStatus } from '../../types'
@@ -19,6 +21,7 @@ export function BookingsPage({ role }: { role: 'family' | 'nanny' }) {
   const { user } = useAuth()
   const { bookings, loading } = useMyBookings(user?.uid, role)
   const { setStatus } = useBookingActions()
+  const [reviewing, setReviewing] = useState<Booking | null>(null)
 
   return (
     <>
@@ -43,11 +46,26 @@ export function BookingsPage({ role }: { role: 'family' | 'nanny' }) {
         ) : (
           <div className="space-y-3">
             {bookings.map((b) => (
-              <BookingRow key={b.id} booking={b} role={role} onAction={setStatus} otherName={role === 'family' ? b.nannyName : b.familyName} />
+              <BookingRow
+                key={b.id}
+                booking={b}
+                role={role}
+                onAction={setStatus}
+                onReview={() => setReviewing(b)}
+                otherName={role === 'family' ? b.nannyName : b.familyName}
+              />
             ))}
           </div>
         )}
       </PageBody>
+
+      <ReviewModal
+        open={!!reviewing}
+        onClose={() => setReviewing(null)}
+        booking={reviewing}
+        authorId={user?.uid ?? ''}
+        authorRole={role}
+      />
     </>
   )
 }
@@ -56,13 +74,19 @@ function BookingRow({
   booking: b,
   role,
   onAction,
+  onReview,
   otherName,
 }: {
   booking: Booking
   role: 'family' | 'nanny'
   onAction: (id: string, s: BookingStatus) => void
+  onReview: () => void
   otherName: string | null
 }) {
+  // Past = the session date has passed and it was confirmed or cancelled — reviewable at any time.
+  const isPast =
+    b.date < new Date().toISOString().slice(0, 10) &&
+    (b.status === 'confirmed' || b.status === 'cancelled')
   return (
     <Card className="flex flex-wrap items-center justify-between gap-3">
       <div className="min-w-0">
@@ -85,6 +109,9 @@ function BookingRow({
         )}
         {role === 'family' && (b.status === 'confirmed' || b.status === 'pending') && (
           <Button size="sm" variant="secondary" onClick={() => onAction(b.id, 'cancelled')}>Cancel</Button>
+        )}
+        {isPast && (
+          <Button size="sm" variant="ghost" onClick={onReview}>Leave a review</Button>
         )}
       </div>
     </Card>

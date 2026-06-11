@@ -4,6 +4,7 @@ import { Tabs } from '../../components/Tabs'
 import { Card, CardLabel, Button } from '../../components/ui'
 import { SummaryCard } from '../../components/SummaryCard'
 import { money } from '../../lib/format'
+import { downloadCSV } from '../../lib/exporters'
 
 const SUBSCRIPTION = 25
 const PER_BOOKING = 1
@@ -17,6 +18,28 @@ export function AdminBillingPage() {
   const confirmed = bookings.filter((b) => b.status === 'confirmed').length
   const revenue = activeFamilies * SUBSCRIPTION + confirmed * PER_BOOKING
   const donation = revenue * DONATION_RATE
+
+  // Per-family confirmed-booking counts for the exported billing table.
+  function bookingsForFamily(uid: string) {
+    return bookings.filter((b) => b.familyId === uid && b.status === 'confirmed').length
+  }
+
+  function exportBillingTable() {
+    const rows = families
+      .filter((f) => f.approved)
+      .map((f) => {
+        const count = bookingsForFamily(f.uid)
+        return {
+          Family: f.fullName,
+          Email: f.email,
+          'Subscription (qtr)': SUBSCRIPTION,
+          'Confirmed bookings': count,
+          'Booking fees': count * PER_BOOKING,
+          'Quarter total': SUBSCRIPTION + count * PER_BOOKING,
+        }
+      })
+    downloadCSV(`little-lamb-billing-${new Date().toISOString().slice(0, 10)}.csv`, rows)
+  }
 
   return (
     <>
@@ -53,7 +76,7 @@ export function AdminBillingPage() {
                         </Card>
                       ))
                   )}
-                  <Button variant="ghost" size="sm">Download billing table (Excel)</Button>
+                  <Button variant="ghost" size="sm" onClick={exportBillingTable}>Download billing table (Excel)</Button>
                 </div>
               )
 

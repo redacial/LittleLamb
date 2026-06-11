@@ -1,16 +1,20 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useMyBookings, useOpenBookings, useBookingActions } from '../../hooks/useBookings'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { SummaryCard } from '../../components/SummaryCard'
+import { ReviewModal } from '../../components/ReviewModal'
 import { Button, Card, CardLabel } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
+import type { Booking } from '../../types'
 
 export function NannyDashboard() {
   const { profile, user } = useAuth()
   const { bookings } = useMyBookings(user?.uid, 'nanny')
   const open = useOpenBookings()
   const { setStatus, assignNanny } = useBookingActions()
+  const [reviewing, setReviewing] = useState<Booking | null>(null)
 
   const today = new Date().toISOString().slice(0, 10)
   const upcoming = bookings
@@ -18,6 +22,8 @@ export function NannyDashboard() {
     .sort((a, b) => a.date.localeCompare(b.date))
   const next = upcoming[0]
   const pending = bookings.filter((b) => b.status === 'pending')
+  // Review prompts: confirmed bookings whose date has passed.
+  const toReview = bookings.filter((b) => b.status === 'confirmed' && b.date < today).slice(0, 3)
 
   return (
     <>
@@ -58,6 +64,24 @@ export function NannyDashboard() {
           </div>
         )}
 
+        {toReview.length > 0 && (
+          <div className="mt-6 space-y-3">
+            <h2 className="font-display text-xl">How did it go?</h2>
+            {toReview.map((b) => (
+              <Card key={b.id} className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold">{b.familyName}</p>
+                  <p className="text-sm text-ll-warm-gray">{formatDate(b.date)}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => setReviewing(b)}>Leave a review</Button>
+                  <Button size="sm" variant="ghost">Skip</Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
         {open.length > 0 && (
           <div className="mt-6 space-y-3">
             <h2 className="font-display text-xl">Open bookings you can pick up</h2>
@@ -87,6 +111,14 @@ export function NannyDashboard() {
           </Link>
         </Card>
       </PageBody>
+
+      <ReviewModal
+        open={!!reviewing}
+        onClose={() => setReviewing(null)}
+        booking={reviewing}
+        authorId={user?.uid ?? ''}
+        authorRole="nanny"
+      />
     </>
   )
 }

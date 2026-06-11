@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { cn } from '../../lib/cn'
 import type { Booking } from '../../types'
 
@@ -8,9 +9,11 @@ function ymd(y: number, m: number, d: number) {
 }
 
 /**
- * Read-only-ish month grid. Bookings are color-coded (green confirmed / amber pending). Clicking
- * a day fires onPickDay (starts the booking flow); clicking a booking fires onPickBooking.
- * `year`/`month` are passed in so the component stays pure (no Date.now in module scope).
+ * Month grid. Bookings are color-coded (green confirmed / amber pending). Interactions:
+ *  - Click (or keyboard-activate) a day → onPickDay (single-day booking flow).
+ *  - Press-and-drag across days → onPickRange(start, end) once supplied (multi-day select).
+ * Clicking a booking label fires onPickBooking. `year`/`month` are passed in so the
+ * component stays pure (no Date.now in module scope).
  */
 export function MonthGrid({
   year,
@@ -19,6 +22,7 @@ export function MonthGrid({
   bookings,
   onPickDay,
   onPickBooking,
+  onPickRange,
 }: {
   year: number
   month: number // 0-based
@@ -26,6 +30,8 @@ export function MonthGrid({
   bookings: Booking[]
   onPickDay?: (date: string) => void
   onPickBooking?: (b: Booking) => void
+  /** Fired when the user drags across a range of days (start ≤ end). Optional. */
+  onPickRange?: (startDate: string, endDate: string) => void
 }) {
   const first = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -39,6 +45,45 @@ export function MonthGrid({
     byDate.set(b.date, [...(byDate.get(b.date) ?? []), b])
   })
 
+  // Drag-select state. `anchor` is the day the pointer went down on; `hover` is the
+  // current day under the pointer. Both are day-of-month numbers within this month.
+  const [anchor, setAnchor] = useState<number | null>(null)
+  const [hover, setHover] = useState<number | null>(null)
+  const dragging = anchor !== null
+
+  const inRange = (day: number) => {
+    if (anchor === null || hover === null) return false
+    const lo = Math.min(anchor, hover)
+    const hi = Math.max(anchor, hover)
+    return day >= lo && day <= hi
+  }
+
+  function startDrag(day: number) {
+    setAnchor(day)
+    setHover(day)
+  }
+
+  function endDrag() {
+    if (anchor === null || hover === null) {
+      setAnchor(null)
+      setHover(null)
+      return
+    }
+    const lo = Math.min(anchor, hover)
+    const hi = Math.max(anchor, hover)
+    if (lo === hi) {
+      // No drag distance — treat as a plain day pick.
+      onPickDay?.(ymd(year, month, lo))
+    } else if (onPickRange) {
+      onPickRange(ymd(year, month, lo), ymd(year, month, hi))
+    } else {
+      // No range handler — fall back to picking the start day.
+      onPickDay?.(ymd(year, month, lo))
+    }
+    setAnchor(null)
+    setHover(null)
+  }
+
   return (
     <div className="overflow-hidden rounded-ll-card bg-white shadow-soft border-1.5 border-ll-cream-dark">
       <div className="grid grid-cols-7 border-b border-ll-cream-dark bg-ll-cream-dark">
@@ -48,17 +93,36 @@ export function MonthGrid({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7">
+      <div
+        className="grid grid-cols-7 select-none"
+        // End any in-progress drag if the pointer leaves the grid or is released anywhere.
+        onPointerLeave={() => dragging && endDrag()}
+      >
         {cells.map((day, i) => {
           if (day === null) return <div key={i} className="min-h-20 border-b border-r border-ll-cream-dark bg-ll-cream" />
           const date = ymd(year, month, day)
           const isToday = date === today
           const dayBookings = byDate.get(date) ?? []
+          const selected = inRange(day)
           return (
             <button
               key={i}
-              onClick={() => onPickDay?.(date)}
-              className="min-h-20 border-b border-r border-ll-cream-dark p-1.5 text-left transition-colors hover:bg-ll-sage-light"
+              type="button"
+              aria-pressed={selected}
+              onPointerDown={() => startDrag(day)}
+              onPointerEnter={() => dragging && setHover(day)}
+              onPointerUp={() => endDrag()}
+              // Keyboard activation (Enter/Space) never starts a drag → single-day pick.
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onPickDay?.(date)
+                }
+              }}
+              className={cn(
+                'min-h-20 border-b border-r border-ll-cream-dark p-1.5 text-left transition-colors',
+                selected ? 'bg-ll-sage-light' : 'hover:bg-ll-sage-light/60',
+              )}
             >
               <span className={cn('inline-grid h-6 w-6 place-items-center rounded-full text-sm', isToday && 'bg-ll-ink text-ll-cream font-bold')}>
                 {day}
@@ -67,7 +131,13 @@ export function MonthGrid({
                 {dayBookings.slice(0, 2).map((b) => (
                   <span
                     key={b.id}
+                    role="button"
+                    tabIndex={0}
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); onPickBooking?.(b) }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onPickBooking?.(b) }
+                    }}
                     className={cn(
                       'block truncate rounded-ll-tag px-1 py-0.5 text-[0.7rem] font-semibold',
                       b.status === 'confirmed' ? 'bg-ll-sage-light text-ll-sage-deep' : 'bg-ll-terra-light text-ll-terra-deep',
@@ -93,6 +163,7 @@ export function MonthGrid({
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full bg-booked" /> Booked
         </span>
+        {onPickRange && <span className="ml-auto">Tip: drag across days to select a range</span>}
       </div>
     </div>
   )

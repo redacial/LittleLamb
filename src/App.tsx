@@ -9,6 +9,9 @@ import { AppLayout } from './components/layout/AppLayout'
 import { IndexRedirect } from './pages/IndexRedirect'
 import { LoginPage } from './pages/auth/LoginPage'
 import { SignupPage } from './pages/auth/SignupPage'
+import { FamilyInfoPage } from './pages/public/FamilyInfoPage'
+import { NannyInfoPage } from './pages/public/NannyInfoPage'
+import { ApplicationPage } from './pages/public/ApplicationPage'
 import { FamilyHoldingPage } from './pages/onboarding/FamilyHoldingPage'
 import { NannyHoldingPage } from './pages/onboarding/NannyHoldingPage'
 import { FamilySetupWizard } from './pages/onboarding/FamilySetupWizard'
@@ -47,6 +50,9 @@ export function App() {
       <Routes>
         {/* Public */}
         <Route path="/" element={<IndexRedirect />} />
+        <Route path="/for-families" element={<FamilyInfoPage />} />
+        <Route path="/for-nannies" element={<NannyInfoPage />} />
+        <Route path="/apply" element={<ApplicationPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
 
