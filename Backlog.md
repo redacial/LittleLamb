@@ -1,5 +1,22 @@
 # Backlog.md — Resume Point
 
+> **UPDATE (Phase 6–7, 2026-06-11):** Two further phases shipped after the Phase 5 snapshot below.
+> - **Phase 6 — Design System Migration ✅** Full migration off the old Warm Editorial system to the
+>   locked **Premium Playful** `DESIGN_SYSTEM.md` (`ll-*` tokens, Caveat/DM Sans/DM Mono, Framer Motion
+>   springs). Zero old tokens remain in `src/`. Decisions D19–D24.
+> - **Phase 7 — Deferred Phase 4 polish ✅** All 7 deferred items done: public marketing site
+>   (`/`, `/for-families`, `/for-nannies`, `/apply`); reviews on nanny dashboard + bookings page;
+>   `notifications.ts` no-op email layer wired into booking writes (provider still BLOCKING);
+>   `recurring.ts` 48h-conflict detection (+tests); `exporters.ts` CSV/PDF wired into billing;
+>   admin Create-Booking override; MonthGrid drag-to-select. Plus resilience fixes (auth loader
+>   watchdog, CSS-keyframe hero) and a full **design sweep** (`design-audit.md`) that caught and
+>   fixed WCAG-AA contrast failures on the primary CTA, trust chips, and focus ring + added skip
+>   links. Decisions D25–D34. **26 tests green, tsc clean, build OK.**
+> - **Top remaining (not code-blockers):** emulator rules unit tests (Firebase CLI now installed);
+>   real nanny photos + testimonials + founder bios (product/content, see design-audit.md);
+>   Phase 7b design sweep of the authenticated screens; clear dev-only npm advisories via vite 8.
+
+
 > **How to resume (per CLAUDE.md › Context Management):**
 > 1. Read `CLAUDE.md` (spec + flows), `DECISIONS.md` (decisions so far), and this file.
 > 2. Run `git log --oneline` to confirm what's committed.

@@ -26,7 +26,7 @@ export function Badge({ label, type = 'self', size = 'md' }: BadgeProps) {
         'inline-flex items-center gap-1 rounded-full border-1.5 font-mono font-medium',
         size === 'sm' ? 'px-2.5 py-0.5 text-mono-sm' : 'px-3 py-1 text-mono-sm',
         verified
-          ? 'bg-ll-peri-light text-ll-peri-deep border-ll-peri-soft'
+          ? 'bg-ll-peri-light text-ll-peri-ink border-ll-peri' // ll-peri-ink = 8.1:1 (AA)
           : 'bg-ll-sage-light text-ll-sage-deep border-ll-sage',
       )}
     >
@@ -49,7 +49,7 @@ const tones: Record<string, string> = {
   confirmed: 'bg-ll-sage-light text-ll-sage-deep',
   pending: 'bg-ll-terra-light text-ll-terra-deep',
   cancelled: 'bg-ll-cream-dark text-ll-warm-gray',
-  open: 'bg-ll-peri-light text-ll-peri-deep',
+  open: 'bg-ll-peri-light text-ll-peri-ink',
   neutral: 'bg-ll-cream-dark text-ll-warm-gray',
 }
 

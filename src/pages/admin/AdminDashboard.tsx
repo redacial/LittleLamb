@@ -23,13 +23,13 @@ export function AdminDashboard() {
     <>
       <PageHeader title="Admin dashboard" subtitle="Everything that needs your attention, in priority order." />
       <PageBody>
-        {/* 1. Same-day banner — visually dominant ll-terra call-out */}
+        {/* 1. Same-day banner — visually dominant terra call-out (terra-deep for AA on white) */}
         {sameDay.length > 0 && (
           <motion.div
             {...springIn}
-            className="mb-6 rounded-ll-card bg-ll-terra p-5 text-white shadow-lift"
+            className="mb-6 rounded-ll-card bg-ll-terra-deep p-5 text-white shadow-lift"
           >
-            <p className="text-eyebrow font-bold uppercase tracking-[0.14em] text-white/80">
+            <p className="text-eyebrow font-bold uppercase tracking-[0.14em] text-white/90">
               Same-day requests
             </p>
             <p className="mt-1 font-display text-2xl">

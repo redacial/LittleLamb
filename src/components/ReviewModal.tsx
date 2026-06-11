@@ -63,7 +63,7 @@ export function ReviewModal({
                 aria-checked={rating === n}
                 aria-label={`${n} star${n > 1 ? 's' : ''}`}
                 onClick={() => setRating(n)}
-                className={cn('text-3xl', n <= rating ? 'text-ll-terra' : 'text-ll-ink/20')}
+                className={cn('text-3xl', n <= rating ? 'text-ll-terra-deep' : 'text-ll-ink/20')}
               >
                 ★
               </button>

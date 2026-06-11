@@ -140,7 +140,7 @@ function Included() {
           <ul className="mt-3 space-y-2.5">
             {notIncluded.map((item) => (
               <li key={item} className="flex gap-2.5 text-sm text-ll-warm-gray">
-                <DotIcon className="mt-1.5 h-2 w-2 shrink-0 text-ll-terra" />
+                <DotIcon className="mt-1.5 h-2 w-2 shrink-0 text-ll-terra-deep" />
                 <span>{item}</span>
               </li>
             ))}
@@ -171,7 +171,7 @@ function BottomCTA() {
         </p>
         <Link
           to="/apply"
-          className="mt-7 inline-flex h-12 items-center rounded-full bg-ll-terra px-8 text-base font-medium text-white transition-colors hover:bg-ll-terra-deep"
+          className="mt-7 inline-flex h-12 items-center rounded-full bg-ll-terra-deep px-8 text-base font-medium text-white transition-colors hover:bg-ll-ink"
         >
           Apply now
         </Link>

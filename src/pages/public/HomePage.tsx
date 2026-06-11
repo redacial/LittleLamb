@@ -47,7 +47,7 @@ function Hero() {
         <div className={cn('mt-8 flex flex-wrap items-center gap-4', rise)} style={delay(3)}>
           <Link
             to="/apply"
-            className="inline-flex h-12 items-center rounded-full bg-ll-terra px-7 text-base font-medium text-white transition-colors hover:bg-ll-terra-deep"
+            className="inline-flex h-12 items-center rounded-full bg-ll-terra-deep px-7 text-base font-medium text-white transition-colors hover:bg-ll-ink"
           >
             Get started
           </Link>
@@ -131,7 +131,7 @@ function HowItWorks() {
             key={s.n}
             className="rounded-ll-card border-1.5 border-ll-cream-dark bg-ll-cream-dark/40 p-6"
           >
-            <span className="font-mono text-mono-sm font-medium text-ll-terra">{s.n}</span>
+            <span className="font-mono text-mono-sm font-medium text-ll-terra-deep">{s.n}</span>
             <h3 className="mt-2 font-display text-display-sm text-ll-ink">{s.title}</h3>
             <p className="mt-1.5 text-sm text-ll-warm-gray">{s.body}</p>
           </li>
@@ -202,7 +202,7 @@ function BottomCTA() {
       >
         <Link
           to="/apply"
-          className="inline-flex h-12 items-center rounded-full bg-ll-terra px-8 text-base font-medium text-white transition-colors hover:bg-ll-terra-deep"
+          className="inline-flex h-12 items-center rounded-full bg-ll-terra-deep px-8 text-base font-medium text-white transition-colors hover:bg-ll-ink"
         >
           Get started
         </Link>

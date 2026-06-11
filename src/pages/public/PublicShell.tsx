@@ -9,8 +9,15 @@ import { Logo } from '../../components/ui'
 export function PublicShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-ll-cream">
+      {/* Skip link — first focusable element, visible only on keyboard focus (WCAG 2.4.1). */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ll-ink focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ll-cream"
+      >
+        Skip to content
+      </a>
       <PublicNav />
-      <main>{children}</main>
+      <main id="main">{children}</main>
       <PublicFooter />
     </div>
   )
@@ -38,7 +45,7 @@ export function PublicNav() {
           </Link>
           <Link
             to="/apply"
-            className="inline-flex h-10 items-center rounded-full bg-ll-terra px-5 text-label font-medium text-white transition-colors hover:bg-ll-terra-deep"
+            className="inline-flex h-10 items-center rounded-full bg-ll-terra-deep px-5 text-label font-medium text-white transition-colors hover:bg-ll-ink"
           >
             Get started
           </Link>

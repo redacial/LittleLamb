@@ -68,6 +68,13 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-ll-cream lg:grid lg:grid-cols-[16rem_1fr]">
+      {/* Skip link — first focusable element, visible only on keyboard focus (WCAG 2.4.1). */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-ll-ink focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ll-cream"
+      >
+        Skip to content
+      </a>
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen border-r-1.5 border-ll-cream-dark bg-ll-cream lg:block">
         {sidebar}
@@ -113,7 +120,7 @@ export function AppLayout() {
         )}
       </AnimatePresence>
 
-      <main className="min-w-0">
+      <main id="main" className="min-w-0">
         <Outlet />
       </main>
     </div>

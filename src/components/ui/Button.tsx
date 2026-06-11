@@ -24,16 +24,20 @@ interface ButtonProps extends NativeButtonProps {
 const base =
   'inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-ll-cream'
 
+// Resting backgrounds are chosen so white/ink text clears WCAG AA 4.5:1 (DESIGN_SYSTEM.md
+// "WCAG AA minimum on all color combinations"): white-on-ll-terra is only 2.67:1, so the
+// primary CTA rests on ll-terra-deep (4.64:1); the secondary uses ll-sage-deep on
+// ll-sage-light (5.27:1) rather than on ll-sage (3.11:1).
 const variants: Record<Variant, string> = {
-  // Primary CTA → terra (ll-terra)
-  primary: 'bg-ll-terra text-white hover:bg-ll-terra-deep focus-visible:ring-ll-terra',
-  // Secondary → sage (ll-sage)
+  // Primary CTA → terra-deep (AA-safe with white text)
+  primary: 'bg-ll-terra-deep text-white hover:bg-ll-ink focus-visible:ring-ll-terra-deep',
+  // Secondary → sage-light ground with deep-sage text
   secondary:
-    'bg-ll-sage text-ll-sage-deep hover:bg-ll-sage-mid hover:text-white focus-visible:ring-ll-sage',
+    'bg-ll-sage-light text-ll-sage-deep hover:bg-ll-sage hover:text-ll-sage-deep focus-visible:ring-ll-sage-mid',
   // Ghost → outlined ink
   ghost:
-    'bg-transparent text-ll-ink border-1.5 border-ll-ink hover:bg-ll-cream-dark focus-visible:ring-ll-sage',
-  danger: 'bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-400',
+    'bg-transparent text-ll-ink border-1.5 border-ll-ink hover:bg-ll-cream-dark focus-visible:ring-ll-sage-mid',
+  danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
 }
 
 const sizes: Record<Size, string> = {

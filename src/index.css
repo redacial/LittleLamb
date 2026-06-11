@@ -30,9 +30,10 @@
     @apply font-display text-ll-ink;
   }
 
-  /* Visible keyboard focus everywhere — accessibility floor (WCAG 2.2 AA) */
+  /* Visible keyboard focus everywhere — accessibility floor (WCAG 2.2 AA).
+     ll-sage-mid (not ll-sage) so the ring clears the 3:1 non-text contrast minimum on cream. */
   :focus-visible {
-    @apply outline-none ring-2 ring-ll-sage ring-offset-2 ring-offset-ll-cream;
+    @apply outline-none ring-2 ring-ll-sage-mid ring-offset-2 ring-offset-ll-cream;
   }
 
   ::selection {
@@ -46,10 +47,11 @@
     @apply font-mono text-eyebrow font-medium uppercase text-ll-sage-mid;
   }
 
-  /* Trust / verification chip — the most important signal on nanny surfaces */
+  /* Trust / verification chip — the most important signal on nanny surfaces.
+     Text is ll-peri-ink (8.1:1 on ll-peri-light) — ll-peri-deep was only 3.95:1. */
   .trust-chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border-1.5 border-ll-peri-soft
-           bg-ll-peri-light px-2.5 py-1 font-mono text-mono-sm font-medium text-ll-peri-deep;
+    @apply inline-flex items-center gap-1.5 rounded-full border-1.5 border-ll-peri
+           bg-ll-peri-light px-2.5 py-1 font-mono text-mono-sm font-medium text-ll-peri-ink;
   }
 }
 
