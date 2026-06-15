@@ -153,7 +153,7 @@ export function NannySetupWizard() {
           <h1 className="text-display-md">Your photo & bio</h1>
           <div className="flex items-center gap-4">
             <Avatar name={profile?.fullName ?? 'Nanny'} src={photoURL} size="lg" />
-            <label className="cursor-pointer text-sm font-bold text-ll-sage-mid hover:underline">
+            <label className="cursor-pointer text-sm font-bold text-ll-sage-deep hover:underline">
               {photoURL ? 'Change photo' : 'Add a profile photo'}
               <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />
             </label>

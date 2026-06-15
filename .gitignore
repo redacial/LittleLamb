@@ -9,3 +9,7 @@ firebase-debug.log
 firestore-debug.log
 *-debug.log
 .DS_Store
+
+# Design knowledge/gate layer (local only, not shipped)
+vendor/
+scripts.zip

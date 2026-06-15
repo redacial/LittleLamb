@@ -21,7 +21,7 @@ export function Logo({ className, withSubline = true, mark = true }: LogoProps) 
           Little Lamb
         </span>
         {withSubline && (
-          <span className="block font-mono text-[0.6rem] font-medium uppercase tracking-[0.22em] text-ll-sage-mid">
+          <span className="block font-mono text-[0.6rem] font-medium uppercase tracking-[0.22em] text-ll-sage-deep">
             Nannies
           </span>
         )}

@@ -53,7 +53,7 @@ export function NannyCalendarPage() {
                 return (
                   <li key={label} className="flex items-center justify-between py-1.5">
                     <span className="font-semibold">{label.slice(0, 3)}</span>
-                    <span className={cn('font-mono', block ? 'text-ll-sage-mid' : 'text-ll-warm-gray')}>
+                    <span className={cn('font-mono', block ? 'text-ll-sage-deep' : 'text-ll-warm-gray')}>
                       {block ? `${to12h(block.start)}–${to12h(block.end)}` : '—'}
                     </span>
                   </li>

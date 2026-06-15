@@ -101,7 +101,7 @@ function PersonRow({
           <p className="font-semibold">{u.fullName}</p>
           <p className="text-sm text-ll-warm-gray">{u.email}</p>
           {role === 'nanny' && u.stage && (
-            <p className="mt-0.5 text-xs text-ll-sage-mid">{STAGE_LABEL[u.stage]}</p>
+            <p className="mt-0.5 text-xs text-ll-sage-deep">{STAGE_LABEL[u.stage]}</p>
           )}
         </div>
       </div>

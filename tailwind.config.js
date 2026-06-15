@@ -63,19 +63,38 @@ export default {
         '1.5': '1.5px',
       },
       boxShadow: {
+        // Warm-tinted shadows (brown, never gray) — the premium-vs-cheap signature.
         soft: '0 1px 2px rgba(44,36,22,0.04), 0 8px 24px -12px rgba(44,36,22,0.14)',
         lift: '0 2px 4px rgba(44,36,22,0.05), 0 18px 40px -16px rgba(44,36,22,0.20)',
+        // "pop" = hard offset shadow (the Clay hover move) — crisp, intentional, hand-made feel.
+        pop:      '-6px 6px 0 0 rgba(44,36,22,0.16)',
+        'pop-sage': '-6px 6px 0 0 rgba(92,127,87,0.30)',
+        'pop-peri': '-6px 6px 0 0 rgba(91,110,153,0.28)',
+        'pop-terra':'-6px 6px 0 0 rgba(155,106,63,0.28)',
       },
       maxWidth: {
         prose: '68ch',
       },
       animation: {
         'spring-in': 'springIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        // Slow async bob loops for floating decorative elements (the "alive" feel).
+        'bob':      'bob 5s ease-in-out infinite',
+        'bob-slow': 'bob 7s ease-in-out infinite',
+        'drift':    'drift 18s ease-in-out infinite',
       },
       keyframes: {
         springIn: {
           '0%':   { opacity: '0', transform: 'scale(0.92)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        bob: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%':      { transform: 'translateY(-8px)' },
+        },
+        drift: {
+          '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+          '33%':      { transform: 'translate(14px, -18px) scale(1.05)' },
+          '66%':      { transform: 'translate(-12px, 10px) scale(0.97)' },
         },
       },
     },

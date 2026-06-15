@@ -89,7 +89,7 @@ export function NannyOwnProfilePage() {
             </div>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               {checks.map((c) => (
-                <span key={c.label} className={c.done ? 'text-ll-sage-mid' : 'text-ll-warm-gray'}>
+                <span key={c.label} className={c.done ? 'text-ll-sage-deep' : 'text-ll-warm-gray'}>
                   {c.done ? '✓' : '○'} {c.label}
                 </span>
               ))}
@@ -99,13 +99,13 @@ export function NannyOwnProfilePage() {
           <Card>
             <div className="flex items-center gap-4">
               <Avatar name={profile?.fullName ?? 'Nanny'} src={photoURL} size="lg" />
-              <label className="cursor-pointer text-sm font-bold text-ll-sage-mid hover:underline">
+              <label className="cursor-pointer text-sm font-bold text-ll-sage-deep hover:underline">
                 Change photo
                 <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />
               </label>
             </div>
             {videoURL && <video src={videoURL} controls className="mt-4 w-full rounded-ll-input bg-ll-cream-dark" />}
-            <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-ll-sage-mid hover:underline">
+            <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-ll-sage-deep hover:underline">
               {videoURL ? 'Replace intro video' : 'Add intro video'}
               <input type="file" accept="video/*" className="sr-only" onChange={(e) => e.target.files?.[0] && onVideo(e.target.files[0])} />
             </label>
@@ -156,7 +156,7 @@ export function NannyOwnProfilePage() {
 
           <div className="flex items-center gap-3">
             <Button onClick={onSave} loading={busy}>Save changes</Button>
-            {saved && <span className="text-sm font-semibold text-ll-sage-mid">Saved ✓</span>}
+            {saved && <span className="text-sm font-semibold text-ll-sage-deep">Saved ✓</span>}
           </div>
 
           {profile?.referralCode && <ReferralCard code={profile.referralCode} />}

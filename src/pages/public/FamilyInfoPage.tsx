@@ -129,7 +129,7 @@ function Included() {
           <ul className="mt-3 space-y-2.5">
             {included.map((item) => (
               <li key={item} className="flex gap-2.5 text-sm text-ll-warm-gray">
-                <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-ll-sage-mid" />
+                <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-ll-sage-deep" />
                 <span>{item}</span>
               </li>
             ))}

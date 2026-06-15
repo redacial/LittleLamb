@@ -42,9 +42,10 @@
 }
 
 @layer components {
-  /* Mono eyebrow / trust label */
+  /* Mono eyebrow / trust label. ll-sage-deep (5.6:1 on cream) not ll-sage-mid
+     (3.6:1) so small eyebrow text clears WCAG AA. */
   .eyebrow {
-    @apply font-mono text-eyebrow font-medium uppercase text-ll-sage-mid;
+    @apply font-mono text-eyebrow font-medium uppercase text-ll-sage-deep;
   }
 
   /* Trust / verification chip — the most important signal on nanny surfaces.
@@ -52,6 +53,33 @@
   .trust-chip {
     @apply inline-flex items-center gap-1.5 rounded-full border-1.5 border-ll-peri
            bg-ll-peri-light px-2.5 py-1 font-mono text-mono-sm font-medium text-ll-peri-ink;
+  }
+
+  /* Organic blob mask for hero illustration/photo containers — never a rectangle. */
+  .mask-blob {
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+  }
+  .mask-blob-alt {
+    border-radius: 58% 42% 38% 62% / 56% 39% 61% 44%;
+  }
+}
+
+/* Hand-drawn underline self-draw (DrawnUnderline). Commits to its end state on
+   its own; disabled under reduced motion so the stroke is simply shown. */
+.ll-draw {
+  stroke-dasharray: 240;
+  stroke-dashoffset: 240;
+  animation: llDraw 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.35s forwards;
+}
+@keyframes llDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ll-draw {
+    animation: none;
+    stroke-dashoffset: 0;
   }
 }
 

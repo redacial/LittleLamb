@@ -68,6 +68,22 @@ export function useButtonHover() {
 }
 
 /**
+ * The signature "alive" hover (Clay move): lift up, tilt slightly, snap on press.
+ * Pair with the `shadow-pop*` utilities (hard offset shadow) on the element via
+ * Tailwind hover: classes for the crisp hand-made depth. Returns empty under
+ * reduced motion so nothing translates/rotates.
+ */
+export function useTiltHover() {
+  const prefersReduced = useReducedMotion()
+  if (prefersReduced) return {}
+  return {
+    whileHover: { y: -4, rotate: -0.6 },
+    whileTap: { scale: 0.97, y: 0 },
+    transition: springStandard,
+  }
+}
+
+/**
  * Hover props for chips and badges. Returns empty object under reduced motion.
  */
 export function useChipHover() {

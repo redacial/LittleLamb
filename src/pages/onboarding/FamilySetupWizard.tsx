@@ -154,7 +154,7 @@ export function FamilySetupWizard() {
           <h1 className="text-display-md">Tell us about your family</h1>
           <div className="flex items-center gap-4">
             <Avatar name={profile?.fullName ?? 'Family'} src={photoURL} size="lg" />
-            <label className="cursor-pointer text-sm font-bold text-ll-sage-mid hover:underline">
+            <label className="cursor-pointer text-sm font-bold text-ll-sage-deep hover:underline">
               {photoURL ? 'Change photo' : 'Add a family photo'}
               <input
                 type="file"

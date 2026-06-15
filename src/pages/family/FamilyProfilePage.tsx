@@ -89,7 +89,7 @@ export function FamilyProfilePage() {
           <Card>
             <div className="flex items-center gap-4">
               <Avatar name={profile?.fullName ?? 'Family'} src={form.photoURL} size="lg" />
-              <label className="cursor-pointer text-sm font-bold text-ll-sage-mid hover:underline">
+              <label className="cursor-pointer text-sm font-bold text-ll-sage-deep hover:underline">
                 Change photo
                 <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />
               </label>
@@ -127,7 +127,7 @@ export function FamilyProfilePage() {
 
           <div className="flex items-center gap-3">
             <Button onClick={onSave} loading={busy}>Save changes</Button>
-            {saved && <span className="text-sm font-semibold text-ll-sage-mid">Saved ✓</span>}
+            {saved && <span className="text-sm font-semibold text-ll-sage-deep">Saved ✓</span>}
           </div>
 
           {profile?.referralCode && <ReferralCard code={profile.referralCode} />}
