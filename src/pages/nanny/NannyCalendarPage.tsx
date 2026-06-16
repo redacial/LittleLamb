@@ -34,11 +34,15 @@ export function NannyCalendarPage() {
         subtitle="Your confirmed sessions. Manage weekly hours from your profile."
         action={
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => changeMonth(-1)} aria-label="Previous month">←</Button>
-            <span className="min-w-32 text-center font-semibold">
+            <Button variant="ghost" size="sm" onClick={() => changeMonth(-1)} aria-label="Previous month">
+              <ChevronLeft />
+            </Button>
+            <span className="min-w-32 text-center font-mono text-mono-sm font-medium text-ll-ink">
               {new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </span>
-            <Button variant="ghost" size="sm" onClick={() => changeMonth(1)} aria-label="Next month">→</Button>
+            <Button variant="ghost" size="sm" onClick={() => changeMonth(1)} aria-label="Next month">
+              <ChevronRight />
+            </Button>
           </div>
         }
       />
@@ -51,10 +55,15 @@ export function NannyCalendarPage() {
               {DAYS.map((label, day) => {
                 const block = nanny?.availability?.find((a) => a.day === day)
                 return (
-                  <li key={label} className="flex items-center justify-between py-1.5">
-                    <span className="font-semibold">{label.slice(0, 3)}</span>
-                    <span className={cn('font-mono', block ? 'text-ll-sage-deep' : 'text-ll-warm-gray')}>
-                      {block ? `${to12h(block.start)}–${to12h(block.end)}` : '—'}
+                  <li key={label} className="flex items-center justify-between gap-3 py-1.5">
+                    <span className="font-medium text-ll-ink">{label.slice(0, 3)}</span>
+                    <span
+                      className={cn(
+                        'font-mono text-mono-sm',
+                        block ? 'text-ll-peri-ink' : 'text-ll-warm-gray',
+                      )}
+                    >
+                      {block ? `${to12h(block.start)} to ${to12h(block.end)}` : 'Off'}
                     </span>
                   </li>
                 )
@@ -67,5 +76,21 @@ export function NannyCalendarPage() {
         </div>
       </PageBody>
     </>
+  )
+}
+
+function ChevronLeft() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M10 3 5 8l5 5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function ChevronRight() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }

@@ -15,7 +15,11 @@ const STAGE_LABEL: Record<NannyStage, string> = {
   decision_made: 'Decision made',
 }
 
-/** Admin management of nannies or families. Tabs by status; approve/reject + advance stage. */
+/**
+ * Admin management of nannies or families. Tabs by status; approve/reject + advance stage.
+ * Theme note: this is a dense work surface — rows stay calm (no tilt, no grain). Only the
+ * tab strip and status pills carry colour; motion is limited to button hover/focus.
+ */
 export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'family'> }) {
   const { users, loading } = useUsersByRole(role)
   const { approve, reject, advanceStage } = useAdminActions()
@@ -32,7 +36,10 @@ export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'famil
     <>
       <PageHeader title={role === 'nanny' ? 'Nannies' : 'Families'} subtitle="Review applications and manage accounts." />
       <PageBody>
-        <div role="tablist" className="mb-4 flex gap-1 rounded-full bg-ll-cream-dark p-1">
+        <div
+          role="tablist"
+          className="mb-5 flex gap-1 rounded-full border-1.5 border-ll-cream-dark bg-ll-cream-dark p-1"
+        >
           {(['pending', 'active', 'inactive', 'rejected'] as Tab[]).map((t) => {
             const selected = tab === t
             return (
@@ -43,7 +50,9 @@ export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'famil
                 onClick={() => setTab(t)}
                 className={cn(
                   'flex-1 rounded-full px-3 py-1.5 text-sm font-bold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ll-sage focus-visible:ring-offset-2 focus-visible:ring-offset-ll-cream',
-                  selected ? 'bg-ll-sage text-ll-sage-deep shadow-soft' : 'text-ll-warm-gray hover:text-ll-ink',
+                  selected
+                    ? 'bg-ll-sage-light text-ll-sage-deep shadow-soft'
+                    : 'text-ll-warm-gray hover:text-ll-ink',
                 )}
               >
                 {t}
@@ -97,11 +106,11 @@ function PersonRow({
     <Card className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <Avatar name={u.fullName} size="md" />
-        <div>
-          <p className="font-semibold">{u.fullName}</p>
+        <div className="min-w-0">
+          <p className="font-semibold text-ll-ink">{u.fullName}</p>
           <p className="text-sm text-ll-warm-gray">{u.email}</p>
           {role === 'nanny' && u.stage && (
-            <p className="mt-0.5 text-xs text-ll-sage-deep">{STAGE_LABEL[u.stage]}</p>
+            <p className="mt-0.5 font-mono text-mono-sm text-ll-sage-deep">{STAGE_LABEL[u.stage]}</p>
           )}
         </div>
       </div>
@@ -111,7 +120,8 @@ function PersonRow({
           <>
             {role === 'nanny' && nextStage && u.stage !== 'decision_made' && (
               <Button size="sm" variant="ghost" onClick={() => onAdvance(nextStage)}>
-                Advance →
+                Advance
+                <ArrowRight />
               </Button>
             )}
             <Button size="sm" onClick={onApprove}>Approve</Button>
@@ -120,5 +130,13 @@ function PersonRow({
         )}
       </div>
     </Card>
+  )
+}
+
+function ArrowRight() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }

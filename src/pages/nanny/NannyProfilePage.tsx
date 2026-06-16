@@ -79,21 +79,35 @@ export function NannyOwnProfilePage() {
       <PageHeader title="My profile" subtitle="This is what families see when they discover you." />
       <PageBody>
         <div className="max-w-2xl space-y-6">
-          <Card>
+          <Card interactive tone="peri">
             <CardLabel>Profile completeness</CardLabel>
             <div className="mt-2 flex items-center gap-3">
               <div className="h-2 flex-1 overflow-hidden rounded-full bg-ll-cream-dark">
-                <div className="h-full rounded-full bg-ll-sage transition-all" style={{ width: `${(complete / checks.length) * 100}%` }} />
+                <div
+                  className="h-full rounded-full bg-ll-sage transition-all"
+                  style={{ width: `${(complete / checks.length) * 100}%` }}
+                />
               </div>
-              <span className="font-mono text-sm font-medium">{complete}/{checks.length}</span>
+              <span className="font-mono text-mono-sm font-medium text-ll-peri-ink">
+                {complete}/{checks.length}
+              </span>
             </div>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+            <ul className="mt-3 flex flex-wrap gap-2">
               {checks.map((c) => (
-                <span key={c.label} className={c.done ? 'text-ll-sage-deep' : 'text-ll-warm-gray'}>
-                  {c.done ? '✓' : '○'} {c.label}
-                </span>
+                <li
+                  key={c.label}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border-1.5 px-2.5 py-1 font-mono text-mono-sm font-medium',
+                    c.done
+                      ? 'border-ll-peri bg-ll-peri-light text-ll-peri-ink'
+                      : 'border-ll-cream-dark bg-white text-ll-warm-gray',
+                  )}
+                >
+                  {c.done ? <CheckMark /> : <EmptyMark />}
+                  {c.label}
+                </li>
               ))}
-            </div>
+            </ul>
           </Card>
 
           <Card>
@@ -156,12 +170,33 @@ export function NannyOwnProfilePage() {
 
           <div className="flex items-center gap-3">
             <Button onClick={onSave} loading={busy}>Save changes</Button>
-            {saved && <span className="text-sm font-semibold text-ll-sage-deep">Saved ✓</span>}
+            {saved && (
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-ll-sage-deep">
+                <CheckMark />
+                Saved
+              </span>
+            )}
           </div>
 
           {profile?.referralCode && <ReferralCard code={profile.referralCode} />}
         </div>
       </PageBody>
     </>
+  )
+}
+
+function CheckMark() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+      <path d="M3 8.5 6.5 12 13 4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function EmptyMark() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <circle cx="8" cy="8" r="5" />
+    </svg>
   )
 }

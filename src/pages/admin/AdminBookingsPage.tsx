@@ -49,15 +49,19 @@ export function AdminBookingsPage() {
           <div className="space-y-3">
             {filtered.map((b) => (
               <Card key={b.id} className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold">{b.familyName} → {b.nannyName ?? 'Unmatched'}</p>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="inline-flex items-center gap-1.5 font-semibold text-ll-ink">
+                      {b.familyName}
+                      <Arrow />
+                      {b.nannyName ?? 'Unmatched'}
+                    </p>
                     <StatusPill status={b.status} tone={b.status === 'confirmed' ? 'confirmed' : b.status === 'cancelled' ? 'cancelled' : 'pending'} />
                   </div>
                   <p className="text-sm text-ll-warm-gray">{formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)} · {b.address}</p>
                 </div>
                 {b.status !== 'cancelled' && (
-                  <Button size="sm" variant="secondary" onClick={() => setStatus(b.id, 'cancelled')}>Cancel</Button>
+                  <Button size="sm" variant="danger" onClick={() => setStatus(b.id, 'cancelled')}>Cancel</Button>
                 )}
               </Card>
             ))}
@@ -130,7 +134,7 @@ function CreateBookingModal({
     <Modal open={open} onClose={onClose} title="Create a booking">
       <div className="space-y-4">
         <p className="text-sm text-ll-warm-gray">
-          Full override — no availability check. Confirm details with both parties first; the
+          Full override, no availability check. Confirm details with both parties first; the
           booking is created as confirmed and appears in both records immediately.
         </p>
         <Select label="Family" value={familyId} onChange={(e) => setFamilyId(e.target.value)}>
@@ -152,5 +156,14 @@ function CreateBookingModal({
         </Button>
       </div>
     </Modal>
+  )
+}
+
+/** Family-to-nanny relationship arrow — inline SVG (no glyph dashes/arrows in UI copy). */
+function Arrow() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0 text-ll-warm-gray" fill="none" stroke="currentColor" strokeWidth="2" aria-label="to">
+      <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }

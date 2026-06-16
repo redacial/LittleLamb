@@ -63,9 +63,14 @@ export function ReviewModal({
                 aria-checked={rating === n}
                 aria-label={`${n} star${n > 1 ? 's' : ''}`}
                 onClick={() => setRating(n)}
-                className={cn('text-3xl', n <= rating ? 'text-ll-terra-deep' : 'text-ll-ink/20')}
+                className={cn(
+                  'rounded-full p-0.5 transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-ll-terra-deep',
+                  n <= rating ? 'text-ll-terra-deep' : 'text-ll-ink/20',
+                )}
               >
-                ★
+                <svg viewBox="0 0 24 24" className="h-8 w-8" fill="currentColor" aria-hidden>
+                  <path d="M12 2.5l2.7 5.9 6.3.7-4.7 4.3 1.3 6.2L12 16.9 6.1 19.6l1.3-6.2L2.7 9.1l6.3-.7L12 2.5z" />
+                </svg>
               </button>
             ))}
           </div>

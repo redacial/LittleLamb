@@ -89,9 +89,14 @@ export function FamilyProfilePage() {
           <Card>
             <div className="flex items-center gap-4">
               <Avatar name={profile?.fullName ?? 'Family'} src={form.photoURL} size="lg" />
-              <label className="cursor-pointer text-sm font-bold text-ll-sage-deep hover:underline">
-                Change photo
-                <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />
+              <label className="group inline-flex cursor-pointer items-center gap-1.5 rounded-full text-sm font-medium text-ll-sage-deep focus-within:outline-none focus-within:ring-2 focus-within:ring-ll-sage-mid focus-within:ring-offset-2 focus-within:ring-offset-ll-cream-dark">
+                <span className="underline-offset-4 group-hover:underline">Change photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])}
+                />
               </label>
             </div>
           </Card>
@@ -127,12 +132,24 @@ export function FamilyProfilePage() {
 
           <div className="flex items-center gap-3">
             <Button onClick={onSave} loading={busy}>Save changes</Button>
-            {saved && <span className="text-sm font-semibold text-ll-sage-deep">Saved ✓</span>}
+            {saved && (
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-ll-sage-deep" role="status">
+                <CheckIcon /> Saved
+              </span>
+            )}
           </div>
 
           {profile?.referralCode && <ReferralCard code={profile.referralCode} />}
         </div>
       </PageBody>
     </>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+      <path d="M3.5 8.5 6.5 11.5 12.5 4.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }

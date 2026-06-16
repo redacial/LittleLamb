@@ -21,12 +21,21 @@ export function ReferralCard({ code }: { code: string }) {
     <Card>
       <CardLabel>Your referral link</CardLabel>
       <p className="mt-1 text-sm text-ll-warm-gray">
-        Share Little Lamb with friends. We’ll note who sent them.
+        Share Little Lamb with friends. We note who sent them.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <code className="flex-1 truncate rounded-ll-input bg-ll-cream-dark px-3 py-2 font-mono text-sm text-ll-ink">{url}</code>
         <Button size="sm" variant="secondary" onClick={copy}>
-          {copied ? 'Copied ✓' : 'Copy'}
+          {copied ? (
+            <span className="inline-flex items-center gap-1">
+              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3 8.5l3.5 3.5L13 4" />
+              </svg>
+              Copied
+            </span>
+          ) : (
+            'Copy'
+          )}
         </Button>
       </div>
     </Card>

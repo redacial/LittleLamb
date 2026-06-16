@@ -21,7 +21,7 @@ export function AdminAnalyticsPage() {
   const unmatched = bookings.filter((b) => b.status === 'unmatched').length
   const recurring = bookings.filter((b) => b.recurring).length
   const revenue = activeFamilies * SUBSCRIPTION + confirmed * PER_BOOKING
-  const ratio = activeFamilies > 0 ? (activeNannies / activeFamilies).toFixed(1) : '—'
+  const ratio = activeFamilies > 0 ? (activeNannies / activeFamilies).toFixed(1) : 'n/a'
   const pendingNannies = nannies.filter((n) => n.status === 'pending').length
   const completionRate = confirmed + cancelled > 0 ? Math.round((confirmed / (confirmed + cancelled)) * 100) : 0
 

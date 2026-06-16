@@ -27,7 +27,7 @@ export function AdminSettingsPage() {
                 <Card className="max-w-2xl space-y-3">
                   <CardLabel>Automated emails</CardLabel>
                   <p className="text-sm text-ll-warm-gray">Edit the copy for any automated email without a developer.</p>
-                  <Input label="Subject — Application approved" defaultValue="Welcome to Little Lamb — you’re approved!" />
+                  <Input label="Subject: Application approved" defaultValue="Welcome to Little Lamb, you’re approved!" />
                   <Textarea label="Body" defaultValue="Hi {{name}}, your account is now live. Log in to finish your profile and start booking." />
                   <Button>Save template</Button>
                 </Card>

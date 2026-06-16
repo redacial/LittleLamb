@@ -49,16 +49,22 @@ export function NannyHoldingPage() {
                     <span
                       className={cn(
                         'grid h-7 w-7 place-items-center rounded-full font-mono text-xs font-bold border-1.5',
-                        done && 'bg-ll-peri text-white border-ll-peri',
-                        active && 'bg-white text-ll-peri-deep border-ll-peri',
+                        done && 'bg-ll-peri-deep text-white border-ll-peri-deep',
+                        active && 'bg-white text-ll-peri-ink border-ll-peri',
                         !done && !active && 'bg-ll-cream-dark text-ll-warm-gray border-ll-peri-soft',
                       )}
                     >
-                      {done ? '✓' : i + 1}
+                      {done ? (
+                        <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M3 8.5l3.5 3.5L13 4" />
+                        </svg>
+                      ) : (
+                        i + 1
+                      )}
                     </span>
                     <span
                       className={cn(
-                        active ? 'font-display text-display-sm text-ll-peri-deep' : 'font-semibold text-ll-warm-gray',
+                        active ? 'font-display text-display-sm text-ll-peri-ink' : 'font-semibold text-ll-warm-gray',
                       )}
                     >
                       {s.label}

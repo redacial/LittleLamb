@@ -37,12 +37,18 @@ export function WizardShell({ steps, current, children, voluntary }: WizardShell
                   aria-current={active ? 'step' : undefined}
                   className={cn(
                     'grid h-7 w-7 shrink-0 place-items-center rounded-full font-mono text-xs font-bold border-1.5',
-                    done && 'bg-ll-sage text-white border-ll-sage',
+                    done && 'bg-ll-sage-mid text-white border-ll-sage-mid',
                     active && 'bg-white text-ll-sage-deep border-ll-sage',
                     !done && !active && 'bg-ll-cream-dark text-ll-warm-gray border-ll-ink/10',
                   )}
                 >
-                  {done ? '✓' : i + 1}
+                  {done ? (
+                    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M3 8.5l3.5 3.5L13 4" />
+                    </svg>
+                  ) : (
+                    i + 1
+                  )}
                 </span>
                 {i < steps.length - 1 && (
                   <span className={cn('h-px flex-1', done ? 'bg-ll-sage' : 'bg-ll-ink/10')} />

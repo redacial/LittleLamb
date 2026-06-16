@@ -66,8 +66,8 @@ export function AdminBillingPage() {
                       .filter((f) => f.approved)
                       .map((f) => (
                         <Card key={f.uid} className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="font-semibold">{f.fullName}</p>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-ll-ink">{f.fullName}</p>
                             <p className="text-sm text-ll-warm-gray">Subscription <span className="font-mono">{money(SUBSCRIPTION)}</span>/qtr</p>
                           </div>
                           <div className="flex gap-2">
@@ -90,10 +90,10 @@ export function AdminBillingPage() {
 
             return (
               <div className="space-y-4">
-                <Card>
+                <Card tone="sage" className="bg-ll-sage-light">
                   <CardLabel>Quarterly donation tracker</CardLabel>
-                  <p className="mt-1 font-mono text-3xl">{money(donation)}</p>
-                  <p className="text-sm text-ll-warm-gray">Auto-calculated as 10% of this quarter’s revenue.</p>
+                  <p className="mt-1 font-mono text-3xl font-medium leading-tight text-ll-ink">{money(donation)}</p>
+                  <p className="mt-1 text-sm text-ll-warm-gray">Auto-calculated as 10% of this quarter’s revenue.</p>
                   <Button className="mt-3" size="sm">Mark as donated</Button>
                 </Card>
                 <Card className="bg-ll-cream">

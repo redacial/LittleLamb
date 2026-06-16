@@ -42,12 +42,30 @@ export function FamilyBillingPage() {
           <SummaryCard label="Billing cycle" value="Quarterly" hint="Every 90 days from signup" />
         </div>
 
-        <Card className="mt-6">
-          <CardLabel>How billing works</CardLabel>
-          <ul className="mt-2 space-y-1 text-sm text-ll-ink">
-            <li>· <span className="font-mono">{money(SUBSCRIPTION)}</span> flat platform subscription per quarter</li>
-            <li>· <span className="font-mono">{money(PER_BOOKING)}</span> per confirmed booking, accumulated through the quarter</li>
-            <li>· Auto-charged every 90 days; a PDF invoice is emailed and stored here</li>
+        <Card className="mt-6" tone="peri">
+          <div className="flex items-center justify-between gap-3">
+            <CardLabel className="mb-0">How billing works</CardLabel>
+            <span className="trust-chip">No surprises</span>
+          </div>
+          <ul className="mt-3 space-y-2 text-sm text-ll-ink">
+            <li className="flex gap-2.5">
+              <Dot />
+              <span>
+                <span className="font-mono text-ll-peri-ink">{money(SUBSCRIPTION)}</span> flat platform
+                subscription per quarter
+              </span>
+            </li>
+            <li className="flex gap-2.5">
+              <Dot />
+              <span>
+                <span className="font-mono text-ll-peri-ink">{money(PER_BOOKING)}</span> per confirmed
+                booking, accumulated through the quarter
+              </span>
+            </li>
+            <li className="flex gap-2.5">
+              <Dot />
+              <span>Auto-charged every 90 days. A PDF invoice is emailed and stored here.</span>
+            </li>
           </ul>
         </Card>
 
@@ -55,7 +73,7 @@ export function FamilyBillingPage() {
           <CardLabel>Invoice history</CardLabel>
           <p className="mt-2 text-sm text-ll-warm-gray">
             Your past invoices will appear here once your first billing cycle closes. In the
-            meantime, you can download this quarter’s running summary.
+            meantime, you can download this quarter's running summary.
           </p>
           <div className="mt-3">
             <Button variant="secondary" size="sm" onClick={downloadInvoice}>
@@ -65,5 +83,15 @@ export function FamilyBillingPage() {
         </Card>
       </PageBody>
     </>
+  )
+}
+
+/** Small static sage marker for list rows (replaces a raw bullet glyph). */
+function Dot() {
+  return (
+    <span
+      aria-hidden
+      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-ll-sage-mid"
+    />
   )
 }
