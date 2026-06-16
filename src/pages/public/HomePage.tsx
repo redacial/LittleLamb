@@ -259,7 +259,7 @@ function NannyPreview() {
             <NannyCard key={n.name} nanny={n} />
           ))}
         </div>
-        <p className="mt-8 text-center text-sm text-ll-warm-gray">
+        <p className="mx-auto mt-8 max-w-prose text-center text-sm text-ll-warm-gray">
           Profiles shown are illustrative. Approved families see the full, live network.
         </p>
       </div>

@@ -243,3 +243,26 @@ so per the sweep protocol the loop stops here.
 3. **Authenticated screens not yet swept** — only the 5 signed-out marketing/auth screens were
    screenshot-graded. A Phase 7b sweep should screenshot the nanny profile, dashboards, booking
    flow, and holding pages (most of the Trust Signal Hierarchy lives there) before declaring it met.
+
+---
+
+## Design Session — 2026-06-15 — Premium Playful "Alive" Demo Pass
+
+**Goal:** polish-first across all four surfaces, push a distinctive look, make it alive on hover (KISS). Incorporated the `ux-ui-agent-skills` repo (138-system library + runnable WCAG/taste gates) as a local knowledge + verification layer under `vendor/`.
+
+**Direction (DEMO_THEME.md):** anchored on **Clay** (warm cream canvas, craft hover physics: lift + tilt + hard offset shadow) + **doodle** accents, applied onto the locked LL token palette. 8 signature moves shipped as reusable primitives (`components/theme/`): Grain, Blob, DrawnUnderline, StickerBadge, FloatLoop, Sparkle + `useTiltHover` + `shadow-pop*`.
+
+**Surfaces themed:** public (Home/FamilyInfo/NannyInfo/Application), family (dash/calendar/billing/profile), nanny (dash/calendar/profile), admin (dash/people/bookings/billing/analytics/settings). Marketing = full expressive treatment; app UI = alive cards + warm headers but calm dense data.
+
+**Verification loop (agentic, gate-driven):** generate → gate (contrast.py + emoji + hardcode + tsc + tests) → critique (taste audit + anti-slop) → fix → re-gate. Render gates run via Playwright + axe against the real DOM (`scripts/probe-contrast.mjs`, `auth-shots.mjs`).
+
+**Results:**
+- **WCAG AA contrast: 0 violations on all 15 rendered surfaces** (5 public + 10 authed), measured on the real DOM.
+- Responsive: no horizontal overflow at 280/320/414 on every surface.
+- Zero pictograph glyphs in `src` (star rating, copy/wizard checks → inline SVG).
+- tsc clean, 26 tests green.
+- Demo click-path smoke test passes: hero, trust stickers, info pages, apply + role toggle, login → dashboard, **interactive card hover animates**, booking modal opens.
+
+**Token-level a11y fixes (propagate everywhere):** sage-mid→sage-deep for small text on cream (3.6→5.6:1); pending pill terra-deep-on-terra-light→ink-on-terra-soft (3.4→AA); self-reported badge selected terra→sage; SummaryCard accent hint + AvailabilityEditor "to" warm-gray→sage-deep on sage-light; wizard step indicators white-on-sage/peri→deep grounds; family greeting handles "The X Family".
+
+**Remaining (heuristic, non-blocking):** taste audit flags the 3 equal nanny-preview cards (mitigated with varied tilt; a bento break is a future option) and grid-constrained paragraphs measured as wide (false positive). Content still needs real nanny photos/testimonials (product, not design).
