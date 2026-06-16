@@ -236,8 +236,8 @@ export function NannySetupWizard() {
                   className={cn(
                     'rounded-full px-3 py-1.5 font-mono text-mono-sm font-medium border-1.5 transition-colors',
                     on
-                      ? 'bg-ll-terra-light text-ll-terra-deep border-ll-terra-soft'
-                      : 'bg-white text-ll-warm-gray border-ll-cream-dark hover:border-ll-terra-soft',
+                      ? 'bg-ll-sage-light text-ll-sage-deep border-ll-sage'
+                      : 'bg-white text-ll-warm-gray border-ll-cream-dark hover:border-ll-sage',
                   )}
                 >
                   {b.label}

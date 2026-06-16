@@ -140,7 +140,7 @@ export function MonthGrid({
                     }}
                     className={cn(
                       'block truncate rounded-ll-tag px-1 py-0.5 text-[0.7rem] font-semibold',
-                      b.status === 'confirmed' ? 'bg-ll-sage-light text-ll-sage-deep' : 'bg-ll-terra-light text-ll-terra-deep',
+                      b.status === 'confirmed' ? 'bg-ll-sage-light text-ll-sage-deep' : 'bg-ll-terra-soft text-ll-ink',
                     )}
                   >
                     {b.nannyName ?? b.familyName ?? 'Booking'}

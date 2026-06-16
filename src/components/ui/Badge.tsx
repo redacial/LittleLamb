@@ -45,9 +45,11 @@ interface StatusPillProps {
   tone?: 'confirmed' | 'pending' | 'cancelled' | 'open' | 'neutral'
 }
 
+// Pills carry status by ground + label (never color alone). All pairs clear WCAG AA:
+// pending uses ink on terra-soft (terra-deep on terra-light was only 3.4:1).
 const tones: Record<string, string> = {
   confirmed: 'bg-ll-sage-light text-ll-sage-deep',
-  pending: 'bg-ll-terra-light text-ll-terra-deep',
+  pending: 'bg-ll-terra-soft text-ll-ink',
   cancelled: 'bg-ll-cream-dark text-ll-warm-gray',
   open: 'bg-ll-peri-light text-ll-peri-ink',
   neutral: 'bg-ll-cream-dark text-ll-warm-gray',

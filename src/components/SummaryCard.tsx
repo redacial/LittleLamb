@@ -21,7 +21,10 @@ export function SummaryCard({
       <Card tone={accent ? 'sage' : 'default'} className={cn(accent && 'bg-ll-sage-light')}>
         <CardLabel>{label}</CardLabel>
         <p className="font-mono text-3xl font-medium leading-tight text-ll-ink">{value}</p>
-        {hint && <p className="mt-1 text-sm text-ll-warm-gray">{hint}</p>}
+        {/* On the sage-light accent ground, warm-gray fails AA (3.6:1); sage-deep clears it. */}
+        {hint && (
+          <p className={cn('mt-1 text-sm', accent ? 'text-ll-sage-deep' : 'text-ll-warm-gray')}>{hint}</p>
+        )}
       </Card>
     </motion.div>
   )

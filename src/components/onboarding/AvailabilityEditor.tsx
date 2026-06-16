@@ -61,7 +61,7 @@ export function AvailabilityEditor({
                   onChange={(e) => setDay(day, { start: e.target.value })}
                   className="w-32"
                 />
-                <span className="text-ll-warm-gray">to</span>
+                <span className="text-ll-sage-deep">to</span>
                 <Input
                   type="time"
                   aria-label={`${label} end`}

@@ -120,7 +120,7 @@ export function StickerBadge({
   const palette: Record<BlobTone, string> = {
     peri: 'border-ll-peri bg-ll-peri-light text-ll-peri-ink shadow-pop-peri',
     sage: 'border-ll-sage bg-ll-sage-light text-ll-sage-deep shadow-pop-sage',
-    terra: 'border-ll-terra-soft bg-ll-terra-light text-ll-terra-deep shadow-pop-terra',
+    terra: 'border-ll-terra-soft bg-ll-terra-soft text-ll-ink shadow-pop-terra',
   }
   return (
     <motion.span

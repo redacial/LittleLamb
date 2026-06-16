@@ -143,7 +143,7 @@ export function NannyOwnProfilePage() {
                     onClick={() => { setSelfBadges((s) => (on ? s.filter((x) => x !== b.id) : [...s, b.id])); setSaved(false) }}
                     className={cn(
                       'rounded-full border-1.5 px-3 py-1.5 font-mono text-mono-sm font-medium transition-colors',
-                      on ? 'bg-ll-terra-light text-ll-terra-deep border-ll-terra-soft' : 'bg-white text-ll-warm-gray border-ll-cream-dark',
+                      on ? 'bg-ll-sage-light text-ll-sage-deep border-ll-sage' : 'bg-white text-ll-warm-gray border-ll-cream-dark',
                     )}
                   >
                     {b.label}

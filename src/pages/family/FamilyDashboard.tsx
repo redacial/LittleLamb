@@ -24,7 +24,15 @@ export function FamilyDashboard() {
   const [skipped, setSkipped] = useState<Set<string>>(new Set())
   const btnHover = useButtonHover()
 
-  const firstName = profile?.fullName?.split(' ')[0] ?? 'there'
+  // Family names are often "The Hartley Family" — greeting "The" reads wrong, so strip a
+  // leading "The" and greet by the meaningful name; fall back to the first word otherwise.
+  const greetName = (() => {
+    const full = profile?.fullName?.trim()
+    if (!full) return 'there'
+    const withoutThe = full.replace(/^the\s+/i, '')
+    if (/family$/i.test(withoutThe)) return withoutThe // "Hartley Family"
+    return withoutThe.split(' ')[0] // first name
+  })()
   const upcoming = bookings.filter(isUpcoming).sort((a, b) => a.date.localeCompare(b.date))
   const next = upcoming[0]
   const thisQuarter = bookings.filter((b) => b.status === 'confirmed').length
@@ -46,7 +54,7 @@ export function FamilyDashboard() {
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
             <h1 className="mt-2 font-display text-display-xl leading-[0.95] text-ll-ink">
-              Hello, {firstName}
+              Hello, {greetName}
             </h1>
             <p className="mt-1 max-w-md text-ll-warm-gray">
               Here is your childcare at a glance.
