@@ -2,7 +2,10 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.production
+.env.staging
 dist/
+dist-landing/
 *.tsbuildinfo
 .firebase/
 firebase-debug.log

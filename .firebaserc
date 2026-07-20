@@ -1,5 +1,30 @@
 {
   "projects": {
-    "default": "littlelamb-demo"
-  }
+    "default": "littlelamb-sb",
+    "prod": "littlelamb-sb",
+    "staging": "littlelamb-sb-staging"
+  },
+  "targets": {
+    "littlelamb-sb": {
+      "hosting": {
+        "landing": [
+          "littlelamb-sb-landing"
+        ],
+        "app": [
+          "littlelamb-sb-app"
+        ]
+      }
+    },
+    "littlelamb-sb-staging": {
+      "hosting": {
+        "landing": [
+          "littlelamb-sb-staging-landing"
+        ],
+        "app": [
+          "littlelamb-sb-staging-app"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

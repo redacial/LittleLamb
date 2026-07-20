@@ -187,6 +187,32 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ---- waitlist ------------------------------------------------------------
+    // Pre-launch landing site: PUBLIC create-only, admin read-only. Anyone (signed-out
+    // visitors included) may add ONE waitlist/contact submission; nobody but admin can read,
+    // list, update, or delete — so the collection can never be enumerated to harvest the
+    // emails of everyone who signed up. The create surface is public, so the shape is validated
+    // strictly to keep it from being abused as arbitrary storage. App Check (when configured)
+    // further attests the write comes from our real site. Email-on-signup is a deferred Cloud
+    // Function (see src/landing/waitlist.ts) that runs with admin privileges, unaffected by these.
+    match /waitlist/{entryId} {
+      allow get, list, update, delete: if isAdmin();
+
+      allow create: if
+        // exact field set — no extra keys can be smuggled in
+        incoming().keys().hasOnly(['kind', 'role', 'name', 'email', 'phone', 'message',
+                                   'source', 'status', 'createdAt'])
+        && incoming().kind in ['waitlist', 'contact']
+        && incoming().role in ['family', 'nanny']
+        && incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 120
+        && incoming().email is string && incoming().email.size() > 0 && incoming().email.size() <= 254
+        && incoming().phone is string && incoming().phone.size() <= 32
+        && incoming().message is string && incoming().message.size() <= 2000
+        && incoming().source is string && incoming().source.size() <= 300
+        && incoming().status == 'new'
+        && incoming().createdAt == request.time;   // server timestamp only, no client-set dates
+    }
+
     // ---- default deny --------------------------------------------------------
     match /{document=**} {
       allow read, write: if false;

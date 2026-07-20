@@ -9,9 +9,14 @@ React, TypeScript, Vite, Firebase (auth + firestore + storage)
 ## Context Management
 - Before context runs out, write all remaining incomplete tasks to Backlog.md
 - New sessions start by reading CLAUDE.md, DECISIONS.md, and Backlog.md
+- **Also read `session-log/` at the START of every session** (its README, then the most recent
+  dated entry) — it's the running record of decisions + where the last session left off.
 - Then run git log --oneline to confirm what's built
 - Then continue from Backlog.md
 - For any design or UI work: also read DESIGN_SYSTEM.md before touching a single component
+- **At the END of every session, update `session-log/`** — add/append a dated entry
+  (`YYYY-MM-DD-<slug>.md`) covering what was done, decisions + why, current state, and next
+  steps. See `session-log/README.md` for the protocol.
 
 ## Active Plugins
 - ux-ui-mastery: use for ALL UI and design decisions — cognitive psychology, heuristics, accessibility
