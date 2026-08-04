@@ -67,10 +67,31 @@ service cloud.firestore {
     match /families/{familyId} {
       allow get: if isSignedIn() && (uid() == familyId || isAdmin());
       allow list: if isAdmin();
-      allow create, update: if isSignedIn() && uid() == familyId && hasRole('family')
+
+      // Billing fields are server-authoritative: hasPaymentMethod and stripeCustomerId are
+      // written ONLY by the savePaymentMethod Cloud Function. A family may not set or change
+      // them (create: must be absent/false; update: must equal the existing value).
+      function billingFieldsUntouchedOnCreate() {
+        return (!('hasPaymentMethod' in incoming()) || incoming().hasPaymentMethod == false)
+          && !('stripeCustomerId' in incoming());
+      }
+      function billingFieldsUnchangedOnUpdate() {
+        return (('hasPaymentMethod' in incoming()) ? incoming().hasPaymentMethod : false)
+             == (('hasPaymentMethod' in existing()) ? existing().hasPaymentMethod : false)
+          && (('stripeCustomerId' in incoming()) ? incoming().stripeCustomerId : null)
+             == (('stripeCustomerId' in existing()) ? existing().stripeCustomerId : null);
+      }
+
+      allow create: if isSignedIn() && uid() == familyId && hasRole('family')
         && incoming().uid == familyId
         && strMax('homeAddress', 300) && strMax('neighborhood', 120)
-        && strMax('houseRules', 2000) && strMax('allergies', 1000);
+        && strMax('houseRules', 2000) && strMax('allergies', 1000)
+        && billingFieldsUntouchedOnCreate();
+      allow update: if isSignedIn() && uid() == familyId && hasRole('family')
+        && incoming().uid == familyId
+        && strMax('homeAddress', 300) && strMax('neighborhood', 120)
+        && strMax('houseRules', 2000) && strMax('allergies', 1000)
+        && billingFieldsUnchangedOnUpdate();
       allow update, delete: if isAdmin();
     }
 
@@ -156,6 +177,14 @@ service cloud.firestore {
     match /invoices/{invoiceId} {
       allow get: if isSignedIn() && (existing().familyId == uid() || isAdmin());
       allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---- billing_alerts ------------------------------------------------------
+    // Server-written failed-payment flags for the admin dashboard. Admin-read-only;
+    // no client writes ever (the billing functions run with admin privileges).
+    match /billing_alerts/{alertId} {
+      allow get, list: if isAdmin();
       allow create, update, delete: if isAdmin();
     }
 

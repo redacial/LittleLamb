@@ -6,6 +6,7 @@ import { useFamilyProfile, completeWizard } from '../../hooks/useProfile'
 import { uploadProfilePhoto } from '../../lib/storage'
 import { cleanLine, cleanText } from '../../lib/sanitize'
 import { WizardShell } from '../../components/onboarding/WizardShell'
+import { PaymentStep } from '../../components/onboarding/PaymentStep'
 import { useSpring } from '../../lib/motion'
 import { Button, Input, Textarea, Avatar } from '../../components/ui'
 import type { Child, FamilyProfile } from '../../types'
@@ -35,7 +36,6 @@ export function FamilySetupWizard() {
   const [phone, setPhone] = useState('')
   const [coParentName, setCoParentName] = useState('')
   const [coParentEmail, setCoParentEmail] = useState('')
-  const [hasPaymentMethod, setHasPaymentMethod] = useState(false)
 
   useEffect(() => {
     if (!family) return
@@ -49,7 +49,6 @@ export function FamilySetupWizard() {
     setPhone(family.phone ?? '')
     setCoParentName(family.coParentName ?? '')
     setCoParentEmail(family.coParentEmail ?? '')
-    setHasPaymentMethod(family.hasPaymentMethod ?? false)
   }, [family])
 
   async function persist(patch: Partial<FamilyProfile>) {
@@ -117,12 +116,20 @@ export function FamilySetupWizard() {
     setStep(2)
   }
 
+  // Called by PaymentStep once a card is saved (server-side) or the pre-launch fallback
+  // is acknowledged. hasPaymentMethod is written by the savePaymentMethod Cloud Function,
+  // not here — the client can no longer set it (see tightened firestore.rules).
   async function finish() {
-    if (!hasPaymentMethod) return setError('Please add a payment card to continue.')
     if (!uid) return
-    await persist({ hasPaymentMethod: true })
-    await completeWizard(uid)
-    setDone(true)
+    setBusy(true)
+    try {
+      await completeWizard(uid)
+      setDone(true)
+    } catch {
+      setError('We couldn’t finish setup. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (loading) return <WizardShell steps={STEPS} current={step}><p>Loading…</p></WizardShell>
@@ -223,26 +230,13 @@ export function FamilySetupWizard() {
         >
           <h1 className="text-display-md">Add a payment card</h1>
           <p className="text-ll-warm-gray">
-            Your card is stored securely for quarterly billing — $25 per quarter plus $1 per
-            confirmed booking. You won’t be charged today.
+            Your card is stored securely with Stripe for quarterly billing — $25 per quarter plus
+            $1 per confirmed booking. You won’t be charged today.
           </p>
-          <div className="rounded-ll-card border-1.5 border-dashed border-ll-warm-gray bg-white p-5">
-            {/* Stubbed card capture — no real card data leaves the browser (see DECISIONS D7d). */}
-            <Input label="Name on card" placeholder="Jane Appleseed" />
-            <div className="mt-3 grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
-              <Input label="Card number" placeholder="4242 4242 4242 4242" inputMode="numeric" />
-              <Input label="Expiry" placeholder="MM/YY" />
-              <Input label="CVC" placeholder="123" inputMode="numeric" />
-            </div>
-            <label className="mt-4 flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={hasPaymentMethod} onChange={(e) => setHasPaymentMethod(e.target.checked)} className="h-4 w-4 rounded accent-ll-sage" />
-              Save this card for quarterly billing
-            </label>
-          </div>
+          <PaymentStep onComplete={finish} saving={busy} />
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => setStep(1)}>Back</Button>
-            <Button onClick={finish} loading={busy}>Finish setup</Button>
           </div>
         </motion.div>
       )}

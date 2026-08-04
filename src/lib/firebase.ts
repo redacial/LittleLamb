@@ -6,6 +6,7 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions'
 
 function requireEnv(key: string): string {
   const value = import.meta.env[key as keyof ImportMetaEnv] as string | undefined
@@ -43,10 +44,14 @@ if (appCheckSiteKey) {
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const storage = getStorage(app)
+// Callable/HTTPS Cloud Functions (billing setup-intent etc.). Region must match the
+// functions' deploy region (see functions/src/config.ts REGION).
+export const functions = getFunctions(app, 'us-central1')
 
 // Local development against the Firebase emulator suite.
 if (import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true') {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
   connectFirestoreEmulator(db, '127.0.0.1', 8080)
   connectStorageEmulator(storage, '127.0.0.1', 9199)
+  connectFunctionsEmulator(functions, '127.0.0.1', 5001)
 }

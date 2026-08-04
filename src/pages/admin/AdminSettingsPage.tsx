@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Tabs } from '../../components/Tabs'
 import { Card, CardLabel, Input, Textarea, Button } from '../../components/ui'
 import { SELF_BADGES, VERIFIED_BADGES } from '../../lib/badges'
 import { Badge } from '../../components/ui'
+import { useBillingConfig } from '../../hooks/useAdmin'
 
 /** Admin Settings — platform configuration (CLAUDE.md §10/Part 18). Editors for the config
  * collection. Values shown are the live defaults; persistence wires to config/{doc} (admin-only). */
@@ -57,15 +59,8 @@ export function AdminSettingsPage() {
                   <Button>Save policies</Button>
                 </Card>
               )
-            if (active === 'Billing')
-              return (
-                <Card className="max-w-lg space-y-4">
-                  <CardLabel>Billing configuration</CardLabel>
-                  <Input label="Flat subscription per quarter ($)" type="number" defaultValue={25} />
-                  <Input label="Per-booking fee ($)" type="number" defaultValue={1} />
-                  <Button>Save</Button>
-                </Card>
-              )
+            if (active === 'Billing') return <BillingConfigCard />
+
             return (
               <Card className="max-w-lg space-y-4">
                 <CardLabel>Calendly integration</CardLabel>
@@ -78,5 +73,73 @@ export function AdminSettingsPage() {
         </Tabs>
       </PageBody>
     </>
+  )
+}
+
+/** Live billing rates + the "charge for real" master switch (config/billing). */
+function BillingConfigCard() {
+  const { config, loading, save } = useBillingConfig()
+  const [subscription, setSubscription] = useState('25')
+  const [perBooking, setPerBooking] = useState('1')
+  const [enabled, setEnabled] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    setSubscription((config.subscriptionCents / 100).toString())
+    setPerBooking((config.perBookingCents / 100).toString())
+    setEnabled(config.enabled)
+  }, [config])
+
+  async function onSave() {
+    setBusy(true)
+    setSaved(false)
+    try {
+      await save({
+        subscriptionCents: Math.round(parseFloat(subscription || '0') * 100),
+        perBookingCents: Math.round(parseFloat(perBooking || '0') * 100),
+        enabled,
+      })
+      setSaved(true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="max-w-lg space-y-4">
+      <CardLabel>Billing configuration</CardLabel>
+      <Input
+        label="Flat subscription per quarter ($)"
+        type="number"
+        value={subscription}
+        onChange={(e) => setSubscription(e.target.value)}
+        disabled={loading}
+      />
+      <Input
+        label="Per-booking fee ($)"
+        type="number"
+        value={perBooking}
+        onChange={(e) => setPerBooking(e.target.value)}
+        disabled={loading}
+      />
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => setEnabled(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded accent-ll-sage"
+        />
+        <span>
+          <span className="font-semibold">Charge families for real</span>
+          <span className="block text-ll-warm-gray">
+            When off, quarterly billing dry-runs: it computes totals and generates invoices but
+            never charges a card. Turn on only when you’re ready to bill.
+          </span>
+        </span>
+      </label>
+      {saved && <p className="text-sm font-semibold text-ll-sage-deep">Saved.</p>}
+      <Button onClick={onSave} loading={busy} disabled={loading}>Save</Button>
+    </Card>
   )
 }

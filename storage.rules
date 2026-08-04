@@ -30,7 +30,13 @@ service firebase.storage {
       allow delete: if isOwner(userId);
     }
 
-    // Invoices (PDFs) — written by admin/billing only; nothing client-writable here.
+    // Invoices (PDFs) at invoices/{familyId}/{invoiceId}.pdf — written by the billing
+    // Cloud Function (admin SDK, bypasses these rules). A family may READ its own
+    // invoices; no client writes ever.
+    match /invoices/{familyId}/{fileName} {
+      allow read: if isOwner(familyId);
+      allow write: if false;
+    }
     match /invoices/{allPaths=**} {
       allow read, write: if false;
     }

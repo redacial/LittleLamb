@@ -1,4 +1,4 @@
-import { useAllBookings, useUsersByRole } from '../../hooks/useAdmin'
+import { useAllBookings, useUsersByRole, useBillingAlerts } from '../../hooks/useAdmin'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Tabs } from '../../components/Tabs'
 import { Card, CardLabel, Button } from '../../components/ui'
@@ -14,6 +14,7 @@ const DONATION_RATE = 0.1
 export function AdminBillingPage() {
   const bookings = useAllBookings()
   const { users: families } = useUsersByRole('family')
+  const billingAlerts = useBillingAlerts()
   const activeFamilies = families.filter((f) => f.approved).length
   const confirmed = bookings.filter((b) => b.status === 'confirmed').length
   const revenue = activeFamilies * SUBSCRIPTION + confirmed * PER_BOOKING
@@ -49,10 +50,30 @@ export function AdminBillingPage() {
           {(active) => {
             if (active === 'Overview')
               return (
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <SummaryCard label="Quarterly revenue" value={money(revenue)} accent />
-                  <SummaryCard label="Active families" value={activeFamilies} />
-                  <SummaryCard label="Donation owed (10%)" value={money(donation)} />
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <SummaryCard label="Quarterly revenue" value={money(revenue)} accent />
+                    <SummaryCard label="Active families" value={activeFamilies} />
+                    <SummaryCard label="Donation owed (10%)" value={money(donation)} />
+                  </div>
+                  {billingAlerts.length > 0 && (
+                    <Card className="border-red-200 bg-red-50">
+                      <CardLabel>Failed payments</CardLabel>
+                      <div className="mt-2 space-y-2">
+                        {billingAlerts.map((a) => (
+                          <div key={a.id} className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm">
+                              <span className="font-semibold text-ll-ink">{a.familyName ?? a.familyId}</span>
+                              {typeof a.amountCents === 'number' && (
+                                <span className="text-ll-warm-gray"> — {money(a.amountCents / 100)}</span>
+                              )}
+                            </p>
+                            <Button size="sm" variant="secondary">Retry payment</Button>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
                 </div>
               )
 
