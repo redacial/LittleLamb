@@ -19,7 +19,7 @@ export { onMailCreated } from './email/send'
 export { onWaitlistCreated } from './waitlist/onWaitlist'
 
 // Recurring 48h auto-cancel (Chunk 5)
-// export { recurringAutoCancel } from './scheduled/recurringAutoCancel'
+export { recurringAutoCancel } from './scheduled/recurringAutoCancel'
 
 // Stripe billing (Chunk 6)
 // export { createSetupIntent, savePaymentMethod } from './billing/setupIntent'
