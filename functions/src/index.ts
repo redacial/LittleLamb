@@ -13,7 +13,7 @@
 // the project always builds green). An empty index is itself valid and deployable.
 
 // Email pipeline (Chunk 3)
-// export { onMailCreated } from './email/send'
+export { onMailCreated } from './email/send'
 
 // Waitlist notification (Chunk 4)
 // export { onWaitlistCreated } from './waitlist/onWaitlist'

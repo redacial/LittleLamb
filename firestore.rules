@@ -213,6 +213,34 @@ service cloud.firestore {
         && incoming().createdAt == request.time;   // server timestamp only, no client-set dates
     }
 
+    // ---- mail (outbound email queue) ----------------------------------------
+    // The client's notify() writes a request doc here; a Cloud Function (admin
+    // privileges) reads it, sends via the email provider, and updates status.
+    // Create-only for signed-in users, admin-read-only — like waitlist, it can never
+    // be enumerated, and the envelope is shape-validated so it can't be abused as
+    // arbitrary storage. `event` is an opaque map (the function validates its type);
+    // we require a known event.type string and forbid a client-set status other than
+    // 'pending' or a client-set timestamp. Only the function (admin) may update.
+    match /mail/{mailId} {
+      allow get, list: if isAdmin();
+
+      allow create: if isSignedIn()
+        && incoming().keys().hasOnly(['event', 'status', 'createdAt'])
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().event is map
+        && incoming().event.type is string
+        && incoming().event.type in [
+             'booking_auto_confirmed', 'booking_request_sent', 'booking_request_accepted',
+             'booking_request_declined', 'open_booking_picked_up',
+             'recurring_booking_auto_cancelled', 'same_day_booking_outcome',
+             'booking_cancelled_by_family', 'application_status_updated',
+             'application_approved', 'application_rejected', 'new_message'
+           ];
+
+      allow update, delete: if isAdmin();
+    }
+
     // ---- default deny --------------------------------------------------------
     match /{document=**} {
       allow read, write: if false;

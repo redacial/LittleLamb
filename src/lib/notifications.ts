@@ -8,7 +8,9 @@
 // (Part 19, Section 6, and Section 8). Each variant carries the minimal fields the
 // corresponding email body needs (ids, names, date/time, address, stage, etc.).
 
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import type { NannyStage } from '../types'
+import { db } from './firebase'
 import { buildICalEvent } from './ical'
 
 /** Common booking fields most booking emails reference. */
@@ -85,16 +87,23 @@ export type NotificationEvent =
 const isDev = typeof import.meta !== 'undefined' && Boolean(import.meta.env?.DEV)
 
 /**
- * The single place a real email provider gets wired in. Today it is a no-op that
- * logs in dev. Replace THIS function body with a Resend/SendGrid call once the
- * provider open item (#13) is resolved — nothing else needs to change.
+ * The single place email delivery is wired in. Rather than call a provider from the
+ * client (which would leak the provider key), we enqueue a request doc in the `mail`
+ * collection; the onMailCreated Cloud Function (admin privileges) resolves recipients
+ * and sends via Resend. Rules make `mail` create-only for signed-in users and
+ * admin-read-only, so the queue can't be enumerated. Until Cloud Functions are
+ * deployed (Blaze), the doc is simply written and waits — nothing is lost.
  */
 async function deliver(event: NotificationEvent): Promise<void> {
   if (isDev) {
     // eslint-disable-next-line no-console
-    console.info('[notify:stub]', event.type, event)
+    console.info('[notify]', event.type, event)
   }
-  // No network call is made. Real provider integration goes here.
+  await addDoc(collection(db, 'mail'), {
+    event,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+  })
 }
 
 /**
