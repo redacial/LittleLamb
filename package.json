@@ -20,7 +20,12 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "emulators": "firebase emulators:start --only auth,firestore,storage",
+    "test:functions": "npm --prefix functions test",
+    "test:rules": "npm --prefix firestore-tests test",
+    "test:all": "npm test && npm run test:functions && npm run test:rules",
+    "deploy:functions:staging": "firebase deploy --only functions --project littlelamb-sb-staging",
+    "deploy:functions:prod": "firebase deploy --only functions --project littlelamb-sb",
+    "emulators": "firebase emulators:start --only auth,firestore,storage,functions",
     "seed": "node scripts/seed.mjs",
     "preview:local": "firebase emulators:exec --only auth,firestore,storage \"npm run seed && npm run dev\""
   },

@@ -111,7 +111,60 @@ Status legend: ✅ done · ⚠️ done with a noted follow-up · ⏭️ deferred
 6. **App Check** — wired reCAPTCHA v3 attestation.
 
 ## Outstanding before launch (tracked in Backlog.md)
-- Rules emulator unit tests (Firebase CLI unavailable in build env).
+- ~~Rules emulator unit tests~~ ✅ **Done** — see the backend section below.
 - Firestore scheduled backups / PITR.
 - In-app MFA, privacy policy content, monitoring alerts, incident runbook.
 - Clear dev-only `npm audit` advisories via vite 8 upgrade.
+
+---
+
+## Backend surface audit (Cloud Functions — 2026-08-04)
+
+The `functions/` backend and its client seams were added this session (written, not yet
+deployed — Blaze-gated). Security review of the new surface:
+
+### New/changed authorization (verified by rules unit tests)
+The repo's **first security-rules unit tests** now live in `firestore-tests/`
+(`@firebase/rules-unit-testing`, run against the emulator, 11 cases green). They cover the
+rules added/changed this session:
+- **`mail`** — create-only for signed-in users, restricted to a **known `event.type`**,
+  `status=='pending'`, server timestamp; admin-read-only (cannot be enumerated). Verified:
+  unknown event type denied, non-pending status denied, unauthenticated create denied,
+  non-admin read denied.
+- **`families` billing fields** — `hasPaymentMethod` and `stripeCustomerId` are
+  **server-write-only** (set only by the `savePaymentMethod` function). Verified: a family
+  cannot self-set either field, but can still edit non-billing profile fields.
+- **`invoices`** — family reads only its own; create/update admin-only. Verified.
+- **`billing_alerts`** — admin-only read + write (server-written). Verified.
+- **`storage.rules`** — `invoices/{familyId}/…` readable only by that family; no client writes.
+
+### Function-level authz
+- Callables (`createSetupIntent`, `savePaymentMethod`) reject unauthenticated callers
+  (`request.auth` check → `HttpsError('unauthenticated')`) and scope every write to the
+  caller's own `uid`.
+- The **Stripe webhook** verifies the `stripe-signature` against `STRIPE_WEBHOOK_SECRET`
+  before acting — unsigned/forged events are rejected with 400.
+- All provider keys (Resend, Stripe secret + webhook) are **`defineSecret` secrets**, bound
+  per-function, never in client env or source. Publishable Stripe key is client-public by design.
+- Email sending is server-side only; the client just enqueues a `mail` doc, so no provider
+  key ever reaches the browser.
+
+### Billing safety
+- The quarterly charge is **inert by default**: it only charges when deployed AND
+  `config/billing.enabled === true` (default false → dry-run computes totals + writes
+  invoices but never moves money). Session code targets Stripe **test mode** only.
+
+### npm advisories (new `functions/` package)
+- **Production deps** (`firebase-functions`, `firebase-admin`, `resend`, `stripe`, `pdfkit`):
+  8 *moderate* advisories, all a single transitive `uuid` bounds-check issue pulled in via
+  Google's own `@google-cloud/*`/`teeny-request` chain inside `firebase-admin`. Fixing
+  requires an upstream Google bump; forcing it would downgrade `firebase-admin` to v10
+  (breaking, net-worse). **Wait-for-upstream**, not actionable locally.
+- **Dev-only** (`vitest`/`vite`/`esbuild`): high/critical advisories exist but are test
+  tooling that never ships in the deployed function bundle. Same class as the client's
+  dev-only advisories; cleared by a future vitest/vite major bump.
+
+### Still Blaze-gated (cannot verify until deploy)
+Real card charges, live Resend delivery, live webhook round-trip, and the `onSchedule` crons
+firing. Exercisable in the emulator against Stripe test + a Resend test key; production
+behavior confirmed on Blaze day.
