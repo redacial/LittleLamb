@@ -22,8 +22,6 @@ export { onWaitlistCreated } from './waitlist/onWaitlist'
 export { recurringAutoCancel } from './scheduled/recurringAutoCancel'
 
 // Stripe billing (Chunk 6)
-// export { createSetupIntent, savePaymentMethod } from './billing/setupIntent'
-// export { quarterlyCharge } from './billing/quarterlyCharge'
-// export { stripeWebhook } from './billing/webhook'
-
-export {}
+export { createSetupIntent, savePaymentMethod } from './billing/setupIntent'
+export { quarterlyCharge } from './billing/quarterlyCharge'
+export { stripeWebhook } from './billing/webhook'
