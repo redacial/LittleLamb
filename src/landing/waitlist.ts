@@ -4,11 +4,10 @@
 // Firebase project). Security rules make this collection PUBLIC-CREATE-ONLY / admin-read:
 // anyone can add a signup, nobody but admin can read or list them (see firestore.rules).
 //
-// EMAIL NOTIFICATION (deferred — see session plan / CLAUDE.md BLOCKING open items):
-// When the Little Lamb email + an email provider are chosen and the project is on the Blaze
-// plan, add a Cloud Function that triggers on `onDocumentCreated('waitlist/{id}')` and emails
-// the team. The data is captured here regardless, so wiring the email later loses nothing.
-// >>> EMAIL HOOK: attach the Firestore-trigger Cloud Function to this collection. <<<
+// EMAIL NOTIFICATION: wired. A Cloud Function (functions/src/waitlist/onWaitlist.ts)
+// triggers on `onDocumentCreated('waitlist/{id}')` and emails the team via Resend. It
+// deploys with the rest of the backend once the project is on the Blaze plan; until
+// then submissions are captured here and the email simply waits — nothing is lost.
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { cleanLine, cleanText, isValidEmail, normalizeEmail, cleanPhone } from '../lib/sanitize'

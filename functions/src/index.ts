@@ -16,7 +16,7 @@
 export { onMailCreated } from './email/send'
 
 // Waitlist notification (Chunk 4)
-// export { onWaitlistCreated } from './waitlist/onWaitlist'
+export { onWaitlistCreated } from './waitlist/onWaitlist'
 
 // Recurring 48h auto-cancel (Chunk 5)
 // export { recurringAutoCancel } from './scheduled/recurringAutoCancel'
