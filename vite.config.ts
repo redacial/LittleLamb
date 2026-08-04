@@ -34,6 +34,10 @@ export default defineConfig(() => {
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
       css: false,
+      // Client tests only. The functions/ package has its own Node-environment
+      // Vitest run (npm --prefix functions test) — don't pull its specs into jsdom.
+      include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+      exclude: ['functions/**', 'node_modules/**', 'dist/**', 'dist-landing/**'],
     },
   }
 })

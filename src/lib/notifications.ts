@@ -9,6 +9,7 @@
 // corresponding email body needs (ids, names, date/time, address, stage, etc.).
 
 import type { NannyStage } from '../types'
+import { buildICalEvent } from './ical'
 
 /** Common booking fields most booking emails reference. */
 interface BookingNotificationBase {
@@ -106,19 +107,16 @@ export async function notify(event: NotificationEvent): Promise<void> {
 }
 
 /**
- * STUB — calendar invites are a blocking open item (CLAUDE.md #14: Google Calendar
- * API vs iCal). Returns a documented placeholder instead of generating a real
- * iCal/Google Calendar event. Replace with a real implementation once #14 is
- * resolved; call sites already have the booking data they need.
+ * Generate a real iCal (.ics) calendar invite for a booking. Open item #14 is
+ * resolved in favor of iCal (Google/Apple/Outlook compatible). The email Cloud
+ * Function attaches the same output to confirmation emails; this client entry point
+ * exists so a "download to calendar" affordance can offer the file directly.
+ *
+ * @param method REQUEST for a confirmed/updated booking, CANCEL to withdraw it.
  */
-export function calendarInvite(booking: BookingNotificationBase): {
-  stub: true
-  reason: string
-  booking: BookingNotificationBase
-} {
-  return {
-    stub: true,
-    reason: 'Calendar invite generation is a blocking open item (CLAUDE.md #14: Google Calendar API vs iCal).',
-    booking,
-  }
+export function calendarInvite(
+  booking: BookingNotificationBase,
+  method: 'REQUEST' | 'CANCEL' = 'REQUEST',
+): string {
+  return buildICalEvent(booking, { method, organizer: 'hello@littlelambnannies.com' })
 }
