@@ -6,6 +6,24 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs20",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.log",
+        "**/*.test.ts",
+        "vitest.config.ts"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
   "hosting": [
     {
       "target": "landing",
@@ -68,6 +86,7 @@
     "auth": { "port": 9099 },
     "firestore": { "port": 8080 },
     "storage": { "port": 9199 },
+    "functions": { "port": 5001 },
     "ui": { "enabled": true }
   }
 }
