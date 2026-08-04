@@ -25,3 +25,7 @@ was built, and what's left. This is the human-readable memory of the project's e
 - `2026-07-20-landing-page-and-firebase.md` — Standalone pre-launch waitlist landing page built,
   moved repo out of iCloud, two Firebase projects (prod + staging) created, landing deployed &
   verified live on both. Custom domain blocked on Wix account access.
+- `2026-08-04-backend-around-blaze.md` — Wrote the entire Cloud Functions backend (email via Resend,
+  real iCal invites, 48h recurring auto-cancel, Stripe billing) so it compiles + unit-tests green
+  but is NOT deployed (Blaze-gated). Resolved open items #13 (Resend) + #14 (iCal). First rules unit
+  tests added. 73 tests green across 3 suites. Nothing deployed — waits on Blaze.

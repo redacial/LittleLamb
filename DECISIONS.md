@@ -147,3 +147,31 @@ Context: `DESIGN_SYSTEM.md` was locked at v1.0 with a **new** "Premium Playful" 
 
 ### D34. Design tooling reconciled: ux-ui-mastery present, sumi cloned
 **Why:** CLAUDE.md references a "design sweep" of `/grade /fix /style /qa /a11y` commands attributed to ux-ui-mastery + chef-sumi. In reality ux-ui-mastery (already installed) exposes different command names (`/design-review`, `/accessibility-check`, `/ai-ux-audit`…), and sumi was not installed at all. Cloned sumi from `github.com/phazurlabs/sumi` (it provides the actual `/grade /fix /style /qa /a11y /audit /roast /tokens` verbs). Plugin slash-commands only register at session startup, so the sweep is run by reading the command markdown directly this session; sumi `/grade` requires real screenshots, so the audit runs at the end against rendered screens.
+
+---
+
+## Phase 8 — Backend written "around Blaze" (2026-08-04)
+
+### D35. Backend written but not deployed; deploy is Blaze-gated
+**Why:** Cloud Functions and any outbound call (email/Stripe) require the Firebase **Blaze** plan, which David enables separately. Rather than wait, the whole `functions/` backend was written so it compiles + unit-tests green now and only needs `firebase deploy` + secrets on Blaze day. Every stub the previous phases left as a clean seam (D11/D26/D27) is now implemented behind that seam. Nothing user-facing shipped; the live landing site is unchanged.
+
+### D36. Open items #13 → Resend and #14 → iCal
+**Why:** These were flagged BLOCKING (no provider could be wired). Choosing them is what unblocked the backend. Email delivery is **server-side**: the client `notify()` (unchanged signature + call sites) now writes a `mail/{id}` doc, and `onMailCreated` sends via Resend — so the provider key never reaches the browser (the TIMELINE constraint). iCal is a hand-rolled RFC 5545 generator (no dependency) reused by both the client `calendarInvite()` and the email function.
+
+### D37. Shared code copied into `functions/src/shared/`, not cross-imported
+**Why:** The client compiles under Vite (bundler resolution, `import.meta`, DOM libs); `functions/` compiles CommonJS for Node. Cross-importing pulls incompatible tsconfig settings. The three shared pieces (the `NotificationEvent` union, pure `findRecurringConflicts`, the pure iCal generator) are side-effect-free, so they're **copied** and guarded by `notifications-events.test.ts` (diffs the copy's event-type list against the client source) so drift fails CI. Update the copy if the client original changes.
+
+### D38. Email persists the client-computed event (doc-then-trigger), not server re-derivation
+**Why:** At each call site the client already computes the exact discriminated-union event + payload. Persisting THAT (option a) is less code and a single source of truth vs. re-deriving events from Firestore diffs server-side (option b), which would duplicate the transition logic and can't reconstruct events that aren't 1:1 with a single write. `deliver()` writing a `mail` doc is the one-file change the D26 stub promised.
+
+### D39. Stripe written but inert; billing gated behind `config/billing.enabled`
+**Why:** The billing engine must exist but must not move money before David is ready. Two gates: (1) nothing charges until deployed on Blaze; (2) `quarterlyCharge` dry-runs (computes totals + writes invoices, skips the real PaymentIntent) unless `config/billing.enabled === true` (default false, flipped from the AdminSettings Billing tab). Session code uses Stripe **test mode** only. Card capture uses Elements (card data browser→Stripe, out of PCI scope); `hasPaymentMethod`/`stripeCustomerId` became **server-write-only** (rule-enforced + tested).
+
+### D40. Client Stripe degrades gracefully when no publishable key is set
+**Why:** Real Elements capture needs `VITE_STRIPE_PUBLISHABLE_KEY` + deployed functions. Without the key (today / local dev), the family wizard shows a "card at launch" fallback that still lets onboarding complete, so the app stays runnable while the backend is stood up. Real capture activates automatically once the key is present.
+
+### D41. First security-rules unit tests; isolated `firestore-tests/` package
+**Why:** Backlog flagged rules emulator tests as the top outstanding security gap. Added `@firebase/rules-unit-testing` (11 cases, emulator) covering every rule changed this session. It peers `firebase@11` while the client is on `firebase@12`, and `functions/` needs `firebase-admin@13` — so `functions/` and `firestore-tests/` are **isolated packages** (own node_modules) to avoid peer-dep conflicts rather than forcing incompatible resolutions into the client tree.
+
+### D42. npm advisories: functions prod = one upstream `uuid`; dev-only otherwise
+**Why:** The new `functions/` prod deps show 8 *moderate* advisories, all a single transitive `uuid` bounds-check issue pulled via Google's `@google-cloud/*`/`teeny-request` inside `firebase-admin`. Fixing needs an upstream Google bump; forcing it downgrades `firebase-admin` to v10 (breaking, net-worse). High/critical advisories are all dev-only `vitest`/`vite`/`esbuild` that never ship in the deployed bundle. Documented in `docs/security-audit.md` rather than force-breaking the toolchain — same posture as D-series client advisories.
