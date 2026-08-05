@@ -29,3 +29,7 @@ was built, and what's left. This is the human-readable memory of the project's e
   real iCal invites, 48h recurring auto-cancel, Stripe billing) so it compiles + unit-tests green
   but is NOT deployed (Blaze-gated). Resolved open items #13 (Resend) + #14 (iCal). First rules unit
   tests added. 73 tests green across 3 suites. Nothing deployed — waits on Blaze.
+- `2026-08-05-events-wired-messaging-removed.md` — Fired the 3 application notification events at
+  their call sites (D43). Then, per a product veto, removed in-app messaging entirely (D44) — pages,
+  hooks, routes, nav, types, rules, index, the new_message event + tests, dashboard cards. Left the
+  nanny-cancellation channel as an open decision. Green: 28 + 33 + 11 tests.

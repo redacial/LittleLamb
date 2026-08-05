@@ -57,7 +57,7 @@ reflect how fast the blocking dependencies land and how many of Lucy's decisions
 
 - Stand up the `functions/` Cloud Functions project (TypeScript, same repo).
 - Wire the **real email provider** into `notifications.ts` `deliver()` — turn on every already-defined
-  event (approvals, booking confirmations, requests, rejections, message notifications).
+  event (approvals, booking confirmations, requests, rejections). [in-app messaging removed 2026-08-05]
 - Move email sending server-side (Firestore-triggered functions) so the client never holds provider keys.
 - Deploy the **scheduled function** that runs the already-written `findRecurringConflicts()` — 48h
   recurring auto-cancel + its emails go live.
