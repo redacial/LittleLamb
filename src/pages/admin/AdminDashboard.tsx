@@ -117,16 +117,16 @@ export function AdminDashboard() {
             )}
           </Section>
 
-          {/* 3. Nanny cancellation requests — surfaced via Messages in this build. */}
+          {/* 3. Nanny cancellation requests. The request channel is an open business
+              decision (handled off-platform for now — in-app messaging was removed). */}
           <Section title="Nanny cancellation requests">
-            <Empty>
-              Nannies request cancellations through Messages. Open the inbox to review and action them.
-            </Empty>
+            <Empty>No cancellation requests to review.</Empty>
           </Section>
 
           {/* 4. Pending nanny applications */}
           <ApplicationList
             title="Pending nanny applications"
+            role="nanny"
             items={pendingNannies}
             onApprove={approve}
             onReject={reject}
@@ -135,6 +135,7 @@ export function AdminDashboard() {
           {/* 5. Pending family applications */}
           <ApplicationList
             title="Pending family applications"
+            role="family"
             items={pendingFamilies}
             onApprove={approve}
             onReject={reject}
@@ -177,14 +178,16 @@ function Section({
 
 function ApplicationList({
   title,
+  role,
   items,
   onApprove,
   onReject,
 }: {
   title: string
+  role: 'family' | 'nanny'
   items: { uid: string; fullName: string; email: string }[]
-  onApprove: (uid: string) => void
-  onReject: (uid: string) => void
+  onApprove: (uid: string, fullName: string, role: 'family' | 'nanny') => void
+  onReject: (uid: string, fullName: string, role: 'family' | 'nanny') => void
 }) {
   const btnHover = useButtonHover()
   return (
@@ -205,10 +208,10 @@ function ApplicationList({
               </div>
               <div className="flex gap-2">
                 <motion.div {...btnHover} className="inline-block">
-                  <Button size="sm" onClick={() => onApprove(a.uid)}>Approve</Button>
+                  <Button size="sm" onClick={() => onApprove(a.uid, a.fullName, role)}>Approve</Button>
                 </motion.div>
                 <motion.div {...btnHover} className="inline-block">
-                  <Button size="sm" variant="secondary" onClick={() => onReject(a.uid)}>Reject</Button>
+                  <Button size="sm" variant="secondary" onClick={() => onReject(a.uid, a.fullName, role)}>Reject</Button>
                 </motion.div>
               </div>
             </Card>

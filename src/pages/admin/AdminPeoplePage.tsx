@@ -72,9 +72,9 @@ export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'famil
                 key={u.uid}
                 user={u}
                 role={role}
-                onApprove={() => approve(u.uid)}
-                onReject={() => reject(u.uid)}
-                onAdvance={(s) => advanceStage(u.uid, s)}
+                onApprove={() => approve(u.uid, u.fullName, role)}
+                onReject={() => reject(u.uid, u.fullName, role)}
+                onAdvance={(s) => advanceStage(u.uid, s, u.fullName)}
               />
             ))}
           </div>

@@ -11,7 +11,13 @@ import {
   serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { notify, type NotificationEvent } from '../lib/notifications'
 import type { UserDoc, Role, NannyStage } from '../types'
+
+/** Fire-and-forget: a notification failure must never reject an admin write. */
+function fireNotify(event: NotificationEvent) {
+  notify(event).catch(() => {})
+}
 
 /** Billing rates + enable flag, stored in config/billing (dollars in the UI, cents on the server). */
 export interface BillingConfig {
@@ -130,24 +136,31 @@ export function useAllBookings() {
 }
 
 export function useAdminActions() {
-  const approve = useCallback(async (uid: string) => {
+  // fullName + role come from the UserDoc the caller (AdminPeoplePage) already holds, so
+  // the notification payload is built without an extra read. role is only 'family' | 'nanny'
+  // here (admins are never approved/rejected through this UI).
+  const approve = useCallback(async (uid: string, fullName: string, role: 'family' | 'nanny') => {
     await updateDoc(doc(db, 'users', uid), {
       approved: true,
       status: 'approved',
       updatedAt: serverTimestamp(),
     })
+    fireNotify({ type: 'application_approved', to: role, userId: uid, fullName })
   }, [])
 
-  const reject = useCallback(async (uid: string) => {
+  const reject = useCallback(async (uid: string, fullName: string, role: 'family' | 'nanny') => {
     await updateDoc(doc(db, 'users', uid), {
       approved: false,
       status: 'rejected',
       updatedAt: serverTimestamp(),
     })
+    fireNotify({ type: 'application_rejected', to: role, userId: uid, fullName })
   }, [])
 
-  const advanceStage = useCallback(async (uid: string, stage: NannyStage) => {
+  const advanceStage = useCallback(async (uid: string, stage: NannyStage, fullName: string) => {
     await updateDoc(doc(db, 'users', uid), { stage, updatedAt: serverTimestamp() })
+    // Only nannies have application stages.
+    fireNotify({ type: 'application_status_updated', to: 'nanny', userId: uid, fullName, stage })
   }, [])
 
   return { approve, reject, advanceStage }
