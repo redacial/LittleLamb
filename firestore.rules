@@ -149,29 +149,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ---- conversations + messages -------------------------------------------
-    // Only participants (or admin) may read a conversation or its messages. Messages are a
-    // subcollection; membership is checked against the parent conversation doc.
-    match /conversations/{convId} {
-      function convParticipants() {
-        return get(/databases/$(database)/documents/conversations/$(convId)).data.participantIds;
-      }
-      allow get, list: if isSignedIn() && (uid() in existing().participantIds || isAdmin());
-      allow create: if isSignedIn() && (uid() in incoming().participantIds || isAdmin());
-      allow update: if isSignedIn() && (uid() in existing().participantIds || isAdmin());
-      allow delete: if isAdmin();
-
-      match /messages/{msgId} {
-        allow get, list: if isSignedIn() && (uid() in convParticipants() || isAdmin());
-        allow create: if isSignedIn() && incoming().senderId == uid()
-          && (uid() in convParticipants() || isAdmin())
-          && strMax('body', 4000)
-          // Only admins may attach the internal Lucy/David attribution tag.
-          && (!('repliedBy' in incoming()) || incoming().repliedBy == null || isAdmin());
-        allow update, delete: if isAdmin();
-      }
-    }
-
     // ---- invoices ------------------------------------------------------------
     // Family reads its own invoices; only admin/billing system writes them.
     match /invoices/{invoiceId} {
@@ -264,7 +241,7 @@ service cloud.firestore {
              'booking_request_declined', 'open_booking_picked_up',
              'recurring_booking_auto_cancelled', 'same_day_booking_outcome',
              'booking_cancelled_by_family', 'application_status_updated',
-             'application_approved', 'application_rejected', 'new_message'
+             'application_approved', 'application_rejected'
            ];
 
       allow update, delete: if isAdmin();

@@ -74,15 +74,6 @@ export type NotificationEvent =
       userId: string
       fullName: string
     }
-  // New message received — recipient | message notification
-  | {
-      type: 'new_message'
-      to: 'recipient'
-      conversationId: string
-      recipientId: string
-      senderName: string
-      preview: string
-    }
 
 const isDev = typeof import.meta !== 'undefined' && Boolean(import.meta.env?.DEV)
 

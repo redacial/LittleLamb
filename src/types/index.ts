@@ -117,28 +117,6 @@ export interface Booking {
   createdAt: Timestamp | null
 }
 
-export interface Message {
-  id: string
-  conversationId: string
-  senderId: string
-  senderRole: Role
-  body: string
-  createdAt: Timestamp | null
-  /** Admin-only internal attribution — stripped before non-admins ever see it via rules. */
-  repliedBy?: 'Lucy' | 'David' | null
-}
-
-export interface Conversation {
-  id: string
-  participantIds: string[]
-  participantNames: Record<string, string>
-  lastMessage: string
-  lastMessageAt: Timestamp | null
-  status: 'unread' | 'read' | 'replied'
-  /** family<->nanny conversations require a completed booking to initiate. */
-  kind: 'family_admin' | 'family_nanny' | 'nanny_admin'
-}
-
 export interface Invoice {
   id: string
   familyId: string

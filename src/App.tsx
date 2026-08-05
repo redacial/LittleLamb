@@ -23,7 +23,6 @@ import { NanniesDirectory } from './pages/shared/NanniesDirectory'
 import { NannyProfilePage } from './pages/shared/NannyProfilePage'
 import { BookingsPage } from './pages/shared/BookingsPage'
 import { PoliciesPage } from './pages/shared/PoliciesPage'
-import { MessagesPage } from './pages/shared/MessagesPage'
 import { FamilyProfilePage } from './pages/family/FamilyProfilePage'
 import { FamilyBillingPage } from './pages/family/FamilyBillingPage'
 import { FamilyCalendarPage } from './pages/family/FamilyCalendarPage'
@@ -70,7 +69,6 @@ export function App() {
                 <Route path="/family/nannies/:id" element={<NannyProfilePage />} />
                 <Route path="/family/profile" element={<FamilyProfilePage />} />
                 <Route path="/family/billing" element={<FamilyBillingPage />} />
-                <Route path="/family/messages" element={<MessagesPage />} />
                 <Route path="/family/policies" element={<PoliciesPage role="family" />} />
               </Route>
             </Route>
@@ -88,7 +86,6 @@ export function App() {
                 <Route path="/nanny/nannies" element={<NanniesDirectory />} />
                 <Route path="/nanny/nannies/:id" element={<NannyProfilePage />} />
                 <Route path="/nanny/profile" element={<NannyOwnProfilePage />} />
-                <Route path="/nanny/messages" element={<MessagesPage />} />
                 <Route path="/nanny/policies" element={<PoliciesPage role="nanny" />} />
               </Route>
             </Route>
@@ -103,7 +100,6 @@ export function App() {
               <Route path="/admin/families" element={<AdminPeoplePage role="family" />} />
               <Route path="/admin/bookings" element={<AdminBookingsPage />} />
               <Route path="/admin/billing" element={<AdminBillingPage />} />
-              <Route path="/admin/messages" element={<MessagesPage />} />
               <Route path="/admin/settings" element={<AdminSettingsPage />} />
             </Route>
           </Route>

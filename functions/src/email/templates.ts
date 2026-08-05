@@ -200,18 +200,6 @@ export function renderEmail(event: NotificationEvent): RenderedEmail {
         ),
       }
 
-    case 'new_message':
-      return {
-        subject: `New message from ${event.senderName}`,
-        html: layout(
-          'You have a new message',
-          `<p><strong>${esc(event.senderName)}</strong> sent you a message:</p>` +
-            `<blockquote style="border-left:3px solid #cdd;padding-left:12px;color:#555">${esc(
-              event.preview,
-            )}</blockquote><p>Log in to reply.</p>`,
-        ),
-      }
-
     default: {
       // Exhaustiveness guard — adding a variant without a case fails to compile.
       const _never: never = event

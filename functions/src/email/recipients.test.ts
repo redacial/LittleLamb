@@ -52,14 +52,6 @@ describe('resolveRecipients', () => {
     expect(await resolveRecipients(reader, ev)).toEqual(['applicant@x.com'])
   })
 
-  it('routes new_message by recipientId', async () => {
-    const reader = fakeReader({ 'users/r1': { email: 'r@x.com' } })
-    const ev: NotificationEvent = {
-      type: 'new_message', to: 'recipient', conversationId: 'c', recipientId: 'r1', senderName: 'S', preview: 'p',
-    }
-    expect(await resolveRecipients(reader, ev)).toEqual(['r@x.com'])
-  })
-
   it('returns [] when nothing resolves (caller skips, does not crash)', async () => {
     const reader = fakeReader({})
     const to = await resolveRecipients(reader, { type: 'booking_cancelled_by_family', to: 'nanny', ...booking })

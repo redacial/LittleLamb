@@ -10,7 +10,6 @@ import { Button, Card, CardLabel, StatusPill } from '../../components/ui'
 import { Grain, Sparkle } from '../../components/theme'
 import { useButtonHover } from '../../lib/motion'
 import { formatDate, formatTimeRange } from '../../lib/format'
-import { cn } from '../../lib/cn'
 import type { Booking } from '../../types'
 
 function isUpcoming(b: Booking) {
@@ -155,23 +154,6 @@ export function FamilyDashboard() {
               </ul>
             )}
           </Card>
-
-          <Card interactive tone="peri" as="section">
-            <CardLabel>Messages</CardLabel>
-            <p className="mt-2 text-sm text-ll-warm-gray">
-              Your latest conversations with the Little Lamb team and your nannies.
-            </p>
-            <Link
-              to="/family/messages"
-              className={cn(
-                'mt-3 inline-flex items-center gap-1 rounded-full font-medium text-ll-peri-ink',
-                'underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ll-peri focus-visible:ring-offset-2 focus-visible:ring-offset-ll-cream-dark',
-              )}
-            >
-              Open messages
-              <ArrowRight />
-            </Link>
-          </Card>
         </div>
       </PageBody>
 
@@ -183,13 +165,5 @@ export function FamilyDashboard() {
         authorRole="family"
       />
     </>
-  )
-}
-
-function ArrowRight() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   )
 }

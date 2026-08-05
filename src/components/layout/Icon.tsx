@@ -7,7 +7,6 @@ const PATHS: Record<IconKey, string> = {
   nannies: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0',
   profile: 'M12 12a4 4 0 100-8 4 4 0 000 8zM5 21a7 7 0 0114 0',
   billing: 'M3 7h18v12H3zM3 11h18M7 15h4',
-  messages: 'M4 5h16v11H9l-4 4V16H4z',
   policies: 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h6',
   settings: 'M12 9a3 3 0 100 6 3 3 0 000-6zM4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18',
   analytics: 'M4 20V10M10 20V4M16 20v-7M22 20H2',

@@ -59,9 +59,6 @@ export async function resolveRecipients(
     case 'application_rejected':
       add([await userEmail(reader, event.userId)])
       break
-    case 'new_message':
-      add([await userEmail(reader, event.recipientId)])
-      break
     default:
       // All remaining variants are booking events with a family/nanny `to`.
       if (event.to === 'family+nanny' || event.to === 'family') {

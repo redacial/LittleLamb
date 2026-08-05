@@ -64,14 +64,6 @@ export type NotificationEvent =
       userId: string
       fullName: string
     }
-  | {
-      type: 'new_message'
-      to: 'recipient'
-      conversationId: string
-      recipientId: string
-      senderName: string
-      preview: string
-    }
 
 /** Every event `type` value, in declaration order. Drift guard — see the test. */
 export const NOTIFICATION_EVENT_TYPES = [
@@ -86,7 +78,6 @@ export const NOTIFICATION_EVENT_TYPES = [
   'application_status_updated',
   'application_approved',
   'application_rejected',
-  'new_message',
 ] as const
 
 export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number]

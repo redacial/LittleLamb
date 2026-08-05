@@ -16,7 +16,6 @@ export type IconKey =
   | 'nannies'
   | 'profile'
   | 'billing'
-  | 'messages'
   | 'policies'
   | 'settings'
   | 'analytics'
@@ -29,7 +28,6 @@ export const FAMILY_NAV: NavItem[] = [
   { to: '/family/nannies', label: 'Our Nannies', icon: 'nannies' },
   { to: '/family/profile', label: 'My Profile', icon: 'profile' },
   { to: '/family/billing', label: 'Billing', icon: 'billing' },
-  { to: '/family/messages', label: 'Messages', icon: 'messages' },
   { to: '/family/policies', label: 'Policies', icon: 'policies' },
 ]
 
@@ -39,7 +37,6 @@ export const NANNY_NAV: NavItem[] = [
   { to: '/nanny/bookings', label: 'Bookings', icon: 'bookings' },
   { to: '/nanny/nannies', label: 'Our Nannies', icon: 'nannies' },
   { to: '/nanny/profile', label: 'My Profile', icon: 'profile' },
-  { to: '/nanny/messages', label: 'Messages', icon: 'messages' },
   { to: '/nanny/policies', label: 'Policies', icon: 'policies' },
   // No Billing — nannies are never charged (spec).
 ]
@@ -51,7 +48,6 @@ export const ADMIN_NAV: NavItem[] = [
   { to: '/admin/families', label: 'Families', icon: 'families' },
   { to: '/admin/bookings', label: 'Bookings', icon: 'bookings' },
   { to: '/admin/billing', label: 'Billing & Accounting', icon: 'billing' },
-  { to: '/admin/messages', label: 'Messages', icon: 'messages' },
   { to: '/admin/settings', label: 'Settings', icon: 'settings' },
   // No My Profile — admin has no public-facing profile (spec).
 ]

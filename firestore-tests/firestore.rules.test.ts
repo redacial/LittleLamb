@@ -73,7 +73,7 @@ describe('mail collection', () => {
   it('rejects a non-pending status on create', async () => {
     await assertFails(
       setDoc(doc(as(FAM), 'mail', 'm3'), {
-        event: { type: 'new_message' },
+        event: { type: 'application_approved' },
         status: 'sent',
         createdAt: serverTimestamp(),
       }),
@@ -83,7 +83,7 @@ describe('mail collection', () => {
   it('an unauthenticated user cannot create mail', async () => {
     await assertFails(
       setDoc(doc(as(null), 'mail', 'm4'), {
-        event: { type: 'new_message' },
+        event: { type: 'application_approved' },
         status: 'pending',
         createdAt: serverTimestamp(),
       }),
@@ -92,7 +92,7 @@ describe('mail collection', () => {
 
   it('a non-admin cannot read mail', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'mail', 'seed'), { event: { type: 'new_message' }, status: 'pending' })
+      await setDoc(doc(ctx.firestore(), 'mail', 'seed'), { event: { type: 'application_approved' }, status: 'pending' })
     })
     await assertFails(getDoc(doc(as(FAM), 'mail', 'seed')))
     await assertSucceeds(getDoc(doc(as(ADMIN), 'mail', 'seed')))

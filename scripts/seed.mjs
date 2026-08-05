@@ -220,37 +220,6 @@ async function seed() {
     await db.collection('bookings').doc(id).set({ ...data, createdAt: now })
   }
 
-  // ---- conversations + messages ---------------------------------------------------------
-  // Family <-> Admin thread.
-  const convFamilyAdmin = 'seed-conv-family-admin'
-  await db.collection('conversations').doc(convFamilyAdmin).set({
-    participantIds: [FAMILY_UID, ADMIN_UID],
-    participantNames: { [FAMILY_UID]: 'The Hartley Family', [ADMIN_UID]: 'Admin Team' },
-    lastMessage: 'Welcome to Little Lamb! Let us know if you need anything.',
-    lastMessageAt: now,
-    status: 'read',
-    kind: 'family_admin',
-  })
-  await db.collection('conversations').doc(convFamilyAdmin).collection('messages').add({
-    conversationId: convFamilyAdmin, senderId: ADMIN_UID, senderRole: 'admin',
-    body: 'Welcome to Little Lamb! Let us know if you need anything.', repliedBy: 'Lucy', createdAt: now,
-  })
-
-  // Nanny <-> Admin thread.
-  const convNannyAdmin = 'seed-conv-nanny-admin'
-  await db.collection('conversations').doc(convNannyAdmin).set({
-    participantIds: [NANNY_UID, ADMIN_UID],
-    participantNames: { [NANNY_UID]: 'Maya Brooks', [ADMIN_UID]: 'Admin Team' },
-    lastMessage: 'Your profile looks great — you are all set to take bookings.',
-    lastMessageAt: now,
-    status: 'replied',
-    kind: 'nanny_admin',
-  })
-  await db.collection('conversations').doc(convNannyAdmin).collection('messages').add({
-    conversationId: convNannyAdmin, senderId: ADMIN_UID, senderRole: 'admin',
-    body: 'Your profile looks great — you are all set to take bookings.', repliedBy: 'David', createdAt: now,
-  })
-
   // ---- invoices (family billing page + admin billing) -----------------------------------
   await db.collection('invoices').doc('seed-invoice-q1').set({
     familyId: FAMILY_UID, familyName: 'The Hartley Family',
@@ -282,7 +251,7 @@ async function seed() {
   console.log('  Family : family@littlelamb.test')
   console.log('  Nanny  : nanny@littlelamb.test')
   console.log('  Admin  : admin@littlelamb.test')
-  console.log('\nPlus 2 extra nannies, 2 pending applicants, and sample bookings/messages/invoices.')
+  console.log('\nPlus 2 extra nannies, 2 pending applicants, and sample bookings/invoices.')
 }
 
 seed()

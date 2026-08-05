@@ -175,3 +175,13 @@ Context: `DESIGN_SYSTEM.md` was locked at v1.0 with a **new** "Premium Playful" 
 
 ### D42. npm advisories: functions prod = one upstream `uuid`; dev-only otherwise
 **Why:** The new `functions/` prod deps show 8 *moderate* advisories, all a single transitive `uuid` bounds-check issue pulled via Google's `@google-cloud/*`/`teeny-request` inside `firebase-admin`. Fixing needs an upstream Google bump; forcing it downgrades `firebase-admin` to v10 (breaking, net-worse). High/critical advisories are all dev-only `vitest`/`vite`/`esbuild` that never ship in the deployed bundle. Documented in `docs/security-audit.md` rather than force-breaking the toolchain — same posture as D-series client advisories.
+
+---
+
+## Phase 9 — Event wiring + in-app messaging removed (2026-08-05)
+
+### D43. Fired the 3 application notification events
+**Why:** The email backend handled all events, but `application_approved` / `application_rejected` / `application_status_updated` had no client call site — so once deployed, approving a nanny would email nothing. `useAdminActions` `approve`/`reject`/`advanceStage` now fire them after the write (fire-and-forget, per the D26/`useBookings` pattern). The needed `fullName`/`role` were already held by the caller (`AdminPeoplePage` row / `AdminDashboard` `ApplicationList`), so the signatures were widened rather than adding a Firestore read.
+
+### D44. In-app messaging removed entirely (product veto)
+**Why:** The client vetoed in-app messaging. Removed the whole feature, not just its notification: `MessagesPage`, `useMessages`, the `/messages` routes + sidebar items (all 3 roles), the `Message`/`Conversation` types, the `conversations`+`messages` Firestore rules block + the `conversations` composite index, the `new_message` `NotificationEvent` variant (client + functions copy + template + recipient routing + their tests), the dashboard "Messages" preview cards (family + nanny, with their now-orphaned `ArrowRight`/`cn` imports), and the messaging references in the seed script. The drift-guard count dropped 12→11 events. **Reverses** the messaging parts of D26 (the `new_message` event) and D-series message rules (firestore.rules item f). Note: this leaves the **nanny cancellation request channel** an open business decision — the spec routed it through admin messaging (now gone); handled off-platform until Lucy decides. The `mail` outbound-email collection is unaffected — that is not user messaging. CLAUDE.md still contains the old messaging spec (Part 12, §4.8/4.9, admin §9, nav lists); it is left as historical spec rather than rewritten, superseded by this decision.

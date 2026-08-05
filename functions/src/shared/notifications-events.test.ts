@@ -12,9 +12,9 @@ import {
 // source-text comparison against the client file (catches added/renamed variants).
 
 describe('NotificationEvent copy', () => {
-  it('lists all 12 event types with no duplicates', () => {
-    expect(NOTIFICATION_EVENT_TYPES).toHaveLength(12)
-    expect(new Set(NOTIFICATION_EVENT_TYPES).size).toBe(12)
+  it('lists all 11 event types with no duplicates', () => {
+    expect(NOTIFICATION_EVENT_TYPES).toHaveLength(11)
+    expect(new Set(NOTIFICATION_EVENT_TYPES).size).toBe(11)
   })
 
   it('NOTIFICATION_EVENT_TYPES is exhaustive over the union (compile-time)', () => {
@@ -22,12 +22,10 @@ describe('NotificationEvent copy', () => {
     // assignment stops compiling — the real guard is the type equality below.
     const _fromArray: NotificationEventType = NOTIFICATION_EVENT_TYPES[0]
     const sample: NotificationEvent = {
-      type: 'new_message',
-      to: 'recipient',
-      conversationId: 'c',
-      recipientId: 'r',
-      senderName: 's',
-      preview: 'p',
+      type: 'application_approved',
+      to: 'nanny',
+      userId: 'u',
+      fullName: 'Ada',
     }
     const t: NotificationEventType = sample.type
     expect(NOTIFICATION_EVENT_TYPES).toContain(t)
