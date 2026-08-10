@@ -3,6 +3,13 @@ name: CI
 # Runs the full test suite on every push and PR. Until this existed, 111 green tests
 # across three suites ran only when someone remembered to run them locally — and
 # DECISIONS.md D37 already claimed "drift fails CI", which was not true of anything.
+#
+# STATUS: every step below was verified LOCALLY, including that each gate actually goes
+# RED — a broken assertion fails `npm test` (exit 1), a type error fails `npm run
+# typecheck` (exit 2) and `functions run build` (exit 1). What has NOT happened yet is a
+# real run on GitHub Actions: this file has never executed on a runner. Watch the first
+# push, since runner-only differences (emulator jar download, Java setup, npm cache
+# behaviour across three lockfiles) can only surface there.
 on:
   push:
     branches: ['**']

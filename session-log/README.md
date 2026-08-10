@@ -39,3 +39,10 @@ was built, and what's left. This is the human-readable memory of the project's e
   ErrorBoundary and made failed admin reads distinguishable from empty queues (D49/D50). Shipped
   **pay-rate ranges** as scheduling business logic — cents, soft-downgrade on mismatch, snapshot on
   the booking (D51/D52). Green: 58 + 34 + 19 tests. Still nothing deployed — Blaze-gated.
+- `2026-08-11-operational-hardening.md` — CI (first ever, D53), App Check enforced on
+  callables (D54), per-user mail quota metered inside the claim transaction (D55), bundle
+  work (D56 — landing first-paint **−51%**, from a dynamic Firebase import rather than the
+  code splitting), and capped admin listeners that announce truncation (D58). Two plan
+  assumptions proved wrong on inspection and were corrected rather than implemented (D57).
+  Found root `npm run lint` broken (exit 127) — excluded from CI, tracked in Backlog.
+  Green: 58 + 44 + 23 = 125 tests. CI has not yet run on a real runner.

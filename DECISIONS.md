@@ -273,3 +273,91 @@ inserting a step mid-flow means renumbering every subsequent branch — exactly 
 hide. Appending it as step 4 leaves indices 0–3 untouched. The family side instead got its
 budget fields appended to **step 0**, avoiding renumbering entirely and keeping that wizard
 at 3 steps (its step 2 is the payment step, which must stay last).
+
+---
+
+## Phase 11 — Operational hardening (2026-08-11)
+
+### D53. CI: two jobs, three `npm ci`, and root lint deliberately excluded
+**Why:** There was no CI of any kind — 111 green tests ran only when someone remembered,
+while D37 already claimed "drift fails CI". Shape is driven by two facts found in the repo:
+this is **three independent npm projects** (root, `functions/`, `firestore-tests/`), not a
+workspace, so CI needs three `npm ci`; and `npm run test:rules` starts its own Firestore
+emulator, needing **Java**, so it gets a separate job rather than slowing the fast path.
+Steps are separate rather than the existing `test:all`, which chains with `&&` and would
+hide every failure after the first.
+
+**Root `npm run lint` is NOT in CI** because it is broken: the script is `eslint .` but the
+root project has no eslint dependency and no config, so it exits **127**. A step that always
+fails is worse than no step, and "fix it by deleting the assertion" would be worse still —
+so it is excluded, called out in the workflow comment, and tracked in `Backlog.md`. Client
+code is currently lint-unchecked; `tsc --noEmit` is the only static gate.
+
+Each gate was verified to actually go **red** (broken assertion → `npm test` exit 1; type
+error → typecheck exit 2 and functions build exit 1) and green again when restored. The
+workflow has still never run on a real runner — noted in the file itself.
+
+### D54. App Check enforced on callables ONLY, never on the waitlist rule
+**Why:** App Check was inert in two independent ways: the site key is empty in every env
+*and* nothing enforced it server-side, so pasting a key in would have protected nothing.
+Enforcement now exists on both `onCall` handlers, plus a production warning when the key is
+missing so failing open is visible rather than silent.
+
+Deliberately **not** enforced in `firestore.rules`. The public waitlist create is the only
+live conversion path on the site; a misconfigured key there would take the signup form
+offline, which is a worse outcome than the abuse it prevents. Waitlist abuse is addressed by
+the quota work (D55) instead. `docs/security-audit.md` §14 was marked ✅ and claimed backends
+accept requests only after attestation — downgraded to ⚠️ with the real state stated.
+
+### D55. Mail quota: `createdBy` + metering inside the existing claim transaction
+**Why:** Any signed-in user could enqueue unlimited `mail` docs — an email-amplification
+vector billed to our Resend account once functions deploy. Metering needs an attributable
+author, and mail docs carried only the *event*, so the client now stamps `createdBy` and the
+rule pins it to `uid()` (a forged author would let a flood be attributed elsewhere, defeating
+both the meter and the audit trail).
+
+The counter is read-modify-written **inside the transaction that already claims the doc**,
+not in a second one: concurrent floods then contend on the same counter instead of racing
+past a separate check. Over quota resolves the doc to a terminal `quota_exceeded` and never
+calls the provider. Server-enqueued mail (`quarterlyCharge`, `recurringAutoCancel`) carries
+no `createdBy` and is exempt — it is our own scheduled code. `mail_quota` is server-only and
+**not even admin-readable**: a counter a client could reset is not a counter.
+
+Window is a UTC day bucket rather than a true sliding window — a sliding window needs every
+prior send's timestamp (unbounded array or a read per send). A burst straddling midnight can
+get ~2x the cap briefly, which is irrelevant for an abuse ceiling set far above honest usage.
+
+### D56. Bundle: the landing win came from a dynamic import, not from code splitting
+**Why:** Lazying 18 post-auth routes cut app first-paint 1,002,848 → 891,919 (**−11%**), but
+did **nothing** for the landing page — all its chunks load on first paint anyway, so
+`manualChunks` only redistributed bytes across files. Splitting a bundle is not shrinking it.
+
+The real cause was a static `firebase/firestore` import in `src/landing/waitlist.ts` pulling
+~292KB into first paint for a single `addDoc` most visitors never trigger. Moving it to a
+dynamic import at submit time took landing first-paint from 591,559 → **287,720 (−51%)**. All
+validation runs before the write, so error paths never touch Firebase. This is the only
+bundle real users load today, since the app has never been deployed.
+
+### D57. The planned `recurringAutoCancel` N+1 did not exist; the real cost was the scan
+**Why:** The plan called for memoizing per-nanny availability reads. On inspection
+`recurringCore.ts:64` **already dedupes** with a `Set` — the callback is invoked once per
+unique nanny, not per booking. No cache was added: it would have been dead code that looks
+like a fix and measures as nothing. A read-count regression test was added instead (verified
+to fail when the dedupe is removed).
+
+The genuine cost was `listCandidateBookings` scanning **every** future recurring booking
+hourly with no upper bound, growing forever as families book further out. Since the rule only
+ever acts within 48h, a 4-day horizon was added — correct and free.
+
+### D58. Listener caps must announce themselves, especially where lists are COUNTED
+**Why:** Four hooks live-listened to entire, forever-growing collections. Capping at 200 is
+the easy half; the important half is that silent truncation is the same class of bug as D50
+(a failed read rendering as an empty queue) — a partial list that looks complete produces
+confident wrong conclusions. `AdminList` gains `truncated` and the UI surfaces it.
+
+Analytics and Billing get a **stronger** warning than the plain list pages, because they
+don't list — they **count**. Revenue, family-to-nanny ratio and completion rate are all
+derived by filtering these arrays, so a capped read makes those figures silently *wrong*
+(understated), not merely short. Those pages now say the numbers are indicative.
+`useNannyDirectory` also still swallowed errors (the one hook D50 missed) — a failed read
+told families "No nannies yet" when the network was fine.
