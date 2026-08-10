@@ -4,8 +4,9 @@ import { useAuth } from '../../context/AuthContext'
 import { useMyBookings, useBookingActions } from '../../hooks/useBookings'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { ReviewModal } from '../../components/ReviewModal'
-import { Card, Button, StatusPill } from '../../components/ui'
+import { Card, Button, StatusPill, RateDisclaimer } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
+import { formatRate } from '../../lib/rates'
 import type { Booking, BookingStatus } from '../../types'
 
 function tone(s: BookingStatus): 'confirmed' | 'pending' | 'cancelled' | 'open' | 'neutral' {
@@ -45,6 +46,9 @@ export function BookingsPage({ role }: { role: 'family' | 'nanny' }) {
           </Card>
         ) : (
           <div className="space-y-3">
+            {bookings.some((b) => typeof b.rateMinCents === 'number') && (
+              <RateDisclaimer className="mb-1" />
+            )}
             {bookings.map((b) => (
               <BookingRow
                 key={b.id}
@@ -98,6 +102,18 @@ function BookingRow({
           {formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)}
         </p>
         <p className="text-sm text-ll-warm-gray">{b.address}</p>
+        {typeof b.rateMinCents === 'number' && typeof b.rateMaxCents === 'number' && (
+          // The rate a nanny needs BEFORE accepting a pending request — flagged when the
+          // two sides' ranges didn't overlap, so nobody accepts on a wrong assumption.
+          <p className="mt-1 font-mono text-mono-sm text-ll-ink">
+            {formatRate({ minCents: b.rateMinCents, maxCents: b.rateMaxCents })}
+            {b.rateAgreed === false && (
+              <span className="ml-1.5 font-sans text-ll-warm-gray">
+                (asking rate — outside the family&rsquo;s budget)
+              </span>
+            )}
+          </p>
+        )}
         {b.notes && <p className="mt-1 text-sm text-ll-warm-gray">“{b.notes}”</p>}
       </div>
       <div className="flex gap-2">

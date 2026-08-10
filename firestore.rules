@@ -32,6 +32,34 @@ service cloud.firestore {
       return !(field in incoming()) || (incoming()[field] is string && incoming()[field].size() <= n);
     }
 
+    // ---- pay rates -----------------------------------------------------------
+    // Hourly rate ranges, in integer CENTS. Cents (not floats) keep these comparisons
+    // exact. Cap mirrors RATE_MAX_CENTS in src/lib/rates.ts ($500/hr) so a compromised
+    // client can't write an absurd rate. Like strMax, absence is allowed — the field is
+    // optional and {merge:true} writes touch only some fields.
+    function centsOk(v) {
+      return v is int && v >= 0 && v <= 50000;
+    }
+    // A rateRange map, when present, must be well-formed AND ordered.
+    function rateRangeOk() {
+      return !('rateRange' in incoming())
+        || (incoming().rateRange is map
+            && incoming().rateRange.keys().hasOnly(['minCents', 'maxCents'])
+            && 'minCents' in incoming().rateRange
+            && 'maxCents' in incoming().rateRange
+            && centsOk(incoming().rateRange.minCents)
+            && centsOk(incoming().rateRange.maxCents)
+            && incoming().rateRange.minCents <= incoming().rateRange.maxCents);
+    }
+    // Flat rate fields snapshotted onto a booking at creation.
+    function bookingRateOk() {
+      return (!('rateMinCents' in incoming()) || centsOk(incoming().rateMinCents))
+        && (!('rateMaxCents' in incoming()) || centsOk(incoming().rateMaxCents))
+        && (!('rateAgreed' in incoming()) || incoming().rateAgreed is bool)
+        && (!('rateMinCents' in incoming()) || !('rateMaxCents' in incoming())
+            || incoming().rateMinCents <= incoming().rateMaxCents);
+    }
+
     // ---- users ---------------------------------------------------------------
     // The trust-critical doc. A user may create only their OWN doc, and only as a
     // non-admin, non-approved pending account. They may update only safe self-service
@@ -85,11 +113,13 @@ service cloud.firestore {
       allow create: if isSignedIn() && uid() == familyId && hasRole('family')
         && incoming().uid == familyId
         && strMax('homeAddress', 300) && strMax('neighborhood', 120)
+        && rateRangeOk()
         && strMax('houseRules', 2000) && strMax('allergies', 1000)
         && billingFieldsUntouchedOnCreate();
       allow update: if isSignedIn() && uid() == familyId && hasRole('family')
         && incoming().uid == familyId
         && strMax('homeAddress', 300) && strMax('neighborhood', 120)
+        && rateRangeOk()
         && strMax('houseRules', 2000) && strMax('allergies', 1000)
         && billingFieldsUnchangedOnUpdate();
       allow update, delete: if isAdmin();
@@ -108,12 +138,14 @@ service cloud.firestore {
       allow create: if isSignedIn() && uid() == nannyId && hasRole('nanny')
         && incoming().uid == nannyId
         && strMax('fullName', 80) && strMax('bio', 600) && strMax('personalStatement', 1000)
+        && rateRangeOk()
         && (!('verifiedBadges' in incoming()) || incoming().verifiedBadges.size() == 0);
 
       // Subsequent owner edits: verifiedBadges is immutable from the client side.
       allow update: if isSignedIn() && uid() == nannyId && hasRole('nanny')
         && incoming().uid == nannyId
         && strMax('fullName', 80) && strMax('bio', 600) && strMax('personalStatement', 1000)
+        && rateRangeOk()
         && (!('verifiedBadges' in incoming()) || incoming().verifiedBadges == existing().verifiedBadges);
 
       allow update, delete: if isAdmin();
@@ -137,15 +169,29 @@ service cloud.firestore {
       // Family creates its own booking request. Nanny/admin may not impersonate a family.
       allow create: if isSignedIn() && hasRole('family') && isApproved()
         && incoming().familyId == uid()
-        && strMax('notes', 1000) && strMax('address', 300);
+        && strMax('notes', 1000) && strMax('address', 300)
+        && bookingRateOk();
+
+      // The agreed rate is a SNAPSHOT of what both sides saw at booking time. Neither party
+      // may rewrite it afterwards — a nanny must not be able to raise the rate on a booking
+      // a family already confirmed, nor a family lower it after the nanny accepted. Admin
+      // keeps full override (below) for genuine corrections.
+      function rateSnapshotUnchanged() {
+        return (('rateMinCents' in incoming()) ? incoming().rateMinCents : -1)
+             == (('rateMinCents' in existing()) ? existing().rateMinCents : -1)
+          && (('rateMaxCents' in incoming()) ? incoming().rateMaxCents : -1)
+             == (('rateMaxCents' in existing()) ? existing().rateMaxCents : -1)
+          && (('rateAgreed' in incoming()) ? incoming().rateAgreed : false)
+             == (('rateAgreed' in existing()) ? existing().rateAgreed : false);
+      }
 
       // Family can update/cancel its own booking; assigned nanny can accept/decline; admin all.
-      allow update: if isSignedIn() && (
+      allow update: if isSignedIn() && rateSnapshotUnchanged() && (
         existing().familyId == uid()
         || existing().nannyId == uid()
         || (hasRole('nanny') && existing().status in ['open', 'unmatched'])
-        || isAdmin()
       );
+      allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 

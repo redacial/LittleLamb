@@ -4,7 +4,9 @@ import { useFamilyProfile } from '../../hooks/useProfile'
 import { uploadProfilePhoto } from '../../lib/storage'
 import { cleanLine, cleanText } from '../../lib/sanitize'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
-import { Card, CardLabel, Input, Textarea, Button, Avatar } from '../../components/ui'
+import { Card, CardLabel, Input, Textarea, Button, Avatar, RateRangeInput } from '../../components/ui'
+import { validateRatePair } from '../../components/ui/RateRangeInput'
+import { parseRateDollars } from '../../lib/rates'
 import { ReferralCard } from '../../components/ReferralCard'
 import type { Child } from '../../types'
 
@@ -24,10 +26,14 @@ export function FamilyProfilePage() {
     phone: '',
     coParentName: '',
     coParentEmail: '',
+    // Raw dollar strings while typing; parsed to cents on save (see RateRangeInput).
+    rateMin: '',
+    rateMax: '',
   })
   const [children, setChildren] = useState<Child[]>([])
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!family) return
@@ -41,6 +47,8 @@ export function FamilyProfilePage() {
       phone: family.phone ?? '',
       coParentName: family.coParentName ?? '',
       coParentEmail: family.coParentEmail ?? '',
+      rateMin: family.rateRange ? String(family.rateRange.minCents / 100) : '',
+      rateMax: family.rateRange ? String(family.rateRange.maxCents / 100) : '',
     })
     setChildren(family.children ?? [])
   }, [family])
@@ -58,9 +66,15 @@ export function FamilyProfilePage() {
   }
 
   async function onSave() {
+    const badRate = validateRatePair(form.rateMin, form.rateMax)
+    if (badRate) return setError(badRate)
+    setError(null)
+    const lo = parseRateDollars(form.rateMin)
+    const hi = parseRateDollars(form.rateMax)
     setBusy(true)
     try {
       await save({
+        ...(lo !== null && hi !== null ? { rateRange: { minCents: lo, maxCents: hi } } : {}),
         neighborhood: cleanLine(form.neighborhood, 120),
         pets: cleanLine(form.pets, 200),
         allergies: cleanText(form.allergies, 1000),
@@ -105,6 +119,14 @@ export function FamilyProfilePage() {
             <CardLabel>Household</CardLabel>
             <Input label="Neighborhood" value={form.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} />
             <Input label="Home address" value={form.homeAddress} onChange={(e) => set('homeAddress', e.target.value)} />
+            <RateRangeInput
+              role="family"
+              min={form.rateMin}
+              max={form.rateMax}
+              onMinChange={(v) => set('rateMin', v)}
+              onMaxChange={(v) => set('rateMax', v)}
+            />
+            {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
             <Input label="Pets" value={form.pets} onChange={(e) => set('pets', e.target.value)} />
             <Textarea label="Allergies & special needs" value={form.allergies} onChange={(e) => set('allergies', e.target.value)} />
             <Textarea label="House rules & notes" value={form.houseRules} onChange={(e) => set('houseRules', e.target.value)} />

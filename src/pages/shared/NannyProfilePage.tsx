@@ -2,7 +2,8 @@ import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useNanny } from '../../hooks/useNannies'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
-import { Card, CardLabel, Avatar, Badge, Button } from '../../components/ui'
+import { Card, CardLabel, Avatar, Badge, Button, RateDisclaimer } from '../../components/ui'
+import { formatRate } from '../../lib/rates'
 import { badgeLabel, badgeType } from '../../lib/badges'
 import { DAYS } from '../../components/onboarding/AvailabilityEditor'
 import { to12h } from '../../lib/format'
@@ -90,6 +91,14 @@ export function NannyProfilePage() {
               <CardLabel>About</CardLabel>
               <p className="mt-1 whitespace-pre-line text-ll-ink">{nanny.bio}</p>
             </Card>
+
+            {nanny.rateRange && (
+              <Card>
+                <CardLabel>Hourly rate</CardLabel>
+                <p className="mt-1 font-mono text-ll-ink">{formatRate(nanny.rateRange)}</p>
+                <RateDisclaimer className="mt-2" />
+              </Card>
+            )}
 
             <Card>
               <CardLabel>Weekly availability</CardLabel>

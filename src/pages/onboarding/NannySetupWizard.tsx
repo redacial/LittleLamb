@@ -9,11 +9,15 @@ import { SELF_BADGES } from '../../lib/badges'
 import { WizardShell } from '../../components/onboarding/WizardShell'
 import { AvailabilityEditor } from '../../components/onboarding/AvailabilityEditor'
 import { useSpring, useChipHover } from '../../lib/motion'
-import { Button, Input, Textarea, Avatar, Badge } from '../../components/ui'
+import { Button, Input, Textarea, Avatar, Badge, RateRangeInput } from '../../components/ui'
+import { validateRatePair } from '../../components/ui/RateRangeInput'
+import { parseRateDollars } from '../../lib/rates'
 import { cn } from '../../lib/cn'
 import type { AvailabilityBlock, NannyProfile } from '../../types'
 
-const STEPS = ['Photo & bio', 'Intro video', 'Badges', 'Availability']
+// 'Your rate' is appended LAST so the existing step indices (0-3) are untouched — the
+// steps are hardcoded integers throughout, and renumbering them is where bugs hide.
+const STEPS = ['Photo & bio', 'Intro video', 'Badges', 'Availability', 'Your rate']
 const BIO_MAX = 500
 
 export function NannySetupWizard() {
@@ -35,6 +39,9 @@ export function NannySetupWizard() {
   const [videoURL, setVideoURL] = useState<string | null>(null)
   const [selfBadges, setSelfBadges] = useState<string[]>([])
   const [availability, setAvailability] = useState<AvailabilityBlock[]>([])
+  // Raw dollar strings while typing; parsed to cents on save (see RateRangeInput).
+  const [rateMin, setRateMin] = useState('')
+  const [rateMax, setRateMax] = useState('')
 
   useEffect(() => {
     if (!nanny) return
@@ -44,6 +51,10 @@ export function NannySetupWizard() {
     setVideoURL(nanny.introVideoURL ?? null)
     setSelfBadges(nanny.selfBadges ?? [])
     setAvailability(nanny.availability ?? [])
+    if (nanny.rateRange) {
+      setRateMin(String(nanny.rateRange.minCents / 100))
+      setRateMax(String(nanny.rateRange.maxCents / 100))
+    }
   }, [nanny])
 
   async function persist(patch: Partial<NannyProfile>) {
@@ -112,10 +123,23 @@ export function NannySetupWizard() {
     setStep(3)
   }
 
-  async function finish() {
+  async function nextFromAvailability() {
     if (!availability.length) return setError('Please set availability for at least one day.')
-    if (!uid) return
     await persist({ availability })
+    setStep(4)
+  }
+
+  async function finish() {
+    if (!uid) return
+    const invalid = validateRatePair(rateMin, rateMax)
+    if (invalid) return setError(invalid)
+    // The range is OPTIONAL — skipping it leaves the nanny matchable with everyone
+    // (rangesOverlap treats a missing range permissively), so we only write when set.
+    const lo = parseRateDollars(rateMin)
+    const hi = parseRateDollars(rateMax)
+    if (lo !== null && hi !== null) {
+      await persist({ rateRange: { minCents: lo, maxCents: hi } })
+    }
     await completeWizard(uid)
     setDone(true)
   }
@@ -279,6 +303,35 @@ export function NannySetupWizard() {
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => setStep(2)}>Back</Button>
+            <Button onClick={nextFromAvailability} loading={busy}>Continue</Button>
+          </div>
+        </motion.div>
+      )}
+
+      {step === 4 && (
+        <motion.div
+          key="step-4"
+          className="space-y-5"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -12 }}
+          transition={stepTransition}
+        >
+          <h1 className="text-display-md">What do you charge?</h1>
+          <p className="text-ll-warm-gray">
+            Families pay you directly — this just helps us match you with families whose budget
+            fits yours. You can change it any time, or skip it for now.
+          </p>
+          <RateRangeInput
+            role="nanny"
+            min={rateMin}
+            max={rateMax}
+            onMinChange={setRateMin}
+            onMaxChange={setRateMax}
+          />
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => setStep(3)}>Back</Button>
             <Button onClick={finish} loading={busy}>Finish setup</Button>
           </div>
         </motion.div>

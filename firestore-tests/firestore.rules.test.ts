@@ -17,6 +17,7 @@ let testEnv: RulesTestEnvironment
 const ADMIN = 'admin1'
 const FAM = 'fam1'
 const OTHER = 'fam2'
+const NANNY = 'nanny1'
 
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
@@ -41,6 +42,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'users', ADMIN), { uid: ADMIN, role: 'admin', approved: true, status: 'approved' })
     await setDoc(doc(db, 'users', FAM), { uid: FAM, role: 'family', approved: true, status: 'approved' })
     await setDoc(doc(db, 'users', OTHER), { uid: OTHER, role: 'family', approved: true, status: 'approved' })
+    await setDoc(doc(db, 'users', NANNY), { uid: NANNY, role: 'nanny', approved: true, status: 'approved' })
     await setDoc(doc(db, 'families', FAM), { uid: FAM, hasPaymentMethod: false })
   })
 })
@@ -139,5 +141,120 @@ describe('invoices + billing_alerts are admin-only writes', () => {
     await assertFails(getDoc(doc(as(FAM), 'billing_alerts', 'a1')))
     await assertFails(setDoc(doc(as(FAM), 'billing_alerts', 'a2'), { familyId: FAM }))
     await assertSucceeds(getDoc(doc(as(ADMIN), 'billing_alerts', 'a1')))
+  })
+})
+
+// ---- pay rate ranges -------------------------------------------------------
+// First coverage of the nannies collection, added with the pay-rate feature.
+describe('rate ranges', () => {
+  it('a nanny can set a well-formed rate range on their own profile', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(NANNY), 'nannies', NANNY), {
+        uid: NANNY,
+        bio: 'hi',
+        rateRange: { minCents: 2000, maxCents: 3000 },
+      }),
+    )
+  })
+
+  it('rejects an inverted range (min > max)', async () => {
+    await assertFails(
+      setDoc(doc(as(NANNY), 'nannies', NANNY), {
+        uid: NANNY,
+        rateRange: { minCents: 5000, maxCents: 2000 },
+      }),
+    )
+  })
+
+  it('rejects a rate above the $500/hr cap', async () => {
+    await assertFails(
+      setDoc(doc(as(NANNY), 'nannies', NANNY), {
+        uid: NANNY,
+        rateRange: { minCents: 2000, maxCents: 50001 },
+      }),
+    )
+  })
+
+  it('rejects a negative rate', async () => {
+    await assertFails(
+      setDoc(doc(as(NANNY), 'nannies', NANNY), {
+        uid: NANNY,
+        rateRange: { minCents: -100, maxCents: 2000 },
+      }),
+    )
+  })
+
+  it('rejects non-integer / non-map / extra-key rate shapes', async () => {
+    await assertFails(
+      setDoc(doc(as(NANNY), 'nannies', NANNY), { uid: NANNY, rateRange: { minCents: 20.5, maxCents: 3000 } }),
+    )
+    await assertFails(setDoc(doc(as(NANNY), 'nannies', NANNY), { uid: NANNY, rateRange: 2000 }))
+    await assertFails(
+      setDoc(doc(as(NANNY), 'nannies', NANNY), {
+        uid: NANNY,
+        rateRange: { minCents: 2000, maxCents: 3000, currency: 'usd' },
+      }),
+    )
+  })
+
+  it('a family can set its own budget range with the same validation', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(FAM), 'families', FAM), { uid: FAM, rateRange: { minCents: 1500, maxCents: 2500 } }, { merge: true }),
+    )
+    await assertFails(
+      setDoc(doc(as(FAM), 'families', FAM), { uid: FAM, rateRange: { minCents: 9000, maxCents: 100 } }, { merge: true }),
+    )
+  })
+
+  it('a family may snapshot a valid rate onto a booking it creates', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(FAM), 'bookings', 'bk1'), {
+        familyId: FAM,
+        date: '2026-09-01',
+        rateMinCents: 2000,
+        rateMaxCents: 2500,
+        rateAgreed: true,
+      }),
+    )
+    await assertFails(
+      setDoc(doc(as(FAM), 'bookings', 'bk2'), {
+        familyId: FAM,
+        date: '2026-09-01',
+        rateMinCents: 3000,
+        rateMaxCents: 1000, // inverted
+      }),
+    )
+  })
+
+  it('neither party may rewrite the agreed rate after the fact; admin may', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'bookings', 'bk3'), {
+        familyId: FAM,
+        nannyId: NANNY,
+        status: 'pending',
+        rateMinCents: 2000,
+        rateMaxCents: 2500,
+        rateAgreed: true,
+      })
+    })
+    // The nanny accepting is fine — as long as the rate snapshot is untouched.
+    await assertSucceeds(
+      setDoc(
+        doc(as(NANNY), 'bookings', 'bk3'),
+        { status: 'confirmed', rateMinCents: 2000, rateMaxCents: 2500, rateAgreed: true },
+        { merge: true },
+      ),
+    )
+    // Raising the rate on an existing booking must fail for both sides.
+    await assertFails(
+      setDoc(doc(as(NANNY), 'bookings', 'bk3'), { rateMaxCents: 9000 }, { merge: true }),
+    )
+    await assertFails(
+      setDoc(doc(as(FAM), 'bookings', 'bk3'), { rateMinCents: 100 }, { merge: true }),
+    )
+    // Admin override still works (genuine corrections).
+    await assertSucceeds(
+      setDoc(doc(as(ADMIN), 'bookings', 'bk3'), { rateMaxCents: 9000 }, { merge: true }),
+    )
   })
 })

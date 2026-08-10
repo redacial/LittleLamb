@@ -8,7 +8,9 @@ import { cleanLine, cleanText } from '../../lib/sanitize'
 import { WizardShell } from '../../components/onboarding/WizardShell'
 import { PaymentStep } from '../../components/onboarding/PaymentStep'
 import { useSpring } from '../../lib/motion'
-import { Button, Input, Textarea, Avatar } from '../../components/ui'
+import { Button, Input, Textarea, Avatar, RateRangeInput } from '../../components/ui'
+import { validateRatePair } from '../../components/ui/RateRangeInput'
+import { parseRateDollars } from '../../lib/rates'
 import type { Child, FamilyProfile } from '../../types'
 
 const STEPS = ['Family profile', 'Contact', 'Payment']
@@ -36,6 +38,9 @@ export function FamilySetupWizard() {
   const [phone, setPhone] = useState('')
   const [coParentName, setCoParentName] = useState('')
   const [coParentEmail, setCoParentEmail] = useState('')
+  // Raw dollar strings while typing; parsed to cents on save (see RateRangeInput).
+  const [rateMin, setRateMin] = useState('')
+  const [rateMax, setRateMax] = useState('')
 
   useEffect(() => {
     if (!family) return
@@ -49,6 +54,10 @@ export function FamilySetupWizard() {
     setPhone(family.phone ?? '')
     setCoParentName(family.coParentName ?? '')
     setCoParentEmail(family.coParentEmail ?? '')
+    if (family.rateRange) {
+      setRateMin(String(family.rateRange.minCents / 100))
+      setRateMax(String(family.rateRange.maxCents / 100))
+    }
   }, [family])
 
   async function persist(patch: Partial<FamilyProfile>) {
@@ -94,6 +103,12 @@ export function FamilySetupWizard() {
     if (!neighborhood.trim()) return setError('Please add your neighborhood.')
     if (!cleanChildren.length) return setError('Please add at least one child.')
     if (!homeAddress.trim()) return setError('Please add your home address.')
+    const badRate = validateRatePair(rateMin, rateMax)
+    if (badRate) return setError(badRate)
+    // The budget is OPTIONAL — leaving it blank matches the family with everyone
+    // (rangesOverlap treats a missing range permissively), so only write when set.
+    const lo = parseRateDollars(rateMin)
+    const hi = parseRateDollars(rateMax)
     await persist({
       neighborhood: cleanLine(neighborhood, 120),
       children: cleanChildren,
@@ -101,6 +116,7 @@ export function FamilySetupWizard() {
       allergies: cleanText(allergies, 1000),
       houseRules: cleanText(houseRules, 2000),
       homeAddress: cleanLine(homeAddress, 300),
+      ...(lo !== null && hi !== null ? { rateRange: { minCents: lo, maxCents: hi } } : {}),
     })
     setStep(1)
   }
@@ -191,6 +207,13 @@ export function FamilySetupWizard() {
           <Textarea label="Allergies or special needs" hint="Optional" value={allergies} onChange={(e) => setAllergies(e.target.value)} />
           <Textarea label="House rules & important notes" hint="Optional" value={houseRules} onChange={(e) => setHouseRules(e.target.value)} />
           <Input label="Home address" value={homeAddress} onChange={(e) => setHomeAddress(e.target.value)} />
+          <RateRangeInput
+            role="family"
+            min={rateMin}
+            max={rateMax}
+            onMinChange={setRateMin}
+            onMaxChange={setRateMax}
+          />
 
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <Button onClick={nextFromStep0} loading={busy}>Continue</Button>

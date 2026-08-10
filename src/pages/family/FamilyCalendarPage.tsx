@@ -9,14 +9,9 @@ import { MonthGrid } from '../../components/calendar/MonthGrid'
 import { Modal, Button, Input, Textarea, Select, Avatar, StatusPill } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import { cn } from '../../lib/cn'
-import type { Booking, BookingStatus } from '../../types'
-
-/** Determine booking status from timing + chosen nanny's availability (CLAUDE.md §11.1). */
-function resolveStatus(date: string, today: string, withinHours: boolean): BookingStatus {
-  if (date === today) return 'same_day_review' // routed to admin
-  if (!withinHours) return 'pending' // outside preset hours -> nanny accepts/declines
-  return 'confirmed'
-}
+import { rangesOverlap, overlapWindow, formatRate, resolveBookingStatus } from '../../lib/rates'
+import { RateDisclaimer } from '../../components/ui'
+import type { Booking } from '../../types'
 
 export function FamilyCalendarPage() {
   const { user, profile } = useAuth()
@@ -38,6 +33,10 @@ export function FamilyCalendarPage() {
   const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // Live rate feedback for the nanny currently chosen in the booking modal.
+  const selectedNanny = nannies.find((n) => n.uid === nannyId)
+  const selectedRateOverlaps = rangesOverlap(family?.rateRange, selectedNanny?.rateRange)
+
   function changeMonth(delta: number) {
     const d = new Date(year, month + delta, 1)
     setYear(d.getFullYear())
@@ -51,7 +50,16 @@ export function FamilyCalendarPage() {
     const weekday = new Date(pickedDay + 'T00:00').getDay()
     const block = chosen?.availability?.find((a) => a.day === weekday)
     const withinHours = !!block && start >= block.start && end <= block.end
-    const status = resolveStatus(pickedDay, today, withinHours)
+    // Rate check: do what this family will pay and what this nanny accepts overlap?
+    const rateOverlaps = rangesOverlap(family?.rateRange, chosen?.rateRange)
+    const status = resolveBookingStatus({ date: pickedDay, today, withinHours, rateOverlaps })
+
+    // Snapshot the rate onto the booking so a later profile edit can't rewrite what was
+    // agreed. When the ranges overlapped that window IS the agreement; when they didn't
+    // (or either side has no range) we record the nanny's asking range instead, with
+    // rateAgreed false — the nanny sees what the family is working from before accepting.
+    const agreed = overlapWindow(family?.rateRange, chosen?.rateRange)
+    const snapshot = agreed ?? chosen?.rateRange ?? null
 
     setBusy(true)
     try {
@@ -66,6 +74,13 @@ export function FamilyCalendarPage() {
         address: family?.homeAddress ?? '',
         notes,
         status,
+        ...(snapshot
+          ? {
+              rateMinCents: snapshot.minCents,
+              rateMaxCents: snapshot.maxCents,
+              rateAgreed: agreed !== null,
+            }
+          : {}),
       })
       setPickedDay(null)
       setNotes('')
@@ -120,9 +135,28 @@ export function FamilyCalendarPage() {
             <Select label="Nanny" value={nannyId} onChange={(e) => setNannyId(e.target.value)}>
               <option value="">No preference (find a match)</option>
               {nannies.map((n) => (
-                <option key={n.uid} value={n.uid}>{n.fullName}</option>
+                <option key={n.uid} value={n.uid}>
+                  {n.fullName}
+                  {n.rateRange ? ` · ${formatRate(n.rateRange)}` : ''}
+                </option>
               ))}
             </Select>
+            {selectedNanny?.rateRange && (
+              <div className="space-y-2">
+                <p className="text-sm text-ll-ink">
+                  {selectedNanny.fullName ?? 'This nanny'} asks {formatRate(selectedNanny.rateRange)}.
+                </p>
+                {!selectedRateOverlaps && (
+                  // Soft-downgrade, not a block: say plainly what will happen so the
+                  // family isn't surprised when the booking lands as a request.
+                  <p className="rounded-ll-input border-1.5 border-ll-terra-deep bg-ll-terra-light px-3 py-2 text-sm text-ll-ink">
+                    That&rsquo;s outside your budget of {formatRate(family?.rateRange)}. You can
+                    still request them — the booking will be sent for them to accept or decline.
+                  </p>
+                )}
+                <RateDisclaimer variant="short" />
+              </div>
+            )}
             <Textarea label="Notes for your nanny" hint="e.g. Dinner at 6, bedtime at 8" value={notes} onChange={(e) => setNotes(e.target.value)} />
             {pickedDay === today && (
               <p className="rounded-ll-input border-1.5 border-ll-peri-soft bg-ll-peri-light px-3 py-2 text-sm text-ll-peri-ink">

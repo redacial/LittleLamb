@@ -59,6 +59,22 @@ export interface FamilyProfile {
   /** Application snapshot (admin-only fields live alongside in the same doc, gated by rules). */
   specialNotes?: string
   hasPaymentMethod: boolean
+  /** Hourly rate this family is willing to pay. Optional — pre-existing families have none. */
+  rateRange?: RateRange
+}
+
+/**
+ * An hourly pay range, in INTEGER CENTS (following the config/billing precedent —
+ * avoids float comparison in Firestore rules and rounding drift in the UI).
+ * Bounds are inclusive and min <= max.
+ *
+ * Families declare what they'll PAY; nannies declare what they ACCEPT. An overlap
+ * between the two is what makes a match — see src/lib/rates.ts. Little Lamb never
+ * processes wages: this is a matching signal only, always shown with a disclaimer.
+ */
+export interface RateRange {
+  minCents: number
+  maxCents: number
 }
 
 export type BadgeType = 'verified' | 'self'
@@ -89,6 +105,8 @@ export interface NannyProfile {
   selfBadges: string[]
   verifiedBadges: string[]
   availability: AvailabilityBlock[]
+  /** Hourly rate this nanny accepts. Optional — pre-existing nannies have none. */
+  rateRange?: RateRange
 }
 
 export type BookingStatus =
@@ -114,6 +132,16 @@ export interface Booking {
   status: BookingStatus
   recurring: boolean
   recurrenceId?: string | null
+  /**
+   * The rate range agreed at booking time, SNAPSHOTTED so a later profile edit can't
+   * retroactively rewrite what was agreed. When the two sides overlapped this is the
+   * overlap window and `rateAgreed` is true; when they didn't it's the nanny's range
+   * and `rateAgreed` is false (the booking goes out as `pending` for them to accept).
+   * Absent on bookings made before rate ranges existed, and on admin-created bookings.
+   */
+  rateMinCents?: number
+  rateMaxCents?: number
+  rateAgreed?: boolean
   createdAt: Timestamp | null
 }
 

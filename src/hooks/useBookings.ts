@@ -91,6 +91,14 @@ export interface CreateBookingInput {
   notes?: string
   status: BookingStatus
   recurring?: boolean
+  /**
+   * Rate agreed at booking time, in cents — snapshotted so a later profile edit can't
+   * rewrite history. Omitted when neither side has set a range (and by admin override).
+   * Spread straight through to the doc below; firestore.rules validates the bounds.
+   */
+  rateMinCents?: number
+  rateMaxCents?: number
+  rateAgreed?: boolean
 }
 
 export async function createBooking(input: CreateBookingInput): Promise<string> {

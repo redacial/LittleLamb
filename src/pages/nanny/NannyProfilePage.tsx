@@ -7,7 +7,9 @@ import { cleanText } from '../../lib/sanitize'
 import { SELF_BADGES, badgeLabel } from '../../lib/badges'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { AvailabilityEditor } from '../../components/onboarding/AvailabilityEditor'
-import { Card, CardLabel, Textarea, Button, Avatar, Badge } from '../../components/ui'
+import { Card, CardLabel, Textarea, Button, Avatar, Badge, RateRangeInput } from '../../components/ui'
+import { validateRatePair } from '../../components/ui/RateRangeInput'
+import { parseRateDollars } from '../../lib/rates'
 import { ReferralCard } from '../../components/ReferralCard'
 import { cn } from '../../lib/cn'
 import { useChipHover } from '../../lib/motion'
@@ -26,8 +28,11 @@ export function NannyOwnProfilePage() {
   const [videoURL, setVideoURL] = useState<string | null>(null)
   const [selfBadges, setSelfBadges] = useState<string[]>([])
   const [availability, setAvailability] = useState<AvailabilityBlock[]>([])
+  const [rateMin, setRateMin] = useState('')
+  const [rateMax, setRateMax] = useState('')
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const chipHover = useChipHover()
 
   useEffect(() => {
@@ -37,6 +42,10 @@ export function NannyOwnProfilePage() {
     setVideoURL(nanny.introVideoURL ?? null)
     setSelfBadges(nanny.selfBadges ?? [])
     setAvailability(nanny.availability ?? [])
+    if (nanny.rateRange) {
+      setRateMin(String(nanny.rateRange.minCents / 100))
+      setRateMax(String(nanny.rateRange.maxCents / 100))
+    }
   }, [nanny])
 
   // Profile completeness — quiet nudge (My Profile only, never the dashboard) per spec.
@@ -46,6 +55,7 @@ export function NannyOwnProfilePage() {
     { label: 'Intro video', done: !!videoURL },
     { label: 'Badges', done: selfBadges.length > 0 },
     { label: 'Availability', done: availability.length > 0 },
+    { label: 'Rate', done: !!nanny?.rateRange },
   ]
   const complete = checks.filter((c) => c.done).length
 
@@ -63,9 +73,21 @@ export function NannyOwnProfilePage() {
   }
 
   async function onSave() {
+    const badRate = validateRatePair(rateMin, rateMax)
+    if (badRate) return setError(badRate)
+    setError(null)
+    const lo = parseRateDollars(rateMin)
+    const hi = parseRateDollars(rateMax)
     setBusy(true)
     try {
-      await save({ bio: cleanText(bio, BIO_MAX), selfBadges, availability })
+      await save({
+        bio: cleanText(bio, BIO_MAX),
+        selfBadges,
+        availability,
+        // Only write when both bounds parse — a cleared range is left untouched rather
+        // than half-written (removing a rate entirely is not yet a supported action).
+        ...(lo !== null && hi !== null ? { rateRange: { minCents: lo, maxCents: hi } } : {}),
+      })
       setSaved(true)
     } finally {
       setBusy(false)
@@ -167,6 +189,21 @@ export function NannyOwnProfilePage() {
               <AvailabilityEditor value={availability} onChange={(v) => { setAvailability(v); setSaved(false) }} />
             </div>
           </Card>
+
+          <Card>
+            <CardLabel>Your rate</CardLabel>
+            <div className="mt-3">
+              <RateRangeInput
+                role="nanny"
+                min={rateMin}
+                max={rateMax}
+                onMinChange={(v) => { setRateMin(v); setSaved(false) }}
+                onMaxChange={(v) => { setRateMax(v); setSaved(false) }}
+              />
+            </div>
+          </Card>
+
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
 
           <div className="flex items-center gap-3">
             <Button onClick={onSave} loading={busy}>Save changes</Button>

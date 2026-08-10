@@ -120,6 +120,9 @@ async function seed() {
     coParentEmail: 'daniel@littlelamb.test',
     specialNotes: 'Theo has soccer practice Tuesdays at 4pm.',
     hasPaymentMethod: true,
+    // $22-30/hr. The three seeded nannies below deliberately straddle this so the
+    // match / out-of-budget paths are both visible without editing any data.
+    rateRange: { minCents: 2200, maxCents: 3000 },
   })
 
   // ---- nannies/{uid} (public profiles; only approved nannies get a readable doc) ---------
@@ -140,6 +143,7 @@ async function seed() {
       { day: 4, start: '15:00', end: '20:00' },
       { day: 5, start: '12:00', end: '21:00' },
     ],
+    rateRange: { minCents: 2500, maxCents: 3500 }, // overlaps the family budget -> match
   })
   await db.collection('nannies').doc(NANNY2_UID).set({
     uid: NANNY2_UID,
@@ -156,6 +160,7 @@ async function seed() {
       { day: 6, start: '09:00', end: '17:00' },
       { day: 3, start: '16:00', end: '21:00' },
     ],
+    rateRange: { minCents: 1800, maxCents: 2200 }, // touches the low bound -> match ($22)
   })
   await db.collection('nannies').doc(NANNY3_UID).set({
     uid: NANNY3_UID,
@@ -172,6 +177,7 @@ async function seed() {
       { day: 2, start: '08:00', end: '14:00' },
       { day: 4, start: '08:00', end: '14:00' },
     ],
+    rateRange: { minCents: 4000, maxCents: 5000 }, // above the family budget -> soft-flagged
   })
 
   // ---- bookings -------------------------------------------------------------------------
