@@ -10,7 +10,7 @@ const TARGET_RATIO = 4
 
 /** Admin analytics — Overview / Platform Health / Revenue / Bookings / Growth (live where possible). */
 export function AdminAnalyticsPage() {
-  const bookings = useAllBookings()
+  const { items: bookings } = useAllBookings()
   const { users: families } = useUsersByRole('family')
   const { users: nannies } = useUsersByRole('nanny')
 

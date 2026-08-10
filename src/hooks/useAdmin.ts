@@ -72,22 +72,41 @@ export interface BillingAlert {
   reason?: string
 }
 
+/**
+ * A live admin list plus whether the read FAILED.
+ *
+ * Why `error` matters more here than anywhere else in the app: these hooks previously
+ * degraded a permission error or outage to an empty array, which renders identically to
+ * "nothing to do". An admin looking at an empty approvals queue would reasonably conclude
+ * there are no pending applicants — while real people sit unreviewed. Callers must show a
+ * distinct "couldn't load" state, never an empty state, when `error` is set.
+ */
+export interface AdminList<T> {
+  items: T[]
+  error: Error | null
+}
+
 /** Live failed-payment alerts for the admin dashboard/billing page. */
-export function useBillingAlerts() {
+export function useBillingAlerts(): AdminList<BillingAlert> {
   const [alerts, setAlerts] = useState<BillingAlert[]>([])
+  const [error, setError] = useState<Error | null>(null)
   useEffect(() => {
     return onSnapshot(
       collection(db, 'billing_alerts'),
-      (snap) => setAlerts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BillingAlert, 'id'>) }))),
-      () => setAlerts([]),
+      (snap) => {
+        setAlerts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BillingAlert, 'id'>) })))
+        setError(null)
+      },
+      (err) => setError(err),
     )
   }, [])
-  return alerts
+  return { items: alerts, error }
 }
 
 /** Pending applications of a given role, live. */
-export function usePendingApplications(role: Role) {
+export function usePendingApplications(role: Role): AdminList<UserDoc> {
   const [items, setItems] = useState<UserDoc[]>([])
+  const [error, setError] = useState<Error | null>(null)
   useEffect(() => {
     const q = query(
       collection(db, 'users'),
@@ -97,42 +116,56 @@ export function usePendingApplications(role: Role) {
     )
     return onSnapshot(
       q,
-      (snap) => setItems(snap.docs.map((d) => d.data() as UserDoc)),
-      () => setItems([]),
+      (snap) => {
+        setItems(snap.docs.map((d) => d.data() as UserDoc))
+        setError(null)
+      },
+      (err) => setError(err),
     )
   }, [role])
-  return items
+  return { items, error }
 }
 
 /** All users of a role (any status) for the admin management tabs. */
 export function useUsersByRole(role: Role) {
   const [users, setUsers] = useState<UserDoc[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
   useEffect(() => {
     const q = query(collection(db, 'users'), where('role', '==', role))
     return onSnapshot(
       q,
       (snap) => {
         setUsers(snap.docs.map((d) => d.data() as UserDoc))
+        setError(null)
         setLoading(false)
       },
-      () => setLoading(false),
+      (err) => {
+        setError(err)
+        setLoading(false)
+      },
     )
   }, [role])
-  return { users, loading }
+  return { users, loading, error }
 }
 
 /** Every booking on the platform (admin Bookings page). */
-export function useAllBookings() {
+export function useAllBookings(): AdminList<import('../types').Booking> {
   const [bookings, setBookings] = useState<import('../types').Booking[]>([])
+  const [error, setError] = useState<Error | null>(null)
   useEffect(() => {
     return onSnapshot(
       collection(db, 'bookings'),
-      (snap) => setBookings(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as import('../types').Booking)),
-      () => setBookings([]),
+      (snap) => {
+        setBookings(
+          snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as import('../types').Booking),
+        )
+        setError(null)
+      },
+      (err) => setError(err),
     )
   }, [])
-  return bookings
+  return { items: bookings, error }
 }
 
 export function useAdminActions() {

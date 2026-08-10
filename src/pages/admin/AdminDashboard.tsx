@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { usePendingApplications, useAdminActions, useAllBookings } from '../../hooks/useAdmin'
 import { PageBody } from '../../components/layout/AppLayout'
-import { Button, Card, CardLabel } from '../../components/ui'
+import { Button, Card, CardLabel, LoadErrorNotice } from '../../components/ui'
 import { Grain, Sparkle } from '../../components/theme'
 import { useSpringIn, useButtonHover } from '../../lib/motion'
 import { formatDate, formatTimeRange } from '../../lib/format'
@@ -18,11 +18,13 @@ import { formatDate, formatTimeRange } from '../../lib/format'
  */
 export function AdminDashboard() {
   const { profile } = useAuth()
-  const allBookings = useAllBookings()
+  const { items: allBookings, error: bookingsError } = useAllBookings()
   const sameDay = allBookings.filter((b) => b.status === 'same_day_review')
   const unmatched = allBookings.filter((b) => b.status === 'unmatched' || b.status === 'open')
-  const pendingNannies = usePendingApplications('nanny')
-  const pendingFamilies = usePendingApplications('family')
+  const { items: pendingNannies, error: nanniesError } = usePendingApplications('nanny')
+  const { items: pendingFamilies, error: familiesError } = usePendingApplications('family')
+  // A failed read must never render as "nothing to do" — see LoadErrorNotice.
+  const loadError = bookingsError || nanniesError || familiesError
   const { approve, reject } = useAdminActions()
   const springIn = useSpringIn()
   const btnHover = useButtonHover()
@@ -45,13 +47,22 @@ export function AdminDashboard() {
           Welcome back, {firstName}
         </h1>
         <p className="mt-1 max-w-md text-ll-warm-gray">
-          {queueCount === 0
-            ? 'Nothing needs your attention right now.'
-            : 'Everything that needs your attention, in priority order.'}
+          {loadError
+            ? // Never claim the queue is clear when we failed to read it.
+              'Some of your queue could not be loaded — see below.'
+            : queueCount === 0
+              ? 'Nothing needs your attention right now.'
+              : 'Everything that needs your attention, in priority order.'}
         </p>
       </div>
 
       <PageBody>
+        {/* 0. Load failures come FIRST — an admin must know the queue below is incomplete
+            before they read it as empty. */}
+        {bookingsError && <LoadErrorNotice what="same-day and unmatched bookings" />}
+        {nanniesError && <LoadErrorNotice what="pending nanny applications" />}
+        {familiesError && <LoadErrorNotice what="pending family applications" />}
+
         {/* 1. Same-day banner — the #1 action item, given real visual dominance:
             terracotta-deep ground (AA-safe with white), alert sparkle, count up front. */}
         {sameDay.length > 0 && (

@@ -1,7 +1,7 @@
 import { useAllBookings, useUsersByRole, useBillingAlerts } from '../../hooks/useAdmin'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Tabs } from '../../components/Tabs'
-import { Card, CardLabel, Button } from '../../components/ui'
+import { Card, CardLabel, Button, LoadErrorNotice } from '../../components/ui'
 import { SummaryCard } from '../../components/SummaryCard'
 import { money } from '../../lib/format'
 import { downloadCSV } from '../../lib/exporters'
@@ -12,9 +12,9 @@ const DONATION_RATE = 0.1
 
 /** Admin Billing & Accounting — Overview / Current Billing / Invoice History / Accounting. */
 export function AdminBillingPage() {
-  const bookings = useAllBookings()
+  const { items: bookings } = useAllBookings()
   const { users: families } = useUsersByRole('family')
-  const billingAlerts = useBillingAlerts()
+  const { items: billingAlerts, error: alertsError } = useBillingAlerts()
   const activeFamilies = families.filter((f) => f.approved).length
   const confirmed = bookings.filter((b) => b.status === 'confirmed').length
   const revenue = activeFamilies * SUBSCRIPTION + confirmed * PER_BOOKING
@@ -46,6 +46,9 @@ export function AdminBillingPage() {
     <>
       <PageHeader title="Billing & accounting" subtitle="The platform’s financial picture." />
       <PageBody>
+        {/* Failed-payment alerts are the reason an admin opens this page — if the read
+            failed, say so rather than showing an all-clear. */}
+        {alertsError && <LoadErrorNotice what="failed-payment alerts" />}
         <Tabs tabs={['Overview', 'Current billing', 'Invoice history', 'Accounting']}>
           {(active) => {
             if (active === 'Overview')

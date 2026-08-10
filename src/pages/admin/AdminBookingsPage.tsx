@@ -3,7 +3,16 @@ import { useAllBookings, useUsersByRole } from '../../hooks/useAdmin'
 import { useBookingActions, createBooking } from '../../hooks/useBookings'
 import { useNannyDirectory } from '../../hooks/useNannies'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
-import { Card, Button, Select, Input, Textarea, Modal, StatusPill } from '../../components/ui'
+import {
+  Card,
+  Button,
+  Select,
+  Input,
+  Textarea,
+  Modal,
+  StatusPill,
+  LoadErrorNotice,
+} from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import type { BookingStatus } from '../../types'
 
@@ -11,7 +20,7 @@ const STATUSES: BookingStatus[] = ['confirmed', 'pending', 'cancelled', 'open', 
 
 /** Platform-wide bookings with filters, admin override actions (cancel), and manual create. */
 export function AdminBookingsPage() {
-  const bookings = useAllBookings()
+  const { items: bookings, error: bookingsError } = useAllBookings()
   const { setStatus } = useBookingActions()
   const { users: families } = useUsersByRole('family')
   const { nannies } = useNannyDirectory()
@@ -35,6 +44,7 @@ export function AdminBookingsPage() {
         action={<Button onClick={() => setCreating(true)}>Create booking</Button>}
       />
       <PageBody>
+        {bookingsError && <LoadErrorNotice what="the bookings list" />}
         <div className="mb-4 flex flex-wrap gap-3">
           <Select value={status} onChange={(e) => setStatusFilter(e.target.value)} className="sm:w-48">
             <option value="">All statuses</option>

@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import {
   RequireAuth,
   RequireRole,
@@ -45,6 +46,9 @@ import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
  */
 export function App() {
   return (
+    // Outermost so a throw in AuthProvider itself is caught too — otherwise the one
+    // component every route depends on is the only one that can still white-screen.
+    <ErrorBoundary boundaryName="app">
     <AuthProvider>
       <Routes>
         {/* Public */}
@@ -108,5 +112,6 @@ export function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
+    </ErrorBoundary>
   )
 }
