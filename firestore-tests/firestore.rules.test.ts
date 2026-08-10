@@ -58,6 +58,7 @@ describe('mail collection', () => {
         event: { type: 'booking_auto_confirmed' },
         status: 'pending',
         createdAt: serverTimestamp(),
+        createdBy: FAM, // now required — see the createdBy suite below
       }),
     )
   })
@@ -68,6 +69,7 @@ describe('mail collection', () => {
         event: { type: 'totally_made_up' },
         status: 'pending',
         createdAt: serverTimestamp(),
+        createdBy: FAM, // valid, so this can only fail on the event type
       }),
     )
   })
@@ -78,16 +80,19 @@ describe('mail collection', () => {
         event: { type: 'application_approved' },
         status: 'sent',
         createdAt: serverTimestamp(),
+        createdBy: FAM, // valid, so this can only fail on the status
       }),
     )
   })
 
   it('an unauthenticated user cannot create mail', async () => {
     await assertFails(
+      // No uid exists to stamp, which is itself part of why this is rejected.
       setDoc(doc(as(null), 'mail', 'm4'), {
         event: { type: 'application_approved' },
         status: 'pending',
         createdAt: serverTimestamp(),
+        createdBy: FAM,
       }),
     )
   })
@@ -256,5 +261,54 @@ describe('rate ranges', () => {
     await assertSucceeds(
       setDoc(doc(as(ADMIN), 'bookings', 'bk3'), { rateMaxCents: 9000 }, { merge: true }),
     )
+  })
+})
+
+// ---- mail createdBy (per-user send quota depends on it) ---------------------
+// The quota in onMailCreated meters by createdBy, so if that field could be omitted or
+// forged the cap would be trivially evadable.
+describe('mail createdBy attribution', () => {
+  const validEvent = { type: 'booking_auto_confirmed' }
+
+  it('accepts a mail doc stamped with the caller own uid', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(FAM), 'mail', 'q1'), {
+        event: validEvent,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        createdBy: FAM,
+      }),
+    )
+  })
+
+  it('rejects a mail doc with NO createdBy — unattributable sends cannot be metered', async () => {
+    await assertFails(
+      setDoc(doc(as(FAM), 'mail', 'q2'), {
+        event: validEvent,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      }),
+    )
+  })
+
+  it('rejects createdBy forged onto another user — the key evasion path', async () => {
+    await assertFails(
+      setDoc(doc(as(FAM), 'mail', 'q3'), {
+        event: validEvent,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        createdBy: OTHER,
+      }),
+    )
+  })
+
+  it('nobody can read or write mail_quota counters — a client could reset its own', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'mail_quota', FAM), { day: '2026-08-11', count: 5 })
+    })
+    await assertFails(getDoc(doc(as(FAM), 'mail_quota', FAM)))
+    await assertFails(setDoc(doc(as(FAM), 'mail_quota', FAM), { day: '2026-08-11', count: 0 }))
+    // Not even admin — this is server-only state, not an admin surface.
+    await assertFails(getDoc(doc(as(ADMIN), 'mail_quota', FAM)))
   })
 })

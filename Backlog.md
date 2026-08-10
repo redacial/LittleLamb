@@ -145,3 +145,26 @@ Work all 17 checklist sections in `docs/security-checklist.md`. Specific TODOs a
 - Intro video storage approach (direct-to-Storage upload with rules-enforced size cap).
 - Calendly: env-config field only (no live integration) — it's a BLOCKING open item in the flow docs.
 - Email provider (SendGrid/Resend) and Calendar API are BLOCKING open items — build UI/triggers as no-op stubs documented as pending.
+
+---
+
+## CURRENTLY OPEN (2026-08-11)
+
+Live tracker for work that is still outstanding. Everything above this line is the original
+build plan and is historical — read `session-log/NEXT-SESSION.md` for the actual next steps.
+
+### Small / mechanical
+- **Root `npm run lint` is broken.** The script is `eslint .` but the root project has NO
+  eslint dependency and NO config file, so it exits **127** (command not found). It is
+  therefore deliberately NOT wired into `.github/workflows/ci.yml` — a step that always
+  fails is worse than no step. Fix by adding `eslint` + a flat `eslint.config.js` to the
+  root project (the `functions/` package has a working setup at `functions/.eslintrc.cjs`
+  to model), then add the step back to CI. Client code is currently lint-unchecked;
+  `tsc --noEmit` is the only static gate.
+
+### Configuration tasks (console, not code — need David)
+- **App Check reCAPTCHA v3 site key.** Enforcement is now wired in code but inert until a
+  key exists. See `docs/app-check-runbook.md`.
+- **Firestore backups / PITR.** Production holds real waitlist submissions with no backup.
+  Deferred four sessions running; the only outstanding item whose downside is permanent
+  data loss. Also in the runbook.

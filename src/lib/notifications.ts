@@ -10,7 +10,7 @@
 
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import type { NannyStage } from '../types'
-import { db } from './firebase'
+import { auth, db } from './firebase'
 import { buildICalEvent } from './ical'
 
 /** Common booking fields most booking emails reference. */
@@ -107,10 +107,18 @@ async function deliver(event: NotificationEvent): Promise<void> {
     // eslint-disable-next-line no-console
     console.info('[notify]', event.type, event)
   }
+  // createdBy stamps WHO enqueued this send. Without it there is no way to meter
+  // per-user volume, and any signed-in account could queue unlimited email against
+  // the Resend bill. The rule requires it to equal the caller's own uid, so it can't
+  // be forged onto someone else; onMailCreated meters against it.
+  // Server-enqueued mail (quarterlyCharge, recurringAutoCancel) has no user and omits
+  // this field — it writes via the Admin SDK, bypassing rules, and is quota-exempt.
+  const uid = auth.currentUser?.uid
   await addDoc(collection(db, 'mail'), {
     event,
     status: 'pending',
     createdAt: serverTimestamp(),
+    ...(uid ? { createdBy: uid } : {}),
   })
 }
 

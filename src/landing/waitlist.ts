@@ -8,8 +8,12 @@
 // triggers on `onDocumentCreated('waitlist/{id}')` and emails the team via Resend. It
 // deploys with the rest of the backend once the project is on the Blaze plan; until
 // then submissions are captured here and the email simply waits — nothing is lost.
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { db } from './firebase'
+// NOTE: firebase/firestore and ./firebase are imported DYNAMICALLY at the point of write
+// (below), not statically here. A static import pulls the ~292KB Firebase SDK into the
+// landing page's first paint — half its total JS — for a single addDoc that most visitors
+// never trigger. Deferring it to form submission takes that weight off initial load
+// entirely; by the time someone has filled in the form, the chunk has long since fetched.
+// All validation above the write is pure, so the error paths never touch Firebase at all.
 import { cleanLine, cleanText, isValidEmail, normalizeEmail, cleanPhone } from '../lib/sanitize'
 
 export type WaitlistRole = 'family' | 'nanny'
@@ -47,6 +51,12 @@ export async function submitWaitlist(input: WaitlistInput): Promise<SubmitResult
   if (input.kind === 'contact' && !message) {
     return { ok: false, error: 'Please enter a message.' }
   }
+
+  // Both dynamic imports resolve from the same lazily-fetched chunk.
+  const [{ addDoc, collection, serverTimestamp }, { db }] = await Promise.all([
+    import('firebase/firestore'),
+    import('./firebase'),
+  ])
 
   const write = addDoc(collection(db, 'waitlist'), {
     kind: input.kind,

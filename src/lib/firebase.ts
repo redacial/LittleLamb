@@ -31,14 +31,26 @@ const firebaseConfig: FirebaseOptions = {
 export const app = initializeApp(firebaseConfig)
 
 // App Check (checklist §14 — anti-abuse / rate-limiting). Attests requests come from our app
-// before Firebase backends accept them, mitigating credential-stuffing and scripted abuse.
-// No-op when no reCAPTCHA site key is configured (local dev / emulators).
+// before Firebase backends that ENFORCE App Check accept them. Enforcement currently exists on
+// the billing callables only (functions/src/billing/setupIntent.ts); Firestore rules
+// deliberately do not require request.app. See docs/app-check-runbook.md.
+//
+// No-op when no reCAPTCHA site key is configured (local dev / emulators). This must never
+// throw the way requireEnv() does for the six core config vars: white-screening the whole
+// site over a missing anti-abuse key is worse than the gap it leaves. In production we warn
+// loudly instead, so failing open is visible rather than silent.
 const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY
 if (appCheckSiteKey) {
   initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider(appCheckSiteKey),
     isTokenAutoRefreshEnabled: true,
   })
+} else if (import.meta.env.PROD) {
+  console.warn(
+    '[App Check] VITE_FIREBASE_APPCHECK_SITE_KEY is not set — App Check is NOT active in this ' +
+      'production build. Requests carry no attestation token, so any App Check enforcement ' +
+      '(billing callables) will reject them. See docs/app-check-runbook.md.',
+  )
 }
 
 export const auth = getAuth(app)

@@ -34,14 +34,27 @@ const firebaseConfig: FirebaseOptions = {
 
 export const app = initializeApp(firebaseConfig)
 
-// App Check — attests form submissions come from our real site before Firestore accepts the
-// write, mitigating scripted spam on the public waitlist. No-op without a reCAPTCHA site key.
+// App Check — attaches an attestation token to requests, evidence they come from our real
+// site. Note the waitlist write is NOT gated on it: firestore.rules deliberately does not
+// require request.app, because a misconfigured key would take the site's only live conversion
+// path offline. Abuse control on that path is the server-side mail quota + the strict shape
+// rule. See docs/app-check-runbook.md.
+//
+// No-op without a reCAPTCHA site key (local dev / emulators). Must not throw the way
+// requireEnv() does — a missing anti-abuse key is not worth white-screening the site over —
+// so production warns loudly instead, making the failing-open state visible.
 const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY
 if (appCheckSiteKey) {
   initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider(appCheckSiteKey),
     isTokenAutoRefreshEnabled: true,
   })
+} else if (import.meta.env.PROD) {
+  console.warn(
+    '[App Check] VITE_FIREBASE_APPCHECK_SITE_KEY is not set — App Check is NOT active in this ' +
+      'production build. Waitlist submissions carry no attestation token. ' +
+      'See docs/app-check-runbook.md.',
+  )
 }
 
 export const db = getFirestore(app)

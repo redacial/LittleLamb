@@ -20,15 +20,26 @@ export default defineConfig(() => {
       port: 5180,
       strictPort: true,
     },
-    ...(isLanding && {
-      build: {
-        outDir: 'dist-landing',
-        emptyOutDir: true,
-        rollupOptions: {
-          input: resolve(__dirname, 'landing.html'),
+    build: {
+      // Landing target overrides the output location and entry; the app target uses defaults
+      // (dist/, index.html). Both share the manualChunks strategy below.
+      ...(isLanding && { outDir: 'dist-landing', emptyOutDir: true }),
+      rollupOptions: {
+        ...(isLanding && { input: resolve(__dirname, 'landing.html') }),
+        output: {
+          // Split long-lived vendor code out of the app chunk. These libraries change far
+          // less often than our own source, so giving them their own hashed files means a
+          // deploy of app code doesn't invalidate the visitor's cached copy of React or the
+          // Firebase SDK. NOTE: on a cold first paint this does NOT reduce total bytes for
+          // whatever the entry actually imports — it redistributes them across files.
+          manualChunks: {
+            react: ['react', 'react-dom'],
+            firebase: ['firebase/app', 'firebase/firestore'],
+            motion: ['framer-motion'],
+          },
         },
       },
-    }),
+    },
     test: {
       globals: true,
       environment: 'jsdom',

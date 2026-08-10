@@ -1,0 +1,102 @@
+name: CI
+
+# Runs the full test suite on every push and PR. Until this existed, 111 green tests
+# across three suites ran only when someone remembered to run them locally — and
+# DECISIONS.md D37 already claimed "drift fails CI", which was not true of anything.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# A newer push to the same branch makes the older run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Client + functions. These need no emulator, so they stay fast and always-required.
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 20: functions/package.json pins engines.node "20" and firebase.json pins
+      # the nodejs20 runtime. Local dev happens to be on 22, but 20 is what deploys.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          # This repo is THREE independent npm projects, not a workspace — root,
+          # functions/ and firestore-tests/ each have their own lockfile + node_modules.
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+            firestore-tests/package-lock.json
+
+      - name: Install (root)
+        run: npm ci
+      - name: Install (functions)
+        run: npm ci --prefix functions
+
+      # Deliberately separate steps rather than the existing `test:all` script: that
+      # chains with && and short-circuits, so the first failure would hide the rest.
+      # NOTE: root `npm run lint` is NOT run here — the root project has no eslint
+      # dependency and no config, so the script exits 127 (command not found). Fixing
+      # that is tracked in Backlog.md; a step that always fails is worse than none.
+      - name: Typecheck (root)
+        run: npm run typecheck
+
+      - name: Unit tests (client)
+        run: npm test
+
+      - name: Lint (functions)
+        run: npm --prefix functions run lint
+
+      - name: Build (functions)
+        run: npm --prefix functions run build
+
+      - name: Unit tests (functions)
+        run: npm run test:functions
+
+      - name: Build (app)
+        run: npm run build
+
+      - name: Build (landing)
+        run: npm run build:landing
+
+  # Security-rules tests run against the real Firestore emulator, which needs Java and
+  # downloads emulator jars — slower and more prone to flake than the pure unit tests,
+  # so it gets its own job. It is NOT continue-on-error: these rules are the primary
+  # authorization boundary, and a silently-skipped rules suite is how that rots.
+  rules-tests:
+    name: Firestore rules tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            firestore-tests/package-lock.json
+
+      # The Firestore emulator is a Java process.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install (firestore-tests)
+        run: npm ci --prefix firestore-tests
+
+      # The firestore-tests script starts the emulator itself via `firebase
+      # emulators:exec` and runs fully offline — the --project it names is only a
+      # label for the emulator, so no Firebase credentials are needed here.
+      - name: Rules tests
+        run: npm run test:rules

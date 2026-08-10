@@ -253,9 +253,16 @@ service cloud.firestore {
     // visitors included) may add ONE waitlist/contact submission; nobody but admin can read,
     // list, update, or delete — so the collection can never be enumerated to harvest the
     // emails of everyone who signed up. The create surface is public, so the shape is validated
-    // strictly to keep it from being abused as arbitrary storage. App Check (when configured)
-    // further attests the write comes from our real site. Email-on-signup is a deferred Cloud
-    // Function (see src/landing/waitlist.ts) that runs with admin privileges, unaffected by these.
+    // strictly to keep it from being abused as arbitrary storage. Email-on-signup is a deferred
+    // Cloud Function (see src/landing/waitlist.ts) that runs with admin privileges, unaffected
+    // by these.
+    //
+    // App Check: `request.app` is DELIBERATELY NOT required here. This is the only live
+    // conversion path on the pre-launch site, and a missing/misconfigured reCAPTCHA site key
+    // (it is empty in every env today) would silently take the whole form offline — a worse
+    // outcome than the spam it prevents. Abuse control on this path is the strict shape
+    // validation below plus the server-side mail quota; App Check enforcement lives on the
+    // billing callables instead. See docs/app-check-runbook.md before changing this.
     match /waitlist/{entryId} {
       allow get, list, update, delete: if isAdmin();
 
@@ -285,8 +292,16 @@ service cloud.firestore {
     match /mail/{mailId} {
       allow get, list: if isAdmin();
 
+      // createdBy is REQUIRED and must be the caller's own uid. It is what makes the
+      // per-user daily send quota in onMailCreated enforceable: without an attributable
+      // author there is nothing to meter, and any signed-in account could queue unlimited
+      // email against our Resend bill. Pinning it to uid() means a flood can't be
+      // attributed to someone else to dodge the meter or frame another user.
+      // (Server-enqueued mail from quarterlyCharge / recurringAutoCancel writes via the
+      // Admin SDK, which bypasses these rules entirely, and is deliberately quota-exempt.)
       allow create: if isSignedIn()
-        && incoming().keys().hasOnly(['event', 'status', 'createdAt'])
+        && incoming().keys().hasOnly(['event', 'status', 'createdAt', 'createdBy'])
+        && incoming().createdBy == uid()
         && incoming().status == 'pending'
         && incoming().createdAt == request.time
         && incoming().event is map
@@ -296,10 +311,22 @@ service cloud.firestore {
              'booking_request_declined', 'open_booking_picked_up',
              'recurring_booking_auto_cancelled', 'same_day_booking_outcome',
              'booking_cancelled_by_family', 'application_status_updated',
-             'application_approved', 'application_rejected'
+             'application_approved', 'application_rejected',
+             // Server-only in practice (quarterlyCharge), listed to keep this in step
+             // with the NotificationEvent union — see functions/src/shared.
+             'quarterly_invoice'
            ];
 
       allow update, delete: if isAdmin();
+    }
+
+    // ---- mail_quota ----------------------------------------------------------
+    // Per-user daily send counters, written ONLY by onMailCreated via the Admin SDK
+    // (which bypasses these rules). No client may read or write them — a client that
+    // could write its own counter could reset it, which would defeat the quota entirely.
+    // Spelled out explicitly rather than left to the catch-all deny, matching stripe_events.
+    match /mail_quota/{userId} {
+      allow read, write: if false;
     }
 
     // ---- default deny --------------------------------------------------------

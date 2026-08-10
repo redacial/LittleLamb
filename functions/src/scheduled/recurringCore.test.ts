@@ -22,18 +22,25 @@ interface Harness {
   deps: RecurringJobDeps
   cancelled: string[]
   mailed: NotificationEvent[]
+  /** Every nannyId passed to getAvailability, in call order (duplicates = wasted reads). */
+  availabilityReads: string[]
 }
 
 function harness(bookings: RecurringJobBooking[], avail: AvailabilityByNanny): Harness {
   const cancelled: string[] = []
   const mailed: NotificationEvent[] = []
+  const availabilityReads: string[] = []
   return {
     cancelled,
     mailed,
+    availabilityReads,
     deps: {
       nowISO: NOW,
       listCandidateBookings: async () => bookings,
-      getAvailability: async (id) => avail[id] ?? [],
+      getAvailability: async (id) => {
+        availabilityReads.push(id)
+        return avail[id] ?? []
+      },
       cancelBooking: async (id) => { cancelled.push(id) },
       enqueueMail: async (e) => { mailed.push(e) },
     },
@@ -72,6 +79,31 @@ describe('runRecurringAutoCancel', () => {
     const res = await runRecurringAutoCancel(h.deps)
     expect(res.cancelled).toBe(0)
     expect(h.cancelled).toEqual([])
+  })
+
+  it('reads availability once per unique nanny, not once per booking', async () => {
+    // Cost guard: this job runs hourly, so one Firestore read per BOOKING would bill
+    // ~N times more than one read per NANNY. runRecurringAutoCancel dedupes nannyIds
+    // before fetching; this locks that in.
+    const day = new Date(`2026-06-15T00:00:00`).getDay()
+    const h = harness(
+      [
+        booking({ id: 'a1', nannyId: 'n1' }),
+        booking({ id: 'a2', nannyId: 'n1' }),
+        booking({ id: 'a3', nannyId: 'n1' }),
+        booking({ id: 'b1', nannyId: 'n2' }),
+        booking({ id: 'b2', nannyId: 'n2' }),
+        booking({ id: 'c1', nannyId: null }), // unassigned -> no availability read at all
+      ],
+      { n1: [{ day, start: '14:00', end: '21:00' }], n2: [{ day, start: '14:00', end: '21:00' }] },
+    )
+
+    await runRecurringAutoCancel(h.deps)
+
+    // 6 bookings, 2 distinct assigned nannies -> exactly 2 reads.
+    expect(h.availabilityReads).toHaveLength(2)
+    expect([...h.availabilityReads].sort()).toEqual(['n1', 'n2'])
+    expect(new Set(h.availabilityReads).size).toBe(h.availabilityReads.length)
   })
 
   it('handles multiple nannies, cancelling only the conflicting one', async () => {

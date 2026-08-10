@@ -17,17 +17,28 @@ import type { NotificationEvent } from '../shared/notifications-events'
 export const recurringAutoCancel = onSchedule(
   { schedule: 'every 1 hours', region: REGION, timeZone: 'America/Los_Angeles' },
   async () => {
-    const today = new Date().toISOString().slice(0, 10) // "YYYY-MM-DD"
+    const now = new Date()
+    const today = now.toISOString().slice(0, 10) // "YYYY-MM-DD"
+    // findRecurringConflicts only ever acts on bookings starting within 48h, so reading
+    // further ahead is pure waste. Without this upper bound the hourly job scans EVERY
+    // future recurring booking forever — a read cost that grows without limit as the
+    // platform books further out. A few days of slack absorbs timezone edges and the
+    // lexical date-string comparison.
+    const horizon = new Date(now)
+    horizon.setDate(horizon.getDate() + 4)
+    const horizonDate = horizon.toISOString().slice(0, 10)
 
     const result = await runRecurringAutoCancel({
-      nowISO: new Date().toISOString(),
+      nowISO: now.toISOString(),
 
       async listCandidateBookings() {
-        // Recurring, still-active, dated today or later. (Composite index: recurring + date.)
+        // Recurring, still-active, dated today through the 48h-plus-slack horizon.
+        // (Composite index: recurring + date.)
         const snap = await db
           .collection('bookings')
           .where('recurring', '==', true)
           .where('date', '>=', today)
+          .where('date', '<=', horizonDate)
           .get()
         return snap.docs
           .map((d) => ({ id: d.id, ...(d.data() as Omit<RecurringJobBooking, 'id'>) }))

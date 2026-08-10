@@ -28,3 +28,19 @@ export const BILLING_DEFAULTS = {
   /** Billing cycle length in days (quarterly = 90 from signup). */
   cycleDays: 90,
 } as const
+
+/**
+ * Outbound-email quota, per user per rolling day.
+ *
+ * Every notification is triggered by a real user action (booking, cancelling, an admin
+ * approving someone), so legitimate volume is low — a busy family might fire a handful a
+ * day. The cap exists so a compromised or scripted account can't turn the mail queue into
+ * an email-amplification vector billed to our Resend account. It is deliberately set well
+ * above any plausible honest usage: this is an abuse ceiling, not a product limit.
+ *
+ * Server-enqueued mail (quarterlyCharge, recurringAutoCancel) carries no createdBy and is
+ * exempt — it is our own scheduled code, not user-triggered.
+ */
+export const MAIL_QUOTA = {
+  maxPerUserPerDay: 100,
+} as const

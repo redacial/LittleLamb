@@ -27,8 +27,14 @@ async function ensureCustomer(uid: string, email: string | undefined): Promise<s
   return customer.id
 }
 
+// enforceAppCheck: reject callers without a valid App Check token. Safe to enforce HERE and
+// only here: these two callables move money (Stripe customer + payment method) and are not
+// yet live — nothing in production depends on them, so a misconfigured site key can only
+// break an unreleased flow, never a live conversion path. Deliberately NOT applied to the
+// public `waitlist` write path in firestore.rules for exactly that reason. Note this becomes
+// a real gate only once VITE_FIREBASE_APPCHECK_SITE_KEY is set (see docs/app-check-runbook.md).
 export const createSetupIntent = onCall(
-  { region: REGION, secrets: [STRIPE_SECRET_KEY] },
+  { region: REGION, secrets: [STRIPE_SECRET_KEY], enforceAppCheck: true },
   async (req) => {
     const uid = req.auth?.uid
     if (!uid) throw new HttpsError('unauthenticated', 'Sign in required.')
@@ -43,8 +49,9 @@ export const createSetupIntent = onCall(
   },
 )
 
+// enforceAppCheck: see the note on createSetupIntent above.
 export const savePaymentMethod = onCall(
-  { region: REGION, secrets: [STRIPE_SECRET_KEY] },
+  { region: REGION, secrets: [STRIPE_SECRET_KEY], enforceAppCheck: true },
   async (req) => {
     const uid = req.auth?.uid
     if (!uid) throw new HttpsError('unauthenticated', 'Sign in required.')

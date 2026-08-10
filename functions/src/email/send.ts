@@ -9,7 +9,8 @@ import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 import { logger } from 'firebase-functions/v2'
 import { FieldValue } from 'firebase-admin/firestore'
 import { db } from '../firebase'
-import { REGION, RESEND_API_KEY } from '../config'
+import { REGION, RESEND_API_KEY, MAIL_QUOTA } from '../config'
+import { checkQuota } from './quota'
 import type { NotificationEvent } from '../shared/notifications-events'
 import { renderEmail } from './templates'
 import { resolveRecipients, type DocReader } from './recipients'
@@ -29,15 +30,52 @@ export const onMailCreated = onDocumentCreated(
     const ref = evt.data?.ref
     if (!ref) return
 
-    // Claim the doc so a duplicate delivery of this trigger is a no-op.
-    const claimed = await db.runTransaction(async (tx) => {
+    // Claim the doc so a duplicate delivery of this trigger is a no-op — and, in the SAME
+    // transaction, meter the enqueuing user against their daily quota. Metering here rather
+    // than in a second transaction is what makes the cap real: a flood of concurrent docs
+    // all read-modify-write the same counter under contention, so none of them can slip
+    // past by racing. Rules already force createdBy to equal the caller's own uid, so the
+    // meter can't be evaded by attributing sends to someone else.
+    const outcome = await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref)
       const data = snap.data()
-      if (!data || data.status !== 'pending') return null
+      if (!data || data.status !== 'pending') return { kind: 'skip' as const }
+
+      // Server-enqueued mail (quarterlyCharge, recurringAutoCancel) has no createdBy —
+      // it's our own scheduled code, not user-triggered, so it is exempt.
+      const createdBy = typeof data.createdBy === 'string' ? data.createdBy : null
+      if (createdBy) {
+        const quotaRef = db.collection('mail_quota').doc(createdBy)
+        const quotaSnap = await tx.get(quotaRef)
+        const q = quotaSnap.data()
+        const current =
+          q && typeof q.day === 'string' && typeof q.count === 'number'
+            ? { day: q.day, count: q.count }
+            : null
+
+        const decision = checkQuota(current, new Date(), MAIL_QUOTA.maxPerUserPerDay)
+        tx.set(quotaRef, decision.next, { merge: true })
+
+        if (!decision.allowed) {
+          // Terminal, not retried: mark it and never call the provider.
+          tx.update(ref, { status: 'quota_exceeded', sentAt: FieldValue.serverTimestamp() })
+          return { kind: 'over_quota' as const, createdBy }
+        }
+      }
+
       tx.update(ref, { status: 'sending', attempts: FieldValue.increment(1) })
-      return data as { event: NotificationEvent; attempts?: number }
+      return { kind: 'claimed' as const, data: data as { event: NotificationEvent; attempts?: number } }
     })
-    if (!claimed) return // already handled (or not pending)
+
+    if (outcome.kind === 'skip') return // already handled (or not pending)
+    if (outcome.kind === 'over_quota') {
+      logger.warn('mail: daily quota exceeded, not sent', {
+        uid: outcome.createdBy,
+        cap: MAIL_QUOTA.maxPerUserPerDay,
+      })
+      return
+    }
+    const claimed = outcome.data
 
     const event = claimed.event
     try {

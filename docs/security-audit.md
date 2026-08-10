@@ -65,8 +65,10 @@ Status legend: ✅ done · ⚠️ done with a noted follow-up · ⏭️ deferred
   (e.g. failed-payment / abuse alerts) to be configured in the console pre-launch.
 
 ## 11. Security Testing and Audits ⚠️
-- This document + line-by-line rules review + dependency scan. Penetration testing and rules
-  emulator tests scheduled before launch.
+- This document + line-by-line rules review + dependency scan.
+- Rules emulator unit tests are **done** (`firestore-tests/`, 19 cases) — this section
+  previously said they were "scheduled before launch", which line 114 below already superseded.
+- Penetration testing still outstanding before launch.
 
 ## 12. Backup and Disaster Recovery ⏭️
 - Enable scheduled Firestore exports (PITR / daily export to GCS) in the project. Configuration
@@ -78,12 +80,30 @@ Status legend: ✅ done · ⚠️ done with a noted follow-up · ⏭️ deferred
   (esbuild dev server, vite dev server, vitest UI) — none ship in the production bundle or run
   in a user's browser. Fully clearing them needs vite 8 (breaking); deferred, tracked in Backlog.
 
-## 14. Rate Limiting and Anti-Abuse ✅
-- Firebase App Check (reCAPTCHA v3) wired in `firebase.ts` — attests requests originate from our
-  app before backends accept them, mitigating credential-stuffing and scripted abuse. Activates
-  when `VITE_FIREBASE_APPCHECK_SITE_KEY` is set (no-op in local/emulator dev).
-- Firebase Auth applies its own brute-force throttling (`auth/too-many-requests`, surfaced
-  generically).
+## 14. Rate Limiting and Anti-Abuse ⚠️
+**Previously marked ✅ — that was an overstatement. Corrected 2026-08-10.** App Check is code-wired
+but has never actually been in effect, in two independent ways:
+- **No site key anywhere.** `VITE_FIREBASE_APPCHECK_SITE_KEY` is **empty** in `.env`,
+  `.env.staging`, and `.env.production`, so the `if (appCheckSiteKey)` guard in
+  `src/lib/firebase.ts` / `src/landing/firebase.ts` never fires and `initializeAppCheck` has
+  never run in any deployed build. No request has ever carried an attestation token.
+- **No backend enforcement.** Before this session there was **zero** `enforceAppCheck` in
+  `functions/src/` and **zero** `request.app` in `firestore.rules` — so even with a key pasted
+  in, nothing would have rejected a token-less request. The earlier claim that backends "accept
+  them" only after attestation was wrong.
+
+Fixed this session (partially): `enforceAppCheck: true` added to both callables
+(`createSetupIntent`, `savePaymentMethod`) so the key becomes a real switch. `request.app` is
+**deliberately not** required in `firestore.rules` — a misconfigured key must never be able to
+take the public `waitlist` form (the pre-launch site's only conversion path) offline. Turning the
+key on is a console task: see **`docs/app-check-runbook.md`**.
+
+**The section title also overstates.** There is no rate limiting on the platform's own write
+paths. Firebase Auth's brute-force throttle (`auth/too-many-requests`, surfaced generically) is
+real but applies only to *login*; it does nothing for the `mail` and `waitlist` create paths,
+which are the actual abusable surfaces (public/signed-in create, email-triggering). Server-side
+quota work on the `mail` path is landing separately this session — that, not App Check, is the
+real abuse control on the outbound-email path.
 
 ## 15. Data Privacy Compliance ⚠️
 - Data minimization: only fields the product needs are collected. Account deactivation requests
@@ -108,7 +128,9 @@ Status legend: ✅ done · ⚠️ done with a noted follow-up · ⏭️ deferred
    update; admin-only.
 4. **Dependencies** — firebase 10 → 12; remaining advisories are dev-only.
 5. **CSP** — added a tight Content-Security-Policy to hosting headers.
-6. **App Check** — wired reCAPTCHA v3 attestation.
+6. **App Check** — wired reCAPTCHA v3 attestation **in client code only**. Not in effect: no
+   site key is configured in any env, so it never initializes, and at the time this line was
+   written nothing enforced it server-side either. See the corrected §14.
 
 ## Outstanding before launch (tracked in Backlog.md)
 - ~~Rules emulator unit tests~~ ✅ **Done** — see the backend section below.

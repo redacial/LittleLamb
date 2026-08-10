@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -5,6 +6,7 @@ import {
   RequireAuth,
   RequireRole,
   RequireApprovedAndOnboarded,
+  FullScreenLoader,
 } from './components/RouteGuards'
 import { AppLayout } from './components/layout/AppLayout'
 import { IndexRedirect } from './pages/IndexRedirect'
@@ -15,25 +17,67 @@ import { NannyInfoPage } from './pages/public/NannyInfoPage'
 import { ApplicationPage } from './pages/public/ApplicationPage'
 import { FamilyHoldingPage } from './pages/onboarding/FamilyHoldingPage'
 import { NannyHoldingPage } from './pages/onboarding/NannyHoldingPage'
-import { FamilySetupWizard } from './pages/onboarding/FamilySetupWizard'
-import { NannySetupWizard } from './pages/onboarding/NannySetupWizard'
-import { FamilyDashboard } from './pages/family/FamilyDashboard'
-import { NannyDashboard } from './pages/nanny/NannyDashboard'
-import { AdminDashboard } from './pages/admin/AdminDashboard'
-import { NanniesDirectory } from './pages/shared/NanniesDirectory'
-import { NannyProfilePage } from './pages/shared/NannyProfilePage'
-import { BookingsPage } from './pages/shared/BookingsPage'
-import { PoliciesPage } from './pages/shared/PoliciesPage'
-import { FamilyProfilePage } from './pages/family/FamilyProfilePage'
-import { FamilyBillingPage } from './pages/family/FamilyBillingPage'
-import { FamilyCalendarPage } from './pages/family/FamilyCalendarPage'
-import { NannyOwnProfilePage } from './pages/nanny/NannyProfilePage'
-import { NannyCalendarPage } from './pages/nanny/NannyCalendarPage'
-import { AdminPeoplePage } from './pages/admin/AdminPeoplePage'
-import { AdminBookingsPage } from './pages/admin/AdminBookingsPage'
-import { AdminBillingPage } from './pages/admin/AdminBillingPage'
-import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage'
-import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
+
+// Everything behind auth is code-split. Public routes above stay eager: they are the first
+// paint for real visitors, so pushing them into a lazy chunk would only add a round trip.
+// Named exports need the `.then` shim — React.lazy expects a default export.
+const FamilySetupWizard = lazy(() =>
+  import('./pages/onboarding/FamilySetupWizard').then((m) => ({ default: m.FamilySetupWizard })),
+)
+const NannySetupWizard = lazy(() =>
+  import('./pages/onboarding/NannySetupWizard').then((m) => ({ default: m.NannySetupWizard })),
+)
+const FamilyDashboard = lazy(() =>
+  import('./pages/family/FamilyDashboard').then((m) => ({ default: m.FamilyDashboard })),
+)
+const NannyDashboard = lazy(() =>
+  import('./pages/nanny/NannyDashboard').then((m) => ({ default: m.NannyDashboard })),
+)
+const AdminDashboard = lazy(() =>
+  import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })),
+)
+const NanniesDirectory = lazy(() =>
+  import('./pages/shared/NanniesDirectory').then((m) => ({ default: m.NanniesDirectory })),
+)
+const NannyProfilePage = lazy(() =>
+  import('./pages/shared/NannyProfilePage').then((m) => ({ default: m.NannyProfilePage })),
+)
+const BookingsPage = lazy(() =>
+  import('./pages/shared/BookingsPage').then((m) => ({ default: m.BookingsPage })),
+)
+const PoliciesPage = lazy(() =>
+  import('./pages/shared/PoliciesPage').then((m) => ({ default: m.PoliciesPage })),
+)
+const FamilyProfilePage = lazy(() =>
+  import('./pages/family/FamilyProfilePage').then((m) => ({ default: m.FamilyProfilePage })),
+)
+const FamilyBillingPage = lazy(() =>
+  import('./pages/family/FamilyBillingPage').then((m) => ({ default: m.FamilyBillingPage })),
+)
+const FamilyCalendarPage = lazy(() =>
+  import('./pages/family/FamilyCalendarPage').then((m) => ({ default: m.FamilyCalendarPage })),
+)
+const NannyOwnProfilePage = lazy(() =>
+  import('./pages/nanny/NannyProfilePage').then((m) => ({ default: m.NannyOwnProfilePage })),
+)
+const NannyCalendarPage = lazy(() =>
+  import('./pages/nanny/NannyCalendarPage').then((m) => ({ default: m.NannyCalendarPage })),
+)
+const AdminPeoplePage = lazy(() =>
+  import('./pages/admin/AdminPeoplePage').then((m) => ({ default: m.AdminPeoplePage })),
+)
+const AdminBookingsPage = lazy(() =>
+  import('./pages/admin/AdminBookingsPage').then((m) => ({ default: m.AdminBookingsPage })),
+)
+const AdminBillingPage = lazy(() =>
+  import('./pages/admin/AdminBillingPage').then((m) => ({ default: m.AdminBillingPage })),
+)
+const AdminAnalyticsPage = lazy(() =>
+  import('./pages/admin/AdminAnalyticsPage').then((m) => ({ default: m.AdminAnalyticsPage })),
+)
+const AdminSettingsPage = lazy(() =>
+  import('./pages/admin/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage })),
+)
 
 /**
  * Route tree. Guard order is the SPA equivalent of layered middleware (checklist §2):
@@ -50,6 +94,9 @@ export function App() {
     // component every route depends on is the only one that can still white-screen.
     <ErrorBoundary boundaryName="app">
     <AuthProvider>
+      {/* One boundary around the whole tree: only the lazy (post-auth) routes can suspend,
+          and they already show a full-screen shell while the guards resolve auth. */}
+      <Suspense fallback={<FullScreenLoader />}>
       <Routes>
         {/* Public */}
         <Route path="/" element={<IndexRedirect />} />
@@ -111,6 +158,7 @@ export function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </AuthProvider>
     </ErrorBoundary>
   )
