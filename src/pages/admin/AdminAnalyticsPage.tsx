@@ -10,9 +10,13 @@ const TARGET_RATIO = 4
 
 /** Admin analytics — Overview / Platform Health / Revenue / Bookings / Growth (live where possible). */
 export function AdminAnalyticsPage() {
-  const { items: bookings } = useAllBookings()
-  const { users: families } = useUsersByRole('family')
-  const { users: nannies } = useUsersByRole('nanny')
+  const { items: bookings, truncated: bookingsTruncated } = useAllBookings()
+  const { users: families, truncated: familiesTruncated } = useUsersByRole('family')
+  const { users: nannies, truncated: nanniesTruncated } = useUsersByRole('nanny')
+  // Every figure below is derived by counting these arrays, so a capped read doesn't just
+  // shorten a list — it makes revenue, ratios and rates silently WRONG (understated).
+  // This page must say so rather than presenting a confident number it can't support.
+  const partialData = bookingsTruncated || familiesTruncated || nanniesTruncated
 
   const activeFamilies = families.filter((f) => f.approved).length
   const activeNannies = nannies.filter((n) => n.approved).length
@@ -29,6 +33,19 @@ export function AdminAnalyticsPage() {
     <>
       <PageHeader title="Analytics" subtitle="Platform health at a glance." />
       <PageBody>
+        {partialData && (
+          <div
+            role="alert"
+            className="mb-4 rounded-ll-card border-1.5 border-ll-terra-deep bg-ll-terra-light p-4 text-ll-ink"
+          >
+            <p className="font-medium">These numbers are incomplete.</p>
+            <p className="mt-1 text-sm text-ll-warm-gray">
+              The platform now has more records than a single page can load, so every figure
+              below is calculated from a recent subset and understates the true total. Treat
+              them as indicative until reporting reads the full dataset.
+            </p>
+          </div>
+        )}
         <Tabs tabs={['Overview', 'Platform health', 'Revenue', 'Bookings', 'Growth']}>
           {(active) => {
             if (active === 'Overview')

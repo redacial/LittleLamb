@@ -1,7 +1,7 @@
 import { useAllBookings, useUsersByRole, useBillingAlerts } from '../../hooks/useAdmin'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Tabs } from '../../components/Tabs'
-import { Card, CardLabel, Button, LoadErrorNotice } from '../../components/ui'
+import { Card, CardLabel, Button, LoadErrorNotice, TruncatedNotice } from '../../components/ui'
 import { SummaryCard } from '../../components/SummaryCard'
 import { money } from '../../lib/format'
 import { downloadCSV } from '../../lib/exporters'
@@ -12,9 +12,11 @@ const DONATION_RATE = 0.1
 
 /** Admin Billing & Accounting — Overview / Current Billing / Invoice History / Accounting. */
 export function AdminBillingPage() {
-  const { items: bookings } = useAllBookings()
-  const { users: families } = useUsersByRole('family')
-  const { items: billingAlerts, error: alertsError } = useBillingAlerts()
+  const { items: bookings, truncated: bookingsTruncated } = useAllBookings()
+  const { users: families, truncated: familiesTruncated } = useUsersByRole('family')
+  const { items: billingAlerts, error: alertsError, truncated: alertsTruncated } = useBillingAlerts()
+  // Revenue here is counted off these arrays, so a capped read understates it.
+  const partialData = bookingsTruncated || familiesTruncated || alertsTruncated
   const activeFamilies = families.filter((f) => f.approved).length
   const confirmed = bookings.filter((b) => b.status === 'confirmed').length
   const revenue = activeFamilies * SUBSCRIPTION + confirmed * PER_BOOKING
@@ -49,6 +51,11 @@ export function AdminBillingPage() {
         {/* Failed-payment alerts are the reason an admin opens this page — if the read
             failed, say so rather than showing an all-clear. */}
         {alertsError && <LoadErrorNotice what="failed-payment alerts" />}
+        {partialData && (
+          <div className="mb-4">
+            <TruncatedNotice shown={bookings.length} what="billing records" />
+          </div>
+        )}
         <Tabs tabs={['Overview', 'Current billing', 'Invoice history', 'Accounting']}>
           {(active) => {
             if (active === 'Overview')

@@ -3,7 +3,15 @@ import { useAuth } from '../../context/AuthContext'
 import { useNannyDirectory } from '../../hooks/useNannies'
 import { useFamilyProfile } from '../../hooks/useProfile'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
-import { Card, Avatar, Badge, Button, RateDisclaimer } from '../../components/ui'
+import {
+  Card,
+  Avatar,
+  Badge,
+  Button,
+  RateDisclaimer,
+  LoadErrorNotice,
+  TruncatedNotice,
+} from '../../components/ui'
 import { badgeType, badgeLabel } from '../../lib/badges'
 import { formatRate, rangesOverlap } from '../../lib/rates'
 
@@ -14,7 +22,7 @@ import { formatRate, rangesOverlap } from '../../lib/rates'
  */
 export function NanniesDirectory() {
   const { user, profile } = useAuth()
-  const { nannies, loading } = useNannyDirectory()
+  const { nannies, loading, error, truncated } = useNannyDirectory()
   const canBook = profile?.role === 'family'
   const base = profile?.role === 'nanny' ? '/nanny' : '/family'
   // Only families have a budget to compare against; nannies browsing see rates plainly.
@@ -27,6 +35,10 @@ export function NanniesDirectory() {
       <PageBody>
         {loading ? (
           <p className="text-ll-warm-gray">Loading nannies…</p>
+        ) : error ? (
+          // "We couldn't load this" — never the "no nannies yet" empty state below, which
+          // would tell a family the network is empty when it simply failed to read.
+          <LoadErrorNotice what="the nanny directory" />
         ) : nannies.length === 0 ? (
           <Card tone="peri" className="text-center">
             <p className="font-display text-display-md text-ll-ink">No nannies yet — but they’re coming</p>
@@ -38,6 +50,11 @@ export function NanniesDirectory() {
           <>
           {/* One disclaimer for the whole grid — repeating it on every card would be
               noise, but it must appear wherever rates are shown. */}
+          {truncated && (
+            <div className="mb-4">
+              <TruncatedNotice shown={nannies.length} what="nannies" />
+            </div>
+          )}
           {nannies.some((n) => n.rateRange) && <RateDisclaimer className="mb-4" />}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {nannies.map((n) => {

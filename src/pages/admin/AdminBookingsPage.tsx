@@ -12,6 +12,7 @@ import {
   Modal,
   StatusPill,
   LoadErrorNotice,
+  TruncatedNotice,
 } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import type { BookingStatus } from '../../types'
@@ -20,7 +21,7 @@ const STATUSES: BookingStatus[] = ['confirmed', 'pending', 'cancelled', 'open', 
 
 /** Platform-wide bookings with filters, admin override actions (cancel), and manual create. */
 export function AdminBookingsPage() {
-  const { items: bookings, error: bookingsError } = useAllBookings()
+  const { items: bookings, error: bookingsError, truncated } = useAllBookings()
   const { setStatus } = useBookingActions()
   const { users: families } = useUsersByRole('family')
   const { nannies } = useNannyDirectory()
@@ -45,6 +46,11 @@ export function AdminBookingsPage() {
       />
       <PageBody>
         {bookingsError && <LoadErrorNotice what="the bookings list" />}
+        {truncated && (
+          <div className="mb-4">
+            <TruncatedNotice shown={bookings.length} what="bookings" />
+          </div>
+        )}
         <div className="mb-4 flex flex-wrap gap-3">
           <Select value={status} onChange={(e) => setStatusFilter(e.target.value)} className="sm:w-48">
             <option value="">All statuses</option>
