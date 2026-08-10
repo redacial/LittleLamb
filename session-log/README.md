@@ -33,3 +33,9 @@ was built, and what's left. This is the human-readable memory of the project's e
   their call sites (D43). Then, per a product veto, removed in-app messaging entirely (D44) — pages,
   hooks, routes, nav, types, rules, index, the new_message event + tests, dashboard cards. Left the
   nanny-cancellation channel as an open decision. Green: 28 + 33 + 11 tests.
+- `2026-08-10-billing-safety-and-pay-rates.md` — Closed a **double-charge risk** in
+  `quarterlyCharge` (no idempotency, cycle advanced after the Stripe call), added its missing
+  composite index, and wired the invoice email that was a bare comment (D45–D48). Added the first
+  ErrorBoundary and made failed admin reads distinguishable from empty queues (D49/D50). Shipped
+  **pay-rate ranges** as scheduling business logic — cents, soft-downgrade on mismatch, snapshot on
+  the booking (D51/D52). Green: 58 + 34 + 19 tests. Still nothing deployed — Blaze-gated.

@@ -185,3 +185,91 @@ Context: `DESIGN_SYSTEM.md` was locked at v1.0 with a **new** "Premium Playful" 
 
 ### D44. In-app messaging removed entirely (product veto)
 **Why:** The client vetoed in-app messaging. Removed the whole feature, not just its notification: `MessagesPage`, `useMessages`, the `/messages` routes + sidebar items (all 3 roles), the `Message`/`Conversation` types, the `conversations`+`messages` Firestore rules block + the `conversations` composite index, the `new_message` `NotificationEvent` variant (client + functions copy + template + recipient routing + their tests), the dashboard "Messages" preview cards (family + nanny, with their now-orphaned `ArrowRight`/`cn` imports), and the messaging references in the seed script. The drift-guard count dropped 12→11 events. **Reverses** the messaging parts of D26 (the `new_message` event) and D-series message rules (firestore.rules item f). Note: this leaves the **nanny cancellation request channel** an open business decision — the spec routed it through admin messaging (now gone); handled off-platform until Lucy decides. The `mail` outbound-email collection is unaffected — that is not user messaging. CLAUDE.md still contains the old messaging spec (Part 12, §4.8/4.9, admin §9, nav lists); it is left as historical spec rather than rewritten, superseded by this decision.
+
+---
+
+## Phase 10 — Billing safety, reliability, and pay-rate matching (2026-08-10)
+
+### D45. quarterlyCharge claims the cycle BEFORE charging (double-charge fix)
+**Why:** The loop read due families, created a Stripe PaymentIntent, and advanced
+`nextChargeDate` *afterwards*. A function timeout or scheduler retry mid-loop would
+re-charge every family already processed — with real money, on Blaze day. Now the cycle is
+advanced inside a transaction that bails if another run already moved `nextChargeDate`
+(the claim-then-act pattern already proven in `onMailCreated`), the Stripe call carries an
+`idempotencyKey` derived from the pre-generated invoice id, and `maxInstances: 1` prevents
+interleaved runs. A failed charge deliberately does NOT roll the cycle back — the invoice
+records `failed` and raises a `billing_alert` for explicit admin retry; rolling back would
+re-charge on the next run.
+
+### D46. Added the missing composite index for the billing bookings query
+**Why:** `quarterlyCharge` queries `bookings where familyId == X and status == 'confirmed'
+and date >= Y`. No composite index matched it, so it would have thrown on its first real
+run. `families where nextChargeDate <= today` is a single-field inequality and needs no
+composite index — deliberately not added.
+
+### D47. New `quarterly_invoice` notification event (11 → 12 variants)
+**Why:** `quarterlyCharge` ended with a bare `// Queue the invoice email` comment: families
+would have been charged and never sent an invoice. There was no suitable existing variant
+(the union had no billing events at all), so one was added to the client union AND the
+functions copy, with its template case and family-only recipient routing — it carries no
+`nannyId`, so it needs an explicit case rather than falling through to the booking branch.
+The drift-guard count moved 11 → 12. Enqueueing is wrapped so a mail-queue failure can
+never abort a billing run.
+
+### D48. Stripe webhook dedupes by event.id and acks handler errors with 200
+**Why:** Stripe redelivers events and retries any non-2xx. `markInvoice` is a merge and so
+idempotent by luck, but `billing_alerts.add()` is not — replays raised duplicate admin
+alerts. Each `event.id` is now claimed in a `stripe_events` marker doc (server-only,
+explicitly deny-all in the rules) and replays ack early. Handler errors return **200**, not
+500: the event is already claimed so a retry would be ignored anyway, and 5xx only makes
+Stripe retry for days and eventually disable the endpoint. Signature failure still returns
+400, and a failed *claim* still returns 500 so the event isn't dropped.
+
+### D49. ErrorBoundary wraps the app, outside AuthProvider
+**Why:** No error boundary existed anywhere, so any render-time throw white-screened the
+whole app — for a parent mid-booking, indistinguishable from "the platform lost my
+booking". Placed OUTSIDE `AuthProvider` so a throw in the one component every route
+depends on is caught too. Uses the shared `Button`: DESIGN_SYSTEM.md nominates
+`bg-ll-terra` for CTAs, but white-on-terra is only 2.67:1 and `Button` already resolves
+this to `terra-deep` (4.64:1) — a documented trap worth not re-stepping into. This also
+added the repo's first component test; `@testing-library/react` had been installed but
+unused.
+
+### D50. Admin hooks return `{ items, error }` — an outage must not look like an empty queue
+**Why:** `useAllBookings` / `usePendingApplications` / `useBillingAlerts` degraded a
+permission error or outage to an empty array, which renders identically to "nothing to
+do". An admin seeing an empty approvals queue would reasonably conclude there are no
+pending applicants while real people sat unreviewed — and the dashboard actively said
+"Nothing needs your attention right now." Signatures changed (9 call sites across 4 pages)
+rather than smuggling the error onto the array. New `LoadErrorNotice` renders in place of
+the empty state.
+
+### D51. Pay rates: integer cents, soft-downgrade, snapshot on the booking
+**Why:** Three choices, each with a live alternative:
+- **Cents, not dollars** — matches the `config/billing` precedent and keeps Firestore-rules
+  comparisons exact (no float bounds checks).
+- **Soft-downgrade, not hard filter** — a non-overlapping nanny stays listed and bookable,
+  flagged "outside your budget", and booking one creates a `pending` request the nanny
+  accepts or declines. This mirrors the existing `withinHours → pending` rule rather than
+  inventing a second pattern; hard filtering would hide supply and could empty the
+  directory for a family with a low budget.
+- **Snapshot on the booking** — `rateMinCents`/`rateMaxCents`/`rateAgreed` are written at
+  creation so a later profile edit can't retroactively rewrite an agreed rate, and rules
+  make the snapshot immutable for both parties (admin retains override). Where the ranges
+  overlap the snapshot is the overlap window; where they don't it's the nanny's asking rate
+  with `rateAgreed: false`, so a nanny never accepts on a wrong assumption.
+
+Ranges are **optional** and a missing range matches permissively — accounts predating the
+feature must not vanish from the directory. Every surface showing a rate also renders
+`<RateDisclaimer>`: Little Lamb is not an employer and does not process wages, so a rate
+must never read as one the platform sets, collects, or guarantees.
+
+`resolveBookingStatus` moved into the pure `src/lib/rates.ts`, lifting the booking status
+rules out of a click handler so they are unit-tested for the first time.
+
+### D52. Nanny wizard gained "Your rate" as the LAST step
+**Why:** Wizard steps are hardcoded integers throughout (`setStep(2)`, `step === 3`), so
+inserting a step mid-flow means renumbering every subsequent branch — exactly where bugs
+hide. Appending it as step 4 leaves indices 0–3 untouched. The family side instead got its
+budget fields appended to **step 0**, avoiding renumbering entirely and keeping that wizard
+at 3 steps (its step 2 is the payment step, which must stay last).
