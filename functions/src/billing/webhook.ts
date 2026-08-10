@@ -39,6 +39,33 @@ export const stripeWebhook = onRequest(
       return
     }
 
+    // Stripe redelivers events (and retries on any non-2xx). markInvoice is a merge and
+    // so naturally idempotent, but the billing_alerts .add() is not — a redelivery would
+    // raise a duplicate alert on the admin dashboard. Claim the event id first; if the
+    // marker already exists this delivery is a replay and we ack without re-handling.
+    const marker = db.collection('stripe_events').doc(event.id)
+    try {
+      const fresh = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(marker)
+        if (snap.exists) return false
+        tx.set(marker, {
+          type: event.type,
+          receivedAt: FieldValue.serverTimestamp(),
+        })
+        return true
+      })
+      if (!fresh) {
+        logger.info('stripeWebhook: duplicate event ignored', { id: event.id, type: event.type })
+        res.status(200).send('duplicate')
+        return
+      }
+    } catch (err) {
+      logger.error('stripeWebhook: claim failed', { id: event.id, err: String(err) })
+      // Couldn't claim — ask Stripe to retry rather than risk dropping the event.
+      res.status(500).send('claim error')
+      return
+    }
+
     try {
       if (event.type === 'payment_intent.succeeded') {
         const pi = event.data.object as Stripe.PaymentIntent
@@ -61,8 +88,15 @@ export const stripeWebhook = onRequest(
       }
       res.status(200).send('ok')
     } catch (err) {
-      logger.error('stripeWebhook: handler error', { err: String(err) })
-      res.status(500).send('handler error')
+      logger.error('stripeWebhook: handler error', { id: event.id, type: event.type, err: String(err) })
+      // Ack with 200 on a handler error. The event is already claimed above, so a Stripe
+      // retry would be ignored as a duplicate anyway — returning 5xx would only make
+      // Stripe retry for days and eventually disable the endpoint. The logged error (and
+      // the invoice left un-reconciled) is the signal for manual follow-up.
+      await marker
+        .set({ handlerError: String(err) }, { merge: true })
+        .catch(() => undefined)
+      res.status(200).send('ok')
     }
   },
 )

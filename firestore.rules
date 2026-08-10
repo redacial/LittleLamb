@@ -165,6 +165,15 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ---- stripe_events -------------------------------------------------------
+    // Webhook replay-protection markers, written ONLY by the stripeWebhook function via
+    // the Admin SDK (which bypasses these rules). No client may read or write them —
+    // spelled out explicitly rather than left to the catch-all deny so the collection's
+    // server-only nature is documented where the other billing collections are.
+    match /stripe_events/{eventId} {
+      allow read, write: if false;
+    }
+
     // ---- reviews -------------------------------------------------------------
     // Reviews are ADMIN-ONLY to read (never public-facing, per spec). An author may create a
     // review for a booking they were part of; nobody but admin can read them back.

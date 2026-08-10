@@ -15,6 +15,7 @@ import { REGION, STRIPE_SECRET_KEY, BILLING_DEFAULTS } from '../config'
 import { getStripe } from './stripe'
 import { renderInvoicePdf, type InvoiceData } from './invoicePdf'
 import type { BillingRates, InvoiceLineItem } from './types'
+import type { NotificationEvent } from '../shared/notifications-events'
 
 /** Pure: the line items for a family's quarter. */
 export function invoiceLineItems(confirmedBookings: number, rates: BillingRates): InvoiceLineItem[] {
@@ -60,7 +61,15 @@ function ymd(d: Date): string {
 }
 
 export const quarterlyCharge = onSchedule(
-  { schedule: 'every day 08:00', region: REGION, timeZone: 'America/Los_Angeles', secrets: [STRIPE_SECRET_KEY] },
+  {
+    schedule: 'every day 08:00',
+    region: REGION,
+    timeZone: 'America/Los_Angeles',
+    secrets: [STRIPE_SECRET_KEY],
+    // Two overlapping runs must never both charge the same family. The per-family
+    // transactional claim below is the real guard; this makes interleaving impossible.
+    maxInstances: 1,
+  },
   async () => {
     const { rates, enabled } = await loadRates()
     const now = new Date()
@@ -69,13 +78,39 @@ export const quarterlyCharge = onSchedule(
     const due = await db.collection('families').where('nextChargeDate', '<=', ymd(now)).get()
 
     let invoiced = 0
+    let skipped = 0
     for (const doc of due.docs) {
       const fam = doc.data()
       const familyId = doc.id
       if (!fam.stripeCustomerId || fam.hasPaymentMethod !== true) continue
 
-      // Count confirmed bookings in the cycle window [cycleStart, now].
+      const dueDate = typeof fam.nextChargeDate === 'string' ? fam.nextChargeDate : null
       const cycleStart = typeof fam.cycleStart === 'string' ? fam.cycleStart : ymd(now)
+
+      // CLAIM THE CYCLE BEFORE CHARGING.
+      // onSchedule can retry and a run can time out mid-loop, so advancing the cycle
+      // *after* the Stripe call would double-charge. Instead we transactionally advance
+      // nextChargeDate first, bailing if another run already moved it — the same
+      // claim-then-act pattern as onMailCreated (email/send.ts). If the charge later
+      // fails we deliberately do NOT roll the cycle back: the invoice is recorded
+      // `failed` and raises a billing_alert for the admin to retry explicitly.
+      const next = new Date(now)
+      next.setDate(next.getDate() + BILLING_DEFAULTS.cycleDays)
+      const claimed = await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(doc.ref)
+        const d = fresh.data()
+        if (!d) return false
+        // Someone else advanced this family's cycle between our query and now.
+        if ((typeof d.nextChargeDate === 'string' ? d.nextChargeDate : null) !== dueDate) return false
+        tx.set(doc.ref, { nextChargeDate: ymd(next), cycleStart: ymd(now) }, { merge: true })
+        return true
+      })
+      if (!claimed) {
+        skipped++
+        continue
+      }
+
+      // Count confirmed bookings in the cycle window [cycleStart, now].
       const bk = await db
         .collection('bookings')
         .where('familyId', '==', familyId)
@@ -101,15 +136,21 @@ export const quarterlyCharge = onSchedule(
       let status: 'paid' | 'pending' | 'failed' = 'pending'
       if (enabled) {
         try {
-          await getStripe().paymentIntents.create({
-            amount: totalCents,
-            currency: 'usd',
-            customer: fam.stripeCustomerId,
-            payment_method: undefined, // uses the customer's default PM
-            off_session: true,
-            confirm: true,
-            metadata: { familyId, invoiceId: invoiceRef.id },
-          })
+          await getStripe().paymentIntents.create(
+            {
+              amount: totalCents,
+              currency: 'usd',
+              customer: fam.stripeCustomerId,
+              payment_method: undefined, // uses the customer's default PM
+              off_session: true,
+              confirm: true,
+              metadata: { familyId, invoiceId: invoiceRef.id },
+            },
+            // Second line of defence: if this call is retried (network blip, function
+            // retry) Stripe returns the ORIGINAL PaymentIntent instead of charging again.
+            // invoiceRef.id is generated before the call, so it is stable across retries.
+            { idempotencyKey: `invoice-${invoiceRef.id}` },
+          )
           status = 'paid'
         } catch (err) {
           logger.error('quarterlyCharge: payment failed', { familyId, err: String(err) })
@@ -133,13 +174,8 @@ export const quarterlyCharge = onSchedule(
         createdAt: FieldValue.serverTimestamp(),
       })
 
-      // Advance the family's cycle and, on failure, flag it for the admin dashboard.
-      const next = new Date(now)
-      next.setDate(next.getDate() + BILLING_DEFAULTS.cycleDays)
-      await doc.ref.set(
-        { nextChargeDate: ymd(next), cycleStart: ymd(now) },
-        { merge: true },
-      )
+      // (The cycle was already advanced by the claim above — see the comment there.)
+      // On failure, flag it for the admin dashboard.
       if (status === 'failed') {
         await db.collection('billing_alerts').add({
           familyId,
@@ -151,11 +187,41 @@ export const quarterlyCharge = onSchedule(
         })
       }
 
-      // Queue the invoice email (subject to the same dry-run note in the doc).
-      // (Family invoice email uses a lightweight mail doc; template kept minimal for now.)
+      // Queue the invoice email. Same `mail` doc shape the client's notify() writes, so
+      // onMailCreated picks it up unchanged and resolves recipients server-side. The
+      // doc id is the send-idempotency key over there, and we only reach this line once
+      // per cycle because of the claim above — so the family gets exactly one invoice email.
+      try {
+        const event: NotificationEvent = {
+          type: 'quarterly_invoice',
+          to: 'family',
+          familyId,
+          familyName: invoiceData.familyName,
+          invoiceId: invoiceRef.id,
+          periodStart: cycleStart,
+          periodEnd: ymd(now),
+          totalCents,
+          bookingCount: confirmedBookings,
+          pdfPath,
+          dryRun: !enabled,
+        }
+        await db.collection('mail').add({
+          event,
+          status: 'pending',
+          createdAt: FieldValue.serverTimestamp(),
+        })
+      } catch (err) {
+        // Never let a mail-queue failure abort the billing run — the invoice is already
+        // written and the cycle already claimed.
+        logger.error('quarterlyCharge: invoice email enqueue failed', {
+          familyId,
+          err: String(err),
+        })
+      }
+
       invoiced++
     }
 
-    logger.info('quarterlyCharge complete', { invoiced, enabled })
+    logger.info('quarterlyCharge complete', { invoiced, skipped, enabled })
   },
 )

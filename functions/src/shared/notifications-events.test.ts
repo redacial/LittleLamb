@@ -12,9 +12,9 @@ import {
 // source-text comparison against the client file (catches added/renamed variants).
 
 describe('NotificationEvent copy', () => {
-  it('lists all 11 event types with no duplicates', () => {
-    expect(NOTIFICATION_EVENT_TYPES).toHaveLength(11)
-    expect(new Set(NOTIFICATION_EVENT_TYPES).size).toBe(11)
+  it('lists all 12 event types with no duplicates', () => {
+    expect(NOTIFICATION_EVENT_TYPES).toHaveLength(12)
+    expect(new Set(NOTIFICATION_EVENT_TYPES).size).toBe(12)
   })
 
   it('NOTIFICATION_EVENT_TYPES is exhaustive over the union (compile-time)', () => {

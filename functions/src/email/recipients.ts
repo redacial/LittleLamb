@@ -59,6 +59,11 @@ export async function resolveRecipients(
     case 'application_rejected':
       add([await userEmail(reader, event.userId)])
       break
+    case 'quarterly_invoice':
+      // Family-only, and carries no nannyId — so it can't fall through to the
+      // booking branch below.
+      add(await familyEmails(reader, event.familyId))
+      break
     default:
       // All remaining variants are booking events with a family/nanny `to`.
       if (event.to === 'family+nanny' || event.to === 'family') {

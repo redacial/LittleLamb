@@ -30,6 +30,19 @@ const samples: NotificationEvent[] = [
   { type: 'application_status_updated', to: 'nanny', userId: 'u1', fullName: 'Ada Lamb', stage: 'interview_scheduled' },
   { type: 'application_approved', to: 'nanny', userId: 'u1', fullName: 'Ada Lamb' },
   { type: 'application_rejected', to: 'family', userId: 'u2', fullName: 'Bea Fox' },
+  {
+    type: 'quarterly_invoice',
+    to: 'family',
+    familyId: 'f1',
+    familyName: 'The Ortegas',
+    invoiceId: 'inv1',
+    periodStart: '2026-04-01',
+    periodEnd: '2026-06-30',
+    totalCents: 3400,
+    bookingCount: 9,
+    pdfPath: 'invoices/inv1.pdf',
+    dryRun: false,
+  },
 ]
 
 describe('renderEmail', () => {

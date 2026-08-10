@@ -3,7 +3,7 @@
 // Why copied (not imported): this package compiles CommonJS for Node; the client
 // compiles under Vite (bundler resolution, import.meta, DOM libs). The union is
 // pure types with no runtime, so a copy is safe. `notifications-events.test.ts`
-// pins the 13 variant list so drift from the client original fails CI.
+// pins the variant list so drift from the client original fails CI.
 //
 // The only cross-import in the original is `NannyStage` from src/types — inlined here.
 
@@ -64,6 +64,19 @@ export type NotificationEvent =
       userId: string
       fullName: string
     }
+  | {
+      type: 'quarterly_invoice'
+      to: 'family'
+      familyId: string
+      familyName: string
+      invoiceId: string
+      periodStart: string // "YYYY-MM-DD"
+      periodEnd: string // "YYYY-MM-DD"
+      totalCents: number
+      bookingCount: number
+      pdfPath?: string | null
+      dryRun?: boolean
+    }
 
 /** Every event `type` value, in declaration order. Drift guard — see the test. */
 export const NOTIFICATION_EVENT_TYPES = [
@@ -78,6 +91,7 @@ export const NOTIFICATION_EVENT_TYPES = [
   'application_status_updated',
   'application_approved',
   'application_rejected',
+  'quarterly_invoice',
 ] as const
 
 export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number]

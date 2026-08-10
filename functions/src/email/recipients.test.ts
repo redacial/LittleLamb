@@ -31,6 +31,28 @@ describe('resolveRecipients', () => {
     expect(to.sort()).toEqual(['co@x.com', 'fam@x.com'])
   })
 
+  it('routes quarterly_invoice to the family (incl. co-parent), never a nanny', async () => {
+    // This variant carries no nannyId, so it must NOT fall through to the booking branch.
+    const reader = fakeReader({
+      'users/f1': { email: 'fam@x.com' },
+      'users/n1': { email: 'nan@x.com' },
+      'families/f1': { coParentEmail: 'co@x.com' },
+    })
+    const to = await resolveRecipients(reader, {
+      type: 'quarterly_invoice',
+      to: 'family',
+      familyId: 'f1',
+      familyName: 'Fam',
+      invoiceId: 'inv1',
+      periodStart: '2026-04-01',
+      periodEnd: '2026-06-30',
+      totalCents: 3400,
+      bookingCount: 9,
+    })
+    expect(to.sort()).toEqual(['co@x.com', 'fam@x.com'])
+    expect(to).not.toContain('nan@x.com')
+  })
+
   it('dedupes when co-parent equals the account email', async () => {
     const reader = fakeReader({
       'users/f1': { email: 'fam@x.com' },

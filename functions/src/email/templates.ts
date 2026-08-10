@@ -200,6 +200,25 @@ export function renderEmail(event: NotificationEvent): RenderedEmail {
         ),
       }
 
+    case 'quarterly_invoice': {
+      const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`
+      return {
+        subject: `Your ${BRAND} invoice — ${event.periodStart} to ${event.periodEnd}`,
+        html: layout(
+          'Your quarterly invoice',
+          `<p>Hi ${esc(event.familyName)}, here is your invoice for ` +
+            `${esc(event.periodStart)} – ${esc(event.periodEnd)}.</p>` +
+            `<p><strong>Confirmed bookings:</strong> ${event.bookingCount}<br/>` +
+            `<strong>Total:</strong> ${esc(dollars(event.totalCents))}</p>` +
+            `<p>A full breakdown is available on your Billing page, where you can download ` +
+            `this invoice as a PDF at any time.</p>` +
+            (event.dryRun
+              ? `<p style="color:#999;font-size:12px">Preview only — no payment was charged.</p>`
+              : ``),
+        ),
+      }
+    }
+
     default: {
       // Exhaustiveness guard — adding a variant without a case fails to compile.
       const _never: never = event

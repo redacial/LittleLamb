@@ -74,6 +74,23 @@ export type NotificationEvent =
       userId: string
       fullName: string
     }
+  // Quarterly invoice generated — Family | invoice for the period, PDF attached.
+  // Fired server-side by the quarterlyCharge scheduled function, not from the client.
+  | {
+      type: 'quarterly_invoice'
+      to: 'family'
+      familyId: string
+      familyName: string
+      invoiceId: string
+      periodStart: string // "YYYY-MM-DD"
+      periodEnd: string // "YYYY-MM-DD"
+      totalCents: number
+      bookingCount: number
+      /** Storage path of the rendered PDF, when the render succeeded. */
+      pdfPath?: string | null
+      /** True while billing is in dry-run (config/billing.enabled !== true). */
+      dryRun?: boolean
+    }
 
 const isDev = typeof import.meta !== 'undefined' && Boolean(import.meta.env?.DEV)
 
