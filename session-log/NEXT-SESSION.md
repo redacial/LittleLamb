@@ -1,6 +1,6 @@
 # Next session plan
 
-**Start by reading:** `CLAUDE.md`, `DECISIONS.md` (esp. D59–D62), `session-log/README.md` + the
+**Start by reading:** `CLAUDE.md`, `DECISIONS.md` (esp. D59–D64), `session-log/README.md` + the
 2026-08-11 evening entry, then `git log --oneline -8`.
 
 **Branch:** continue on `landing-page-prelaunch` (now pushed, tracking `origin`). Commit per section.
@@ -15,14 +15,16 @@
 **Blaze is live on `littlelamb-sb`. Backups + PITR are enabled. Indexes are deployed.** The
 five-sessions-deferred data-loss risk is closed, and the backend is unblocked for the first time.
 
-Green: client 64 / functions 44 / rules 23 = **131**. tsc clean, eslint 0 errors in both npm
-projects, both builds OK.
+Green: client **70** / functions 44 / rules 23 = **137**. tsc clean, eslint **0 findings** in
+both npm projects (root now runs `--max-warnings 0`), both builds OK.
 
 ---
 
 ## 1. FIRST: deploy the functions to prod
 
-Everything is prepared. Three placeholder secrets are already in Secret Manager, the predeploy
+Everything is prepared. Three placeholder secrets are in Secret Manager (the Stripe
+**publishable** key is real and wired into `.env.production`/`.env.staging`; the secret key is
+still a placeholder), the predeploy
 lint gate is fixed (D59), and indexes are live (D62). David paused the deploy last session to
 watch it run rather than have it happen unattended — **confirm he's ready before running it.**
 
@@ -48,24 +50,27 @@ Then verify on real infrastructure:
   Resend key it should fail *at the send step* — that is the informative outcome, proving the
   trigger, Firestore wiring and secret mount all work while isolating the one known placeholder.
 
-## 2. Landing bundle, round two
+## 2. Landing bundle — CLOSED, do not re-attempt
 
-287,720 bytes first-paint. The remaining lever is **framer-motion at 122KB** — `LazyMotion` with a
-reduced feature set, or CSS animations for the landing specifically. React (133KB) is the floor
-without a framework change. **Measure before and after:** last time, code splitting alone did
-nothing here because all chunks load on first paint; the 51% win came from a dynamic import.
+**LazyMotion was tried and measured WORSE** (287,720 → 289,817 bytes). See D64. The split
+worked, but framer-motion's core renderer is a static dependency of `m` and cannot be
+deferred. The only remaining lever is removing framer-motion from the landing tree entirely
+(all 14 usages are hover/tap effects CSS could express) — **David decided against it**: the
+design system mandates spring physics, and ~97KB gzipped loads fine.
 
-## 3. Smaller code items
+## 3. Smaller code items — all three DONE this session
 
-- **`--max-warnings 0` ratchet.** 3 `react-refresh/only-export-components` warnings remain
-  (`MonthGrid.tsx:172`, `RateRangeInput.tsx:28`, `WaitlistModal.tsx:32`). Move the non-component
-  exports to sibling files, then add the flag to `npm run lint` so new warnings can't accumulate.
-- **Mail quota has no admin surface.** `quota_exceeded` mail docs are terminal and logged but
-  invisible in the UI, so if a legitimate user trips the cap nobody finds out. A small admin view
-  (or an entry in the existing `billing_alerts` pattern) closes the loop.
-- **Component tests.** Still only `ErrorBoundary` + the new `useGrowingCollection`. The highest
-  value next would be a render test that `AdminPeoplePage` shows `LoadErrorNotice` rather than
-  "Nobody in this list" on error — that exact bug was live until D61.
+- ✅ `--max-warnings 0` ratchet — the three react-refresh warnings are cleared and the gate
+  is verified to go red on one new warning.
+- ✅ Mail quota admin surface — `useUndeliveredMail` + a dashboard section.
+- ✅ AdminPeoplePage error-state tests — verified against the pre-D61 code (2 of 4 fail).
+
+**What's actually left that needs no keys:** not much. Candidates, in rough order of value:
+- Component tests for the other admin pages (AdminDashboard's partial-queue logic is the
+  next-most valuable, being where the D61-class bug was worst).
+- The `CLAUDE.md` "superseded" banner for the removed messaging spec (D44) — a future
+  contributor could still build removed features from it.
+- `functions/` has no lint-staged/pre-commit hook; CI is the only gate.
 
 ---
 

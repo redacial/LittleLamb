@@ -83,6 +83,61 @@ reasoning about it**: the `.env` collection failure (found by moving `.env` asid
 predeploy lint break (found by running the deploy's own gate). Both were invisible to inspection
 and would have surfaced first in CI or, worse, mid-deploy.
 
+## Second half of the session (after the Blaze upgrade landed)
+
+David took the console tasks into a parallel terminal via the `launch-concierge` agent, so the
+rest of the session ran on everything that did NOT depend on his keys.
+
+### `fix(hooks)` — render-phase reset (5cb381d) — D63
+An adversarial review of the pagination work found two real bugs sharing one cause: the
+query-change reset lived in an effect. React ran the *subscribe* effect first (new query, old
+page count), so every role switch opened a listener at the previous expansion, tore it down and
+opened another — ~100 wasted reads per switch. Worse, `items` and `error` survived the reset,
+and React does **not** remount `AdminPeoplePage` across `/admin/nannies` → `/admin/families`
+(same component type, same tree position), so nanny rows briefly rendered under the "Families"
+header with family-labelled approve/reject buttons. Both reproduced with probes, then fixed by
+adjusting state during render.
+
+The review also flagged an impure `setLoadingMore` inside a `setPages` updater. Testing showed
+it produces no wrong behaviour — StrictMode discards the extra invoke, and a real double-click
+lands in separate React batches. Left alone: a style violation is not a correctness bug, and
+"fixing" it would have been churn dressed as rigour.
+
+### `chore(lint)` — warnings to zero + ratchet (2e8dda2)
+Three `react-refresh` warnings, three different right answers: a dead `export { ymd }` with no
+importers (deleted), `validateRatePair` moved to `lib/rates.ts` beside its sibling
+`parseRateDollars` (merging two imports into one at all four call sites), and the waitlist
+context split into its own module. Then `--max-warnings 0`, **verified to go red on one new
+warning** before being trusted.
+
+### `docs` — D64: the landing bundle item is CLOSED
+LazyMotion had been named as the fix in two successive handoffs. It was built and **measured
+2KB worse** (287,720 → 289,817) — the split worked, but framer-motion's core renderer is a
+static dependency of `m` and cannot be deferred. Reverted rather than shipped. Also found that
+`manualChunks` actively defeats LazyMotion. The remaining lever (drop framer-motion, use CSS)
+recovers the full 122KB but conflicts with the design system's mandated spring physics —
+David's call was to keep the brand feel.
+
+### `test(admin)` + `feat(admin)` (81f610c, 925de52)
+Four regression tests for the D61 bug class, verified against the pre-fix code (2 of 4 fail).
+And `useUndeliveredMail` + a dashboard section: D55's `quota_exceeded` state and provider
+`error` state were both terminal and completely invisible, so a never-sent email surfaced only
+as a family asking why they got no confirmation.
+
+## Final state
+- **Green: client 70 / functions 44 / rules 23 = 137.** tsc clean, eslint 0 findings in both
+  projects, both builds OK, everything pushed.
+- Stripe **publishable** key (test mode) wired into `.env.production` and `.env.staging`, with
+  a loud warning in the file: a test key in a prod build accepts cards and charges nobody, so
+  it must be swapped for `pk_live_` before real families onboard.
+- **Functions still not deployed** — David paused it to watch rather than run unattended.
+
+## Lesson worth keeping (second instance today)
+Three of this session's most valuable outcomes came from **measuring instead of reasoning**:
+the `.env` collection failure, the predeploy lint break, and LazyMotion making the bundle
+*worse*. The last one is the sharpest — it had been the recommended next step in two handoffs
+and was simply wrong. A plan that survives two rewrites is not thereby verified.
+
 ## Next steps
 See `NEXT-SESSION.md`. Top item: **deploy the 7 functions to prod** — expect first-deploy
 failures (GCP API enablement, IAM propagation, Eventarc) and read the real errors.
