@@ -1,118 +1,192 @@
-# Next session plan
+# Next session plan — deploy the backend, then finish
 
-**Start by reading:** `CLAUDE.md`, `DECISIONS.md` (esp. D59–D64), `session-log/README.md` + the
-2026-08-11 evening entry, then `git log --oneline -8`.
+**Start by reading:** `CLAUDE.md`, `DECISIONS.md` (esp. D59–D64), `session-log/README.md`, the
+2026-08-11 evening entry + `2026-08-11-console-secrets-handoff.md`, then `git log --oneline -12`.
 
-**Branch:** continue on `landing-page-prelaunch` (now pushed, tracking `origin`). Commit per section.
+**Branch:** `landing-page-prelaunch` (pushed, tracking `origin`). Commit per section.
 
-> **Do NOT run `npx prettier`** — no prettier config exists here; it reformats files to a
-> style the codebase doesn't use.
-
----
-
-## Context
-
-**Blaze is live on `littlelamb-sb`. Backups + PITR are enabled. Indexes are deployed.** The
-five-sessions-deferred data-loss risk is closed, and the backend is unblocked for the first time.
-
-Green: client **70** / functions 44 / rules 23 = **137**. tsc clean, eslint **0 findings** in
-both npm projects (root now runs `--max-warnings 0`), both builds OK.
+> **Do NOT run `npx prettier`** — no prettier config exists; it reformats to a style this
+> codebase doesn't use.
 
 ---
 
-## 1. FIRST: deploy the functions to prod
+## State as of 2026-08-11 (end of session)
 
-Everything is prepared. Three placeholder secrets are in Secret Manager (the Stripe
-**publishable** key is real and wired into `.env.production`/`.env.staging`; the secret key is
-still a placeholder), the predeploy
-lint gate is fixed (D59), and indexes are live (D62). David paused the deploy last session to
-watch it run rather than have it happen unattended — **confirm he's ready before running it.**
+**Green: client 70 / functions 44 / rules 23 = 137.** tsc clean, eslint **0 findings** in both
+npm projects (root runs `--max-warnings 0`), both builds OK, everything pushed.
+
+**All four console blockers are provisioned and independently verified this session:**
+
+| Item | Where | Verified |
+|---|---|---|
+| Blaze plan | `littlelamb-sb` | ✅ |
+| Firestore backups + PITR | `littlelamb-sb` | ✅ |
+| Firestore indexes (6 composite) | deployed to prod | ✅ |
+| `STRIPE_SECRET_KEY` (`sk_test_`) | Secret Manager | ✅ read back |
+| `RESEND_API_KEY` (`re_`) | Secret Manager | ✅ read back |
+| `VITE_STRIPE_PUBLISHABLE_KEY` (`pk_test_`) | `.env.production` | ✅ in prod bundle |
+| `VITE_FIREBASE_APPCHECK_SITE_KEY` (`6L…`, 40ch) | `.env.production` | ✅ in prod bundle |
+
+**`STRIPE_WEBHOOK_SECRET` is NOT set** — verified absent. It cannot exist until `stripeWebhook`
+is deployed and its URL registered in Stripe. This is the one chicken-and-egg in the sequence.
+
+**Nothing is deployed.** The 7 functions have still never run on Google infrastructure.
+
+---
+
+## 1. FIRST: deploy the functions
 
 ```
 npm run deploy:functions:prod
 ```
 
-**Expect it to fail at least once.** Likely, in order: GCP APIs not yet enabled (Cloud Build,
-Artifact Registry, Cloud Scheduler, Secret Manager, Eventarc); IAM propagation delay on the
-default service account; Eventarc permissions for the two `onDocumentCreated` triggers. Read the
-actual error rather than guessing — a real first deploy is the entire point.
+**Confirm with David before running** — he paused this deliberately last session to watch it
+rather than have it run unattended.
 
-**Verified safe:** `quarterlyCharge` charges nobody. Three independent gates —
-`config/billing.enabled` read with strict `=== true` and defaulting to dry-run when the doc is
-absent (`billing/quarterlyCharge.ts:54`), the Stripe call fenced behind `if (enabled)` (line 137),
-and no family on a fresh project has `stripeCustomerId` + `hasPaymentMethod` to reach it (line 85).
+Secrets bind automatically via each function's `secrets: [...]` option. **Expect a first-deploy
+failure**: GCP API enablement (Cloud Build, Artifact Registry, Eventarc, Cloud Scheduler,
+Secret Manager), IAM propagation on the default service account, or Eventarc permissions for
+the two `onDocumentCreated` triggers. Read the real error; don't guess.
 
-Then verify on real infrastructure:
-- `firebase functions:list --project littlelamb-sb` — all 7 present, `us-central1`
+`stripeWebhook` may refuse to deploy with `STRIPE_WEBHOOK_SECRET` unset. If so, set a throwaway
+placeholder to get the URL, then follow §2.
+
+**Verified safe — nobody gets charged.** Three independent gates: `config/billing.enabled` read
+with strict `=== true`, defaulting to dry-run when the doc is absent
+(`billing/quarterlyCharge.ts:54`); the Stripe call fenced behind `if (enabled)` (line 137); and
+no family has `stripeCustomerId` + `hasPaymentMethod` on a fresh project (line 85).
+
+**Then verify on real infrastructure:**
+- `firebase functions:list --project littlelamb-sb` — 7 functions, `us-central1`
 - Cloud Scheduler shows 2 jobs: `recurringAutoCancel` (hourly), `quarterlyCharge` (daily 08:00 PT)
-- `firebase functions:log` — check for cold-start errors
-- **End-to-end:** write a `waitlist` doc, confirm `onWaitlistCreated` fires. With a placeholder
-  Resend key it should fail *at the send step* — that is the informative outcome, proving the
-  trigger, Firestore wiring and secret mount all work while isolating the one known placeholder.
+- `firebase functions:log` — cold-start errors
+- Write a `waitlist` doc and confirm `onWaitlistCreated` fires. With a real Resend key but an
+  unverified sender domain it will fail **at the send step** with a domain error — informative,
+  and it surfaces in the new Undelivered email dashboard section.
 
-## 2. Landing bundle — CLOSED, do not re-attempt
+## 2. Stripe webhook — the chicken-and-egg
 
-**LazyMotion was tried and measured WORSE** (287,720 → 289,817 bytes). See D64. The split
-worked, but framer-motion's core renderer is a static dependency of `m` and cannot be
-deferred. The only remaining lever is removing framer-motion from the landing tree entirely
-(all 14 usages are hover/tap effects CSS could express) — **David decided against it**: the
-design system mandates spring physics, and ~97KB gzipped loads fine.
+1. Note the deployed `stripeWebhook` URL. **It is a v2 function**
+   (`firebase-functions/v2/https`), so the URL is Cloud Run-style
+   (`https://stripewebhook-<hash>-uc.a.run.app`) — **not** the v1 `cloudfunctions.net` shape
+   the console handoff predicted. Read it from the deploy output.
+2. **David** (Stripe dashboard, **Test mode**) → Developers → Webhooks → Add endpoint → paste
+   the URL. Subscribe to exactly the two events `webhook.ts:70,74` handles:
+   `payment_intent.succeeded` and `payment_intent.payment_failed`.
+3. **David runs this** — the secret must never pass through chat:
+   ```
+   npx firebase functions:secrets:set STRIPE_WEBHOOK_SECRET --project littlelamb-sb
+   ```
+4. Redeploy so the new secret version binds.
 
-## 3. Smaller code items — all three DONE this session
+## 3. App Check — verify the token binding, treat as a real risk
 
-- ✅ `--max-warnings 0` ratchet — the three react-refresh warnings are cleared and the gate
-  is verified to go red on one new warning.
-- ✅ Mail quota admin surface — `useUndeliveredMail` + a dashboard section.
-- ✅ AdminPeoplePage error-state tests — verified against the pre-D61 code (2 of 4 fail).
+The reCAPTCHA key was created in the **Google Cloud** console (the flow drifted near
+Enterprise/WAF) and v3 was registered **separately** in Firebase App Check. So the site key in
+`.env.production` may not be the one whose secret is bound to the Firebase provider — in which
+case every token is rejected.
 
-**What's actually left that needs no keys:** not much. Candidates, in rough order of value:
-- Component tests for the other admin pages (AdminDashboard's partial-queue logic is the
-  next-most valuable, being where the D61-class bug was worst).
-- The `CLAUDE.md` "superseded" banner for the removed messaging spec (D44) — a future
-  contributor could still build removed features from it.
-- `functions/` has no lint-staged/pre-commit hook; CI is the only gate.
+Key format checks out (40 chars, `6L` prefix, and both `src/lib/firebase.ts:45` and
+`src/landing/firebase.ts:49` use `ReCaptchaV3Provider`) — but shape does not prove binding.
+An Enterprise key looks identical and will not work.
+
+**Verify:** Firebase Console → App Check → APIs → watch the Verified / Unverified / **Invalid**
+split over ~15 min of real traffic.
+
+**Fix path if invalid:** recreate the v3 key *inside* Firebase → App Check → register app →
+reCAPTCHA v3, so the secret auto-links. Cleaner than back-linking the Cloud-console key. Then
+replace the value in `.env.production` and rebuild.
+
+> **Blocker to know about:** `littlelamb-sb-app` **does not exist as a hosting site** (only
+> `littlelamb-sb` and `littlelamb-sb-landing` do), and the app has never been deployed. So no
+> browser currently loads the app bundle and mints tokens. The **landing page is the only live
+> surface**, and it initialises App Check with the same key — so it is the practical test bed,
+> but it never calls the billing callables, so it exercises the key without exercising the
+> enforced path. Creating the site + deploying the app is what makes a real end-to-end test
+> possible.
+
+Console-side **enforcement** stays off for 24–48h per `docs/app-check-runbook.md` Part 3. The
+code-side `enforceAppCheck: true` on `createSetupIntent`/`savePaymentMethod` is live regardless,
+so a bad key means card capture returns 401 rather than degrading quietly.
+
+## 4. Resend — recommendation: WAIT for DNS
+
+Do **not** wire the temporary `onboarding@resend.dev` sender. Reasoning:
+
+- It is a code change to production config (`config.ts:15`) working around a DNS problem, and it
+  puts a `resend.dev` address in the codebase where it can be forgotten and shipped.
+- It proves little. The deploy already exercises the hard parts — secret binding, the Firestore
+  trigger, the mail-doc claim transaction, quota metering — all of which run *before* the
+  provider call. The untested slice is "does Resend accept our key", the most reliable link.
+- With a real key in place, a `mail` doc now fails at the send step with a clean domain error,
+  visible in the Undelivered email dashboard section.
+
+If DNS slips past ~2 weeks, revisit — but as an **env-gated** `MAIL_FROM_OVERRIDE`, never a
+hardcoded swap.
 
 ---
 
-## 4. Blocked on David — console/account tasks
+## 5. Once DNS lands — the actual path to launch
 
-**Use the `launch-concierge` agent for these** (`.claude/agents/launch-concierge.md`) — it has all
-the project IDs, click-paths and current state, and is built to run in a parallel terminal.
+This is the whole remaining sequence. Steps 1–4 above are independent of DNS; everything here
+depends on it.
 
-- ✅ ~~Blaze upgrade~~ — **done 2026-08-11**
-- ✅ ~~Firestore backups / PITR~~ — **done 2026-08-11**
-- **Stripe test keys** — highest value remaining. 15 min, no business verification needed, and
-  unblocks verifying the entire billing engine end-to-end.
-- **Resend API key** — note it is *not* blocked by DNS: `onboarding@resend.dev` works immediately
-  for testing the pipeline. Domain verification for the real sender needs DNS.
-- **App Check reCAPTCHA v3 key** — paste-and-go, no code change. But `createSetupIntent` and
-  `savePaymentMethod` both set `enforceAppCheck: true`, so **card capture is dead-on-arrival**
-  until it exists.
-- **Wix DNS access** for `littlelambnannies.com` — owner unknown, possibly a former partner.
-  **The only blocker that can slip launch by months**, and the only one with no workaround.
-- **Lucy's content** — badge master list, policies text, founder bios, cancellation policy.
+**a. Point the domain at Firebase Hosting.** Firebase Console → Hosting → Add custom domain →
+`littlelambnannies.com` → add the TXT/A records at the registrar. Propagation is minutes to
+48h; SSL provisions automatically after.
 
-## 5. Open product decision
-- **Nanny cancellation request channel.** D44 removed in-app messaging and the spec routed nanny
-  cancellations through it, so there is currently **no in-app mechanism** for a nanny to request
-  one. Handled off-platform until Lucy decides.
+**b. Verify the Resend domain.** Resend → Domains → add `littlelambnannies.com` → add the
+SPF/DKIM records. This makes `hello@littlelambnannies.com` a legal sender and turns the entire
+email pipeline on. Test by writing a `mail` doc and confirming delivery.
 
-## 6. Known-deferred, documented
-- `CLAUDE.md` still contains the obsolete messaging spec (Part 12, §4.8/4.9, admin §9, nav lists),
-  left as historical per D44 — a future contributor could build removed features from it. Worth a
-  "superseded" banner.
-- `useNannyDirectory` deliberately excluded from the pagination work (D60) — it is a one-shot
-  `getDocs`, and it would need its own helper rather than the snapshot-shaped one.
-- Staging project `littlelamb-sb-staging` is **not** on Blaze, so `deploy:functions:staging` and
-  `deploy:indexes:staging` will fail until it is.
-- Dev-only npm advisories and one upstream `uuid` inside `firebase-admin` (D42).
+**c. Create the app hosting site and deploy the app.** `littlelamb-sb-app` doesn't exist yet —
+create it, then deploy `dist/`. There is **no npm script for this**; `deploy:landing:*` only
+ships `hosting:landing`. Add `deploy:app:prod` alongside the existing scripts.
+
+**d. End-to-end pass on the real domain, all three roles.** Family signup → admin approval →
+nanny signup → booking → confirmation email + iCal invite → billing dry-run. This is the first
+time the whole system runs together; budget a full session and expect findings.
+
+**e. Swap in Lucy's content.** Badge master list, policies text, founder bios, real nanny
+profiles. String swaps, but they gate showing the site to real families.
+
+**f. Go live on payments.** Replace `pk_test_` with `pk_live_` in `.env.production`, rotate
+`STRIPE_SECRET_KEY` to `sk_live_`, register a **live-mode** webhook endpoint and set its
+`whsec_`, then flip `config/billing.enabled` to true from the admin settings page.
+**Until this happens, checkout appears to work and bills nobody** — the single most dangerous
+state in the project, and the reason `.env.production` carries a loud warning.
+
+---
+
+## 6. Smaller code items (none blocking)
+
+- **Component tests for the remaining admin pages.** `AdminDashboard`'s partial-queue logic is
+  the most valuable next one — it is where the D61-class bug was worst.
+- **`CLAUDE.md` "superseded" banner** for the removed messaging spec (Part 12, §4.8/4.9, admin
+  §9, nav lists). Left as historical per D44, but a future contributor could build removed
+  features from it. It already caused one real error: the console session's Lucy prep asked
+  about "Replied by Lucy/David" tagging in Messages, a feature that no longer exists.
+- **`useNannyDirectory`** deliberately excluded from the pagination work (D60) — it is a
+  one-shot `getDocs` and needs its own helper, not the snapshot-shaped one.
+- **Staging project is not on Blaze**, so `deploy:functions:staging` and
+  `deploy:indexes:staging` fail until it is.
+
+## 7. Closed — do not re-attempt
+
+- **Landing bundle / LazyMotion (D64).** Built and measured **worse** (287,720 → 289,817
+  bytes). framer-motion's core renderer is a static dependency of `m` and cannot be deferred.
+  The only real lever is dropping framer-motion from the landing entirely, which David declined
+  — the design system mandates spring physics and ~97KB gzipped is fine.
 
 ---
 
 ## Go-live estimate
 
-**~4–6 weeks — mid-to-late September 2026** (was 6–9 before Blaze landed).
+**~4–6 weeks — mid-to-late September 2026**, unchanged.
 
-The critical path is no longer code — it is **Wix DNS**, which has an unknown owner and unbounded
-response time. Everything else has a workaround. The app can reach feature-complete-and-verified
-on a `*.web.app` URL with nothing more than Stripe test keys.
+Every blocker that engineering or money could solve is now solved. The critical path is
+**Wix DNS**: unknown owner, unbounded response time, no workaround. Steps 5a–5f are perhaps
+two working sessions once DNS lands — the estimate is almost entirely waiting, not building.
+
+If DNS resolves quickly, early September is achievable. If the Wix owner is unreachable, the
+fallback is launching on a different domain, which costs the brand but not the product.

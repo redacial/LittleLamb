@@ -46,3 +46,16 @@ was built, and what's left. This is the human-readable memory of the project's e
   assumptions proved wrong on inspection and were corrected rather than implemented (D57).
   Found root `npm run lint` broken (exit 127) — excluded from CI, tracked in Backlog.
   Green: 58 + 44 + 23 = 125 tests. CI has not yet run on a real runner.
+- `2026-08-11-console-secrets-handoff.md` — **Console/account session** (David driving the
+  consoles, launch-concierge guiding). Provisioned three of the account launch-blockers:
+  Stripe **test** keys (`pk_test_` → `.env.production`, `sk_test_` → Secret Manager, verified),
+  Resend API key (`re_` → Secret Manager, verified), App Check reCAPTCHA **v3** site key
+  (`6L…` → `.env.production`). Only `.env.production` changed in the repo (two client-public
+  keys). Doubles as the **engineering handoff** — exact code touchpoints, deploy sequence, and
+  the webhook chicken-and-egg. **App Check caveat:** key was made in the Cloud console near the
+  Enterprise/WAF flow — token acceptance must be verified on the metrics page at deploy. Still
+  open: Wix DNS, Resend domain verification, live-key swap, Lucy's content.
+- `2026-08-12-talk-to-lucy.md` — Prep for the 2026-08-12 Lucy meeting: get DNS/Wix access
+  (P1 — the launch-slipping risk), collect her content (P2 — badges, policies, bios, badge
+  colors), confirm open business decisions (P3). Exact questions to ask, and the one sentence
+  to leave with.
