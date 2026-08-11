@@ -1,9 +1,9 @@
 # Next session plan
 
-**Prereqs:** none for the code items. Start by reading `CLAUDE.md`, `DECISIONS.md` (esp.
-D53–D58), `session-log/README.md` + the most recent dated entry, then `git log --oneline -12`.
+**Start by reading:** `CLAUDE.md`, `DECISIONS.md` (esp. D59–D62), `session-log/README.md` + the
+2026-08-11 evening entry, then `git log --oneline -8`.
 
-**Branch:** continue on `landing-page-prelaunch`. Commit per section.
+**Branch:** continue on `landing-page-prelaunch` (now pushed, tracking `origin`). Commit per section.
 
 > **Do NOT run `npx prettier`** — no prettier config exists here; it reformats files to a
 > style the codebase doesn't use.
@@ -12,77 +12,102 @@ D53–D58), `session-log/README.md` + the most recent dated entry, then `git log
 
 ## Context
 
-As of 2026-08-11 the operational gaps are closed in code (D53–D58): CI exists, App Check is
-enforced on callables, mail sends are metered, admin listeners are capped, and landing
-first-paint JS is down 51%. Green: client 58 / functions 44 / rules 23 = **125**.
+**Blaze is live on `littlelamb-sb`. Backups + PITR are enabled. Indexes are deployed.** The
+five-sessions-deferred data-loss risk is closed, and the backend is unblocked for the first time.
+
+Green: client 64 / functions 44 / rules 23 = **131**. tsc clean, eslint 0 errors in both npm
+projects, both builds OK.
 
 ---
 
-## 0. FIRST: confirm CI actually runs (5 minutes, do before anything else)
+## 1. FIRST: deploy the functions to prod
 
-`.github/workflows/ci.yml` has **never executed on a GitHub runner**. Every step and every
-red/green transition was verified locally, but runner-only differences can only surface on a
-real run. Push the branch, open Actions, and watch it. Likely first-run issues:
-- The Firestore emulator jar download / `actions/setup-java` on the rules job.
-- `npm ci` against three separate lockfiles with a shared cache key.
-- `npm ci --prefix firestore-tests` pulling `firebase-tools` (large, slow).
+Everything is prepared. Three placeholder secrets are already in Secret Manager, the predeploy
+lint gate is fixed (D59), and indexes are live (D62). David paused the deploy last session to
+watch it run rather than have it happen unattended — **confirm he's ready before running it.**
 
-If the rules job proves flaky on CI, make it a separate non-blocking job — do **not** delete
-it silently. Fix whatever breaks, then this item is done.
+```
+npm run deploy:functions:prod
+```
+
+**Expect it to fail at least once.** Likely, in order: GCP APIs not yet enabled (Cloud Build,
+Artifact Registry, Cloud Scheduler, Secret Manager, Eventarc); IAM propagation delay on the
+default service account; Eventarc permissions for the two `onDocumentCreated` triggers. Read the
+actual error rather than guessing — a real first deploy is the entire point.
+
+**Verified safe:** `quarterlyCharge` charges nobody. Three independent gates —
+`config/billing.enabled` read with strict `=== true` and defaulting to dry-run when the doc is
+absent (`billing/quarterlyCharge.ts:54`), the Stripe call fenced behind `if (enabled)` (line 137),
+and no family on a fresh project has `stripeCustomerId` + `hasPaymentMethod` to reach it (line 85).
+
+Then verify on real infrastructure:
+- `firebase functions:list --project littlelamb-sb` — all 7 present, `us-central1`
+- Cloud Scheduler shows 2 jobs: `recurringAutoCancel` (hourly), `quarterlyCharge` (daily 08:00 PT)
+- `firebase functions:log` — check for cold-start errors
+- **End-to-end:** write a `waitlist` doc, confirm `onWaitlistCreated` fires. With a placeholder
+  Resend key it should fail *at the send step* — that is the informative outcome, proving the
+  trigger, Firestore wiring and secret mount all work while isolating the one known placeholder.
+
+## 2. Landing bundle, round two
+
+287,720 bytes first-paint. The remaining lever is **framer-motion at 122KB** — `LazyMotion` with a
+reduced feature set, or CSS animations for the landing specifically. React (133KB) is the floor
+without a framework change. **Measure before and after:** last time, code splitting alone did
+nothing here because all chunks load on first paint; the 51% win came from a dynamic import.
+
+## 3. Smaller code items
+
+- **`--max-warnings 0` ratchet.** 3 `react-refresh/only-export-components` warnings remain
+  (`MonthGrid.tsx:172`, `RateRangeInput.tsx:28`, `WaitlistModal.tsx:32`). Move the non-component
+  exports to sibling files, then add the flag to `npm run lint` so new warnings can't accumulate.
+- **Mail quota has no admin surface.** `quota_exceeded` mail docs are terminal and logged but
+  invisible in the UI, so if a legitimate user trips the cap nobody finds out. A small admin view
+  (or an entry in the existing `billing_alerts` pattern) closes the loop.
+- **Component tests.** Still only `ErrorBoundary` + the new `useGrowingCollection`. The highest
+  value next would be a render test that `AdminPeoplePage` shows `LoadErrorNotice` rather than
+  "Nobody in this list" on error — that exact bug was live until D61.
 
 ---
 
-## 1. Code items, in priority order
+## 4. Blocked on David — console/account tasks
 
-### a. Fix the root lint setup (small, unblocks a real gate)
-`npm run lint` is `eslint .` but the root project has **no eslint dependency and no config**,
-so it exits 127 — which is why it is deliberately absent from CI (D53). Add `eslint` + a flat
-`eslint.config.js` (model it on the working `functions/.eslintrc.cjs`), fix whatever it
-flags, then add the step back to `ci.yml`. **All client code is currently lint-unchecked.**
+**Use the `launch-concierge` agent for these** (`.claude/agents/launch-concierge.md`) — it has all
+the project IDs, click-paths and current state, and is built to run in a parallel terminal.
 
-### b. Real pagination for admin lists
-D58 capped four listeners at 200 with a visible `truncated` notice, which bounds the damage
-but doesn't let an admin *reach* older records. Add `startAfter` cursors + a "load more"
-control, starting with `useAllBookings` (the most-used). The `AdminList` shape and the
-`TruncatedNotice` component are already in place to build on.
-
-### c. Landing bundle, round two
-Now at 287,720 bytes first-paint. The remaining lever is **framer-motion at 122KB** — either
-`LazyMotion` with a reduced feature set, or CSS animations for the landing page specifically.
-React itself (133KB) is the floor without a framework change.
-
-### d. Mail quota: consider an admin surface
-`quota_exceeded` mail docs are logged and terminal but invisible in the UI. If a legitimate
-user ever trips the cap, nobody finds out. A small admin view (or an entry in the existing
-`billing_alerts` pattern) would close that loop.
-
----
-
-## 2. Blocked on David — console tasks, not code
-
-**These are now the highest-value items in the whole project, and neither takes long.**
-
-- **Firestore backups / PITR.** Production holds real waitlist submissions with **no backup
-  and no point-in-time recovery**. This has been deferred **five sessions running** and is
-  the only outstanding item whose downside is permanent, unrecoverable data loss. Commands
-  and steps are in `docs/app-check-runbook.md`. May require Blaze.
-- **App Check reCAPTCHA v3 site key.** All enforcement code is wired and inert until a key
-  exists; pasting it in makes it live with no further code changes. Same runbook.
-- **Blaze upgrade** — gates all 7 functions, all email, all billing.
+- ✅ ~~Blaze upgrade~~ — **done 2026-08-11**
+- ✅ ~~Firestore backups / PITR~~ — **done 2026-08-11**
+- **Stripe test keys** — highest value remaining. 15 min, no business verification needed, and
+  unblocks verifying the entire billing engine end-to-end.
+- **Resend API key** — note it is *not* blocked by DNS: `onboarding@resend.dev` works immediately
+  for testing the pipeline. Domain verification for the real sender needs DNS.
+- **App Check reCAPTCHA v3 key** — paste-and-go, no code change. But `createSetupIntent` and
+  `savePaymentMethod` both set `enforceAppCheck: true`, so **card capture is dead-on-arrival**
+  until it exists.
 - **Wix DNS access** for `littlelambnannies.com` — owner unknown, possibly a former partner.
-- **Real Resend + Stripe live keys**, then `firebase functions:secrets:set`.
-- **Lucy's content** — badge master list, policies text, founder bios.
+  **The only blocker that can slip launch by months**, and the only one with no workaround.
+- **Lucy's content** — badge master list, policies text, founder bios, cancellation policy.
+
+## 5. Open product decision
+- **Nanny cancellation request channel.** D44 removed in-app messaging and the spec routed nanny
+  cancellations through it, so there is currently **no in-app mechanism** for a nanny to request
+  one. Handled off-platform until Lucy decides.
+
+## 6. Known-deferred, documented
+- `CLAUDE.md` still contains the obsolete messaging spec (Part 12, §4.8/4.9, admin §9, nav lists),
+  left as historical per D44 — a future contributor could build removed features from it. Worth a
+  "superseded" banner.
+- `useNannyDirectory` deliberately excluded from the pagination work (D60) — it is a one-shot
+  `getDocs`, and it would need its own helper rather than the snapshot-shaped one.
+- Staging project `littlelamb-sb-staging` is **not** on Blaze, so `deploy:functions:staging` and
+  `deploy:indexes:staging` will fail until it is.
+- Dev-only npm advisories and one upstream `uuid` inside `firebase-admin` (D42).
 
 ---
 
-## 3. Open product decision
-- **Nanny cancellation request channel.** D44 removed in-app messaging and the spec routed
-  nanny cancellations through it, so there is currently **no in-app mechanism** for a nanny to
-  request one. Handled off-platform until Lucy decides.
+## Go-live estimate
 
-## 4. Known-deferred, documented
-- `CLAUDE.md` still contains the obsolete messaging spec (Part 12, §4.8/4.9, admin §9, nav
-  lists), left as historical per D44 — a future contributor could build removed features from
-  it. Worth a "superseded" banner if it keeps causing confusion.
-- Dev-only npm advisories and one upstream `uuid` inside `firebase-admin` (D42).
-- No component tests beyond `ErrorBoundary`; hooks and pages remain untested.
+**~4–6 weeks — mid-to-late September 2026** (was 6–9 before Blaze landed).
+
+The critical path is no longer code — it is **Wix DNS**, which has an unknown owner and unbounded
+response time. Everything else has a workaround. The app can reach feature-complete-and-verified
+on a `*.web.app` URL with nothing more than Stripe test keys.

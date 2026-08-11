@@ -75,15 +75,34 @@ export function useGrowingCollection<T>(
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [pages, setPages] = useState(1)
+  const [activeQuery, setActiveQuery] = useState(() => buildQuery)
 
-  // Reset to the first page whenever the query itself changes. Without this, switching
-  // AdminPeoplePage from nannies to families would inherit the previous role's expansion
-  // and silently over-read. This is why buildQuery must be useCallback-stable: an unstable
-  // identity would fire this reset on every render and pagination could never advance.
-  useEffect(() => {
+  // Reset DURING RENDER when the query changes, not in an effect.
+  //
+  // Doing this in an effect was wrong in two ways, both verified rather than theorised.
+  // React would run the subscribe effect first — with the NEW query but the OLD page count
+  // — and only then apply the reset, so every role switch opened a listener at the previous
+  // expansion, tore it down and opened another (measured: window sizes [20, 10], ~100 wasted
+  // document reads after a single "load more").
+  //
+  // Worse, `items` and `error` survived the switch. AdminPeoplePage renders the same
+  // component instance across /admin/nannies → /admin/families (same component type, same
+  // tree position, so React reuses it), which meant NANNY rows rendered briefly under the
+  // "Families" header with family-labelled approve/reject buttons — an admin clicking
+  // quickly could act on a row believing it was something else.
+  //
+  // This is React's documented "adjusting state when props change" pattern: the state is
+  // corrected before anything commits, so no stale frame is ever shown and no listener is
+  // opened against the wrong window.
+  if (activeQuery !== buildQuery) {
+    setActiveQuery(() => buildQuery)
     setPages(1)
+    setItems([])
+    setError(null)
+    setHasMore(false)
     setLoading(true)
-  }, [buildQuery])
+    setLoadingMore(false)
+  }
 
   useEffect(() => {
     const windowSize = pageSize * pages

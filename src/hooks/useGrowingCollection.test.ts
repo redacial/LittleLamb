@@ -112,6 +112,46 @@ describe('useGrowingCollection', () => {
     await waitFor(() => expect(latest().windowSize).toBe(PAGE))
   })
 
+  it('clears items and error when the query changes, so no stale rows render', async () => {
+    // AdminPeoplePage renders the SAME component instance across /admin/nannies →
+    // /admin/families, so without this, nanny rows render under the "Families" header with
+    // family-labelled approve/reject buttons. Verified as a real bug before it was fixed.
+    const { result, rerender } = renderHook(
+      ({ q }: { q: (n: number) => never }) => useGrowingCollection(q, mapDoc, PAGE),
+      { initialProps: { q: buildQuery } },
+    )
+    act(() => latest().emit(5))
+    await waitFor(() => expect(result.current.items).toHaveLength(5))
+    act(() => latest().fail(new Error('nanny read failed')))
+    await waitFor(() => expect(result.current.error).not.toBeNull())
+
+    rerender({ q: (n: number) => ({ windowSize: n }) as never })
+
+    expect(result.current.items).toHaveLength(0)
+    expect(result.current.error).toBeNull()
+    expect(result.current.loading).toBe(true)
+  })
+
+  it('opens exactly one listener when the query changes', async () => {
+    // Resetting in an effect subscribed at the OLD page count first, then re-subscribed —
+    // burning a full window of reads on every role switch.
+    const { result, rerender } = renderHook(
+      ({ q }: { q: (n: number) => never }) => useGrowingCollection(q, mapDoc, PAGE),
+      { initialProps: { q: buildQuery } },
+    )
+    act(() => latest().emit(PAGE))
+    await waitFor(() => expect(result.current.hasMore).toBe(true))
+    act(() => result.current.loadMore())
+    await waitFor(() => expect(latest().windowSize).toBe(PAGE * 2))
+
+    const before = listeners.length
+    rerender({ q: (n: number) => ({ windowSize: n }) as never })
+
+    // Exactly one new listener, and at the FIRST page — never at the stale expansion.
+    expect(listeners.length).toBe(before + 1)
+    expect(latest().windowSize).toBe(PAGE)
+  })
+
   it('surfaces a read failure instead of an empty list', async () => {
     const { result } = renderHook(() => useGrowingCollection(buildQuery, mapDoc, PAGE))
 

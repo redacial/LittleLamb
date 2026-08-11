@@ -154,17 +154,28 @@ Live tracker for work that is still outstanding. Everything above this line is t
 build plan and is historical — read `session-log/NEXT-SESSION.md` for the actual next steps.
 
 ### Small / mechanical
-- **Root `npm run lint` is broken.** The script is `eslint .` but the root project has NO
-  eslint dependency and NO config file, so it exits **127** (command not found). It is
-  therefore deliberately NOT wired into `.github/workflows/ci.yml` — a step that always
-  fails is worse than no step. Fix by adding `eslint` + a flat `eslint.config.js` to the
-  root project (the `functions/` package has a working setup at `functions/.eslintrc.cjs`
-  to model), then add the step back to CI. Client code is currently lint-unchecked;
-  `tsc --noEmit` is the only static gate.
+- ✅ ~~Root `npm run lint` is broken.~~ **Done 2026-08-11 (D59).** ESLint 9 + flat config at
+  root and in `functions/`; 0 errors in both, lint step re-added to CI. Note the regression it
+  caused and how it was fixed — a root flat config silently switches `functions/` into flat
+  mode, which broke the `firebase deploy` predeploy hook.
+- **`--max-warnings 0` ratchet.** 3 `react-refresh/only-export-components` warnings remain
+  (`MonthGrid.tsx:172`, `RateRangeInput.tsx:28`, `WaitlistModal.tsx:32`). Move the
+  non-component exports to sibling files, then add the flag so new warnings can't accumulate.
+- **Mail quota has no admin surface.** `quota_exceeded` mail docs are terminal and logged but
+  invisible in the UI — if a legitimate user trips the cap, nobody finds out.
 
 ### Configuration tasks (console, not code — need David)
-- **App Check reCAPTCHA v3 site key.** Enforcement is now wired in code but inert until a
-  key exists. See `docs/app-check-runbook.md`.
-- **Firestore backups / PITR.** Production holds real waitlist submissions with no backup.
-  Deferred four sessions running; the only outstanding item whose downside is permanent
-  data loss. Also in the runbook.
+> Use the **`launch-concierge`** agent (`.claude/agents/launch-concierge.md`) for these — it
+> carries the project IDs, click-paths and current state, and runs in a parallel terminal.
+
+- ✅ ~~Blaze upgrade~~ — **done 2026-08-11.** Unblocked all 7 functions, email, and billing.
+- ✅ ~~Firestore backups / PITR~~ — **done 2026-08-11.** The one item whose downside was
+  permanent, unrecoverable data loss. Deferred five sessions before it landed.
+- **Stripe test keys** — highest value remaining; 15 min, no business verification needed.
+- **Resend API key** — not actually DNS-blocked: `onboarding@resend.dev` works immediately for
+  pipeline testing. Only the real sender domain needs DNS.
+- **App Check reCAPTCHA v3 site key.** Enforcement is wired but inert until a key exists.
+  `createSetupIntent`/`savePaymentMethod` set `enforceAppCheck: true`, so card capture is
+  dead-on-arrival until then. See `docs/app-check-runbook.md`.
+- **Wix DNS access** — the only blocker that can slip launch by months, and the only one with
+  no workaround. Owner unknown.

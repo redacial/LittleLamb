@@ -361,3 +361,88 @@ derived by filtering these arrays, so a capped read makes those figures silently
 (understated), not merely short. Those pages now say the numbers are indicative.
 `useNannyDirectory` also still swallowed errors (the one hook D50 missed) — a failed read
 told families "No nannies yet" when the network was fine.
+
+### D59. One flat ESLint config per npm project — and the regression that taught us why
+**Why:** Root `npm run lint` was `eslint .` with no eslint dependency and no config, so it
+exited 127 and was deliberately excluded from CI (D53). All client code was lint-unchecked.
+
+ESLint 9 + flat config at root, with `react-hooks` as the load-bearing plugin: every admin
+listener is a `useEffect` returning an `onSnapshot` unsubscribe, so `exhaustive-deps` is the
+rule that catches a stale listener. It immediately paid for itself by validating D60's
+dependency arrays. Non-type-checked preset on purpose — the type-aware one duplicates the
+`tsc -b` step that already runs separately.
+
+**The regression:** ESLint resolves config by walking **up** the tree, so the new root flat
+config switched `functions/` into flat mode too, silently ignoring its `.eslintrc.cjs` and
+rejecting `--ext .ts`. `firebase.json` runs that exact script as a **predeploy hook**, so
+`firebase deploy --only functions` aborted before uploading anything. A lint change broke the
+deploy path. Fixed at the root cause: `functions/` gets its own flat config (as `.mjs`, since
+the package must stay CommonJS) and is upgraded to ESLint 9 to match.
+
+Both configs were probed with a deliberate unused variable before being trusted. A flat
+config whose `files` glob matches nothing exits 0 and reports "no problems" — indistinguishable
+from a clean run, and the exact failure this item existed to prevent.
+
+### D60. Growing `limit()`, not `startAfter` cursors, for live admin lists
+**Why:** D58 capped four listeners at 200 with a notice, which bounded cost but left older
+records **unreachable** — the notice said "check back here once paging is added".
+
+Cursor pagination would mean one live listener per page (AdminBillingPage mounts three of
+these hooks at once, so five expansions = fifteen listeners), plus stitching several
+independent `docChanges()` streams back into one ordered array. A doc deleted from page 1
+does not shift page 2's window, because each cursor is pinned to a snapshot of a document
+that may itself have been edited or removed. Since Analytics and Billing **count** these
+arrays and D58 is explicit that miscounting is the failure mode that matters, correctness
+beat efficiency: one listener over one ordered array is correct by construction.
+
+**The trade, stated rather than hidden:** widening re-reads the whole window, so five
+expansions of 50 cost 750 reads rather than 250. Acceptable — a handful of internal admins,
+expansion is a deliberate click not infinite scroll, and the previous code already
+re-downloaded up to 200 docs on *every write*. Page size 200 → 50 makes the common case
+(one page, nobody clicks) cheaper than before.
+
+`useNannyDirectory` was deliberately **excluded**: it is a one-shot `getDocs`, and forcing it
+into a snapshot-shaped helper would either convert the directory to a live listener for every
+family and nanny on page load, or bolt a single-caller branch into the hook.
+
+### D61. `truncated` is not optional, and two pages were dropping it
+**Why:** Found while migrating. `AdminDashboard` dropped `truncated` from all three of its
+hooks while deriving its queue by filtering a bounded window client-side — so a partial read
+rendered *"Nothing needs your attention right now"*. Same-day booking requests are the #1
+action item on that page. `AdminPeoplePage` dropped both `truncated` **and** `error`, so a
+permission failure rendered "Nobody in this list" — the D50 bug, still live.
+
+Both are the same lesson D50 and D58 already recorded: a partial or failed read that renders
+as an empty one produces a confident wrong conclusion. The type system can't enforce this —
+destructuring is free to ignore a field — so it needs a review habit, not just a return type.
+
+### D62. Firestore indexes had never been deployed, and no script deployed them
+**Why:** `firestore.indexes.json` declared 6 composite indexes; no npm script shipped them and
+they were absent from `littlelamb-sb`. Both scheduled functions query against them, so each
+would have thrown `FAILED_PRECONDITION` on first run — a runtime failure a functions deploy
+does not surface. Added `deploy:indexes:{staging,prod}` and deployed to prod. Indexes are
+schema only: nothing billable, safe ahead of the functions themselves.
+
+### D63. Reset paging during render, not in an effect — two bugs from one misplacement
+**Why:** Found by adversarial review of D60, then verified with probes rather than accepted on
+argument. Resetting `pages` in a `useEffect` keyed on `buildQuery` caused two distinct failures:
+
+1. **A wasted listener per query change.** React ran the subscribe effect first — with the NEW
+   query but the OLD page count — then applied the reset, tearing it down and re-subscribing.
+   Measured window sizes `[20, 10]`: roughly a full extra window of document reads on every
+   role switch.
+2. **Stale rows from the previous query rendered during the switch.** `items` and `error`
+   survived the reset. This is user-visible because React does **not** remount
+   `AdminPeoplePage` across `/admin/nannies` → `/admin/families` — same component type at the
+   same tree position, so the instance is reused. Nanny rows rendered briefly under the
+   "Families" header with family-labelled approve/reject buttons wired to `role="family"`.
+
+Both share one root cause, fixed by React's documented "adjusting state when props change"
+pattern: compare the previous `buildQuery` during render and correct state before anything
+commits. No stale frame is shown and no listener opens against the wrong window.
+
+Also noted and deliberately NOT changed: `loadMore` calls `setLoadingMore` inside a `setPages`
+updater, which is impure. Testing showed it produces no wrong behaviour — StrictMode discards
+the extra invoke rather than double-incrementing, and a real double-click lands in separate
+React batches (plus `Button` disables itself via `loading`). It is a style violation, not a
+correctness bug, and "fixing" it would have been churn dressed as rigour.
