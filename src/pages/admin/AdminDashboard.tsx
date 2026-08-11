@@ -1,6 +1,11 @@
 import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
-import { usePendingApplications, useAdminActions, useAllBookings } from '../../hooks/useAdmin'
+import {
+  usePendingApplications,
+  useAdminActions,
+  useAllBookings,
+  useUndeliveredMail,
+} from '../../hooks/useAdmin'
 import { PageBody } from '../../components/layout/AppLayout'
 import { Button, Card, CardLabel, LoadErrorNotice, TruncatedNotice } from '../../components/ui'
 import { Grain, Sparkle } from '../../components/theme'
@@ -41,6 +46,13 @@ export function AdminDashboard() {
     loadMore: loadMoreFamilies,
     loadingMore: loadingMoreFamilies,
   } = usePendingApplications('family')
+  const {
+    items: undeliveredMail,
+    error: mailError,
+    truncated: mailTruncated,
+    loadMore: loadMoreMail,
+    loadingMore: loadingMoreMail,
+  } = useUndeliveredMail()
   // A failed read must never render as "nothing to do" — see LoadErrorNotice.
   const loadError = bookingsError || nanniesError || familiesError
   // Nor must a PARTIAL read. This page filters the booking window client-side and counts
@@ -214,6 +226,47 @@ export function AdminDashboard() {
           {/* 6. Failed payments */}
           <Section title="Failed payments">
             <Empty>No failed payments this cycle.</Empty>
+          </Section>
+
+          {/* 7. Undelivered mail. Below the people-facing queues because it is an
+              operational fault rather than someone waiting on a decision — but on this
+              page rather than buried in settings, because both of its states are TERMINAL:
+              nothing retries, so if nobody looks here the email is simply never sent. */}
+          <Section title="Undelivered email" count={undeliveredMail.length}>
+            {mailError ? (
+              <LoadErrorNotice what="undelivered email" />
+            ) : undeliveredMail.length === 0 ? (
+              <Empty>Every email has gone out.</Empty>
+            ) : (
+              <div className="space-y-2">
+                {mailTruncated && (
+                  <TruncatedNotice
+                    shown={undeliveredMail.length}
+                    what="undelivered emails"
+                    onLoadMore={loadMoreMail}
+                    loadingMore={loadingMoreMail}
+                  />
+                )}
+                {undeliveredMail.map((mail) => (
+                  <div
+                    key={mail.id}
+                    className="rounded-ll-input border-1.5 border-ll-cream-dark bg-white px-3 py-2 text-sm"
+                  >
+                    <p className="font-medium text-ll-ink">
+                      {mail.event?.type?.replace(/_/g, ' ') ?? 'Email'}
+                      <span className="ml-2 font-mono text-xs uppercase text-ll-warm-gray">
+                        {mail.status === 'quota_exceeded' ? 'daily cap reached' : 'send failed'}
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-ll-warm-gray">
+                      {mail.status === 'quota_exceeded'
+                        ? 'This sender hit the daily email cap, so this was never sent. It will not retry.'
+                        : (mail.error ?? 'The email provider rejected this. It will not retry.')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </Section>
         </div>
       </PageBody>

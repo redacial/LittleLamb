@@ -123,6 +123,41 @@ export function useBillingAlerts(): GrowingList<BillingAlert> {
   return useGrowingCollection(buildQuery, mapAlert, ADMIN_PAGE_SIZE)
 }
 
+/** A mail doc that never reached the provider — see useUndeliveredMail. */
+export interface UndeliveredMail {
+  id: string
+  status: 'error' | 'quota_exceeded'
+  error?: string
+  createdBy?: string
+  event?: { type?: string }
+}
+
+const mapMail = (d: QueryDocumentSnapshot<DocumentData>): UndeliveredMail => ({
+  id: d.id,
+  ...(d.data() as Omit<UndeliveredMail, 'id'>),
+})
+
+/**
+ * Mail that was enqueued but never sent — either the provider rejected it (`error`) or the
+ * sender hit their daily cap (`quota_exceeded`).
+ *
+ * Both states are TERMINAL and were previously invisible: the doc is marked and never
+ * retried, and nothing surfaced it. So a legitimate user tripping the 100/day cap, or a
+ * Resend outage, looked exactly like mail being delivered — an admin would find out when
+ * someone complained they never got their booking confirmation, if at all.
+ *
+ * No orderBy: `status in [...]` plus a sort would need a new composite index, and this list
+ * is a small exception queue rather than a feed.
+ */
+export function useUndeliveredMail(): GrowingList<UndeliveredMail> {
+  const buildQuery = useCallback(
+    (n: number) =>
+      query(collection(db, 'mail'), where('status', 'in', ['error', 'quota_exceeded']), limit(n)),
+    [],
+  )
+  return useGrowingCollection(buildQuery, mapMail, ADMIN_PAGE_SIZE)
+}
+
 /** Pending applications of a given role, live. */
 export function usePendingApplications(role: Role): GrowingList<UserDoc> {
   // No orderBy: the existing (role, approved, status) composite index covers this
