@@ -11,7 +11,7 @@
 
 import { initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
-import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore'
+import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
 // --- Point the Admin SDK at the local emulators ----------------------------------------
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'littlelamb-demo'

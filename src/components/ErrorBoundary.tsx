@@ -33,7 +33,6 @@ export class ErrorBoundary extends Component<Props, State> {
     // Console is the only sink today — no error-reporting service is wired up yet.
     // When one is added (Sentry et al.), this is the single place to report from.
     const label = this.props.boundaryName ? `:${this.props.boundaryName}` : ''
-    // eslint-disable-next-line no-console
     console.error(`[ErrorBoundary${label}]`, error, info.componentStack)
   }
 
