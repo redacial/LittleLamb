@@ -51,11 +51,15 @@ jobs:
 
       # Deliberately separate steps rather than the existing `test:all` script: that
       # chains with && and short-circuits, so the first failure would hide the rest.
-      # NOTE: root `npm run lint` is NOT run here — the root project has no eslint
-      # dependency and no config, so the script exits 127 (command not found). Fixing
-      # that is tracked in Backlog.md; a step that always fails is worse than none.
       - name: Typecheck (root)
         run: npm run typecheck
+
+      # Root lint now exists (eslint.config.js, flat config, ESLint 9). It was excluded
+      # while the script exited 127 with no eslint dependency and no config.
+      # Warnings do NOT fail the build yet: three react-refresh findings remain, and
+      # --max-warnings 0 belongs in a later commit once those are at zero. Errors do fail.
+      - name: Lint (client)
+        run: npm run lint
 
       - name: Unit tests (client)
         run: npm test
