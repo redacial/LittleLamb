@@ -59,3 +59,13 @@ was built, and what's left. This is the human-readable memory of the project's e
   (P1 — the launch-slipping risk), collect her content (P2 — badges, policies, bios, badge
   colors), confirm open business decisions (P3). Exact questions to ask, and the one sentence
   to leave with.
+- `2026-08-11-domain-live-deploy-blocked.md` — **The domain went live.**
+  `littlelambnannies.com` now resolves to Firebase Hosting and serves the pre-launch page; the
+  Wix parking IP and a stale Vercel `www` record are gone, Fastmail's MX/DKIM/SPF/DMARC intact.
+  The apex had been verified against the BARE `littlelamb-sb` site (empty → 404), so a `root`
+  hosting target was added and the landing build deployed there rather than redoing DNS. **The
+  Wix risk turned out not to exist** — the domain was transferred to David, so there was never
+  an unreachable owner to chase. Also: the first functions deploy was attempted and **all 7
+  failed** — root cause found and documented (`STRIPE_WEBHOOK_SECRET` missing from Secret
+  Manager; the CLI validates every declared secret, so one missing value fails the batch). Five
+  code-level hypotheses were investigated and ruled out. Contains David's full checklist.

@@ -27,42 +27,55 @@ npm projects (root runs `--max-warnings 0`), both builds OK, everything pushed.
 | `VITE_STRIPE_PUBLISHABLE_KEY` (`pk_test_`) | `.env.production` | ✅ in prod bundle |
 | `VITE_FIREBASE_APPCHECK_SITE_KEY` (`6L…`, 40ch) | `.env.production` | ✅ in prod bundle |
 
-**`STRIPE_WEBHOOK_SECRET` is NOT set** — verified absent. It cannot exist until `stripeWebhook`
-is deployed and its URL registered in Stripe. This is the one chicken-and-egg in the sequence.
+**`STRIPE_WEBHOOK_SECRET` is NOT set** — verified absent, and this turned out to be the thing
+that **broke the whole functions deploy** (see §1). It needs a *placeholder* value BEFORE
+deploying; the real `whsec_` can only be issued after `stripeWebhook` exists and is registered
+in Stripe.
 
-**Nothing is deployed.** The 7 functions have still never run on Google infrastructure.
+**The domain is LIVE.** `littlelambnannies.com` resolves to Firebase Hosting and serves the
+pre-launch landing page (SSL was still provisioning at session end). **The 7 functions are
+still not deployed** — that attempt failed, root cause found, fix in §1.
 
 ---
 
-## 1. FIRST: deploy the functions
+## 1. FIRST: unblock the functions deploy — root cause already found
 
+**The deploy was attempted 2026-08-11 and ALL 7 functions failed** with the same error:
+"Container Healthcheck failed... failed to start and listen on the port defined by PORT=8080".
+
+**Root cause: `STRIPE_WEBHOOK_SECRET` does not exist in Secret Manager.** Verified directly —
+`RESEND_API_KEY` and `STRIPE_SECRET_KEY` read back fine; the third returns nothing.
+`functions/src/config.ts:9` declares it via `defineSecret`, and the CLI validates **every
+declared secret** at deploy time, so one missing value takes down the whole batch — including
+`recurringAutoCancel`, which has nothing to do with Stripe. Only `billing/webhook.ts:24` binds it.
+
+**Fix — placeholder, deploy, swap later:**
 ```
+npx firebase functions:secrets:set STRIPE_WEBHOOK_SECRET --project littlelamb-sb
+# any non-empty value, e.g. whsec_placeholder
 npm run deploy:functions:prod
 ```
+Safe: `webhook.ts:35` reads it only inside the request handler, so a placeholder means incoming
+webhook signatures fail verification — it does not prevent startup.
 
-**Confirm with David before running** — he paused this deliberately last session to watch it
-rather than have it run unattended.
+**Five code-level hypotheses were investigated and RULED OUT — do not re-derive:** module-scope
+`.value()` calls (all three are correctly lazy), `lib/` not shipping (the CLI ignores
+`.gitignore`; only `firebase.json`'s `ignore` applies), missing runtime deps, Node 22-vs-20
+syntax (zero matches in `lib/`), pdfkit at module scope. The code is fine.
 
-Secrets bind automatically via each function's `secrets: [...]` option. **Expect a first-deploy
-failure**: GCP API enablement (Cloud Build, Artifact Registry, Eventarc, Cloud Scheduler,
-Secret Manager), IAM propagation on the default service account, or Eventarc permissions for
-the two `onDocumentCreated` triggers. Read the real error; don't guess.
-
-`stripeWebhook` may refuse to deploy with `STRIPE_WEBHOOK_SECRET` unset. If so, set a throwaway
-placeholder to get the URL, then follow §2.
+Once past this, expect *secondary* first-deploy failures: GCP API enablement (Cloud Build,
+Artifact Registry, Eventarc, Cloud Scheduler), IAM propagation, Eventarc permissions for the two
+`onDocumentCreated` triggers.
 
 **Verified safe — nobody gets charged.** Three independent gates: `config/billing.enabled` read
-with strict `=== true`, defaulting to dry-run when the doc is absent
-(`billing/quarterlyCharge.ts:54`); the Stripe call fenced behind `if (enabled)` (line 137); and
-no family has `stripeCustomerId` + `hasPaymentMethod` on a fresh project (line 85).
+with strict `=== true`, defaulting to dry-run when absent (`billing/quarterlyCharge.ts:54`); the
+Stripe call fenced behind `if (enabled)` (line 137); no family has a saved card (line 85).
 
 **Then verify on real infrastructure:**
 - `firebase functions:list --project littlelamb-sb` — 7 functions, `us-central1`
 - Cloud Scheduler shows 2 jobs: `recurringAutoCancel` (hourly), `quarterlyCharge` (daily 08:00 PT)
-- `firebase functions:log` — cold-start errors
-- Write a `waitlist` doc and confirm `onWaitlistCreated` fires. With a real Resend key but an
-  unverified sender domain it will fail **at the send step** with a domain error — informative,
-  and it surfaces in the new Undelivered email dashboard section.
+- Write a `waitlist` doc → `onWaitlistCreated` fires; with an unverified sender domain it should
+  fail **at the send step** with a Resend domain error, visible in the Undelivered email section
 
 ## 2. Stripe webhook — the chicken-and-egg
 
@@ -131,9 +144,11 @@ hardcoded swap.
 This is the whole remaining sequence. Steps 1–4 above are independent of DNS; everything here
 depends on it.
 
-**a. Point the domain at Firebase Hosting.** Firebase Console → Hosting → Add custom domain →
-`littlelambnannies.com` → add the TXT/A records at the registrar. Propagation is minutes to
-48h; SSL provisions automatically after.
+**a. ~~Point the domain at Firebase Hosting.~~ DONE 2026-08-11.** Root + `www` resolve to
+`199.36.158.100`; the Wix parking IP and a stale Vercel `www` record are gone; Fastmail's
+MX/DKIM/SPF/DMARC left intact. The apex had been verified against the BARE `littlelamb-sb` site
+(empty → 404), so a `root` hosting target was added, cloned from `landing`, and the landing build
+deployed to it. SSL was still provisioning at session end.
 
 **b. Verify the Resend domain.** Resend → Domains → add `littlelambnannies.com` → add the
 SPF/DKIM records. This makes `hello@littlelambnannies.com` a legal sender and turns the entire
@@ -182,11 +197,12 @@ state in the project, and the reason `.env.production` carries a loud warning.
 
 ## Go-live estimate
 
-**~4–6 weeks — mid-to-late September 2026**, unchanged.
+**~1.5–2 weeks elapsed**, roughly 8–10 hours of engineering — down from 4–6 weeks.
 
-Every blocker that engineering or money could solve is now solved. The critical path is
-**Wix DNS**: unknown owner, unbounded response time, no workaround. Steps 5a–5f are perhaps
-two working sessions once DNS lands — the estimate is almost entirely waiting, not building.
+**The Wix risk is gone.** The domain was transferred to David, so there was never an unreachable
+former owner to chase, and the domain is now live on Firebase. That was the only blocker that
+could have pushed launch into October.
 
-If DNS resolves quickly, early September is achievable. If the Wix owner is unreachable, the
-fallback is launching on a different domain, which costs the brand but not the product.
+What remains is gated on **Stripe business verification** (needed for live keys, can take days —
+start it early) and **Lucy's content**, not on engineering. Full detail in
+`2026-08-11-domain-live-deploy-blocked.md`, including David's checklist.
