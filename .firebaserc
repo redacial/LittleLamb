@@ -12,6 +12,9 @@
         ],
         "app": [
           "littlelamb-sb-app"
+        ],
+        "root": [
+          "littlelamb-sb"
         ]
       }
     },
