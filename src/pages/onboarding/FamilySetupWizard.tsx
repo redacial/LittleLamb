@@ -9,8 +9,7 @@ import { WizardShell } from '../../components/onboarding/WizardShell'
 import { PaymentStep } from '../../components/onboarding/PaymentStep'
 import { useSpring } from '../../lib/motion'
 import { Button, Input, Textarea, Avatar, RateRangeInput } from '../../components/ui'
-import { validateRatePair } from '../../components/ui/RateRangeInput'
-import { parseRateDollars } from '../../lib/rates'
+import { parseRateDollars, validateRatePair } from '../../lib/rates'
 import type { Child, FamilyProfile } from '../../types'
 
 const STEPS = ['Family profile', 'Contact', 'Payment']

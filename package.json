@@ -18,7 +18,7 @@
     "deploy:rules:prod": "firebase deploy --only firestore:rules --project littlelamb-sb",
     "deploy:indexes:staging": "firebase deploy --only firestore:indexes --project littlelamb-sb-staging",
     "deploy:indexes:prod": "firebase deploy --only firestore:indexes --project littlelamb-sb",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

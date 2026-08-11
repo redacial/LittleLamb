@@ -106,3 +106,23 @@ export function resolveBookingStatus(args: {
   if (!rateOverlaps) return 'pending'
   return 'confirmed'
 }
+
+/**
+ * Validate a min/max pair as typed into a form. Returns an error string, or null when the
+ * pair is usable. Empty is allowed (the range is optional) — but a half-filled pair is not.
+ *
+ * Lives here rather than beside RateRangeInput because it is pure logic with no React
+ * dependency, and a component module that also exports helpers breaks Fast Refresh.
+ */
+export function validateRatePair(min: string, max: string): string | null {
+  const bothEmpty = min.trim() === '' && max.trim() === ''
+  if (bothEmpty) return null
+
+  const lo = parseRateDollars(min)
+  const hi = parseRateDollars(max)
+  if (lo === null || hi === null) {
+    return `Enter both a minimum and a maximum, up to $${RATE_MAX_CENTS / 100} an hour.`
+  }
+  if (lo > hi) return 'The minimum can’t be more than the maximum.'
+  return null
+}

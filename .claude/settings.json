@@ -1,6 +1,7 @@
 {
   "model": "claude-opus-4-8",
   "enabledPlugins": {
-    "ux-ui-mastery": true
+    "ux-ui-mastery": true,
+    "stripe@claude-plugins-official": true
   }
 }

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Modal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
@@ -6,6 +6,7 @@ import { Input, Textarea } from '../../components/ui/Input'
 import { LambMark } from '../../components/ui/Logo'
 import { cn } from '../../lib/cn'
 import { submitWaitlist, type SubmissionKind, type WaitlistRole } from '../waitlist'
+import { WaitlistContext, type OpenOptions } from './waitlistContext'
 
 /**
  * The pre-launch conversion centerpiece. One modal serves two jobs:
@@ -16,24 +17,6 @@ import { submitWaitlist, type SubmissionKind, type WaitlistRole } from '../waitl
  * Exposed through a tiny context so any CTA on any page can open it with the right
  * intent (openWaitlist / openContact), without prop-drilling through the page tree.
  */
-
-interface OpenOptions {
-  kind?: SubmissionKind
-  role?: WaitlistRole
-}
-
-interface WaitlistContextValue {
-  openWaitlist: (opts?: OpenOptions) => void
-  openContact: (opts?: OpenOptions) => void
-}
-
-const WaitlistContext = createContext<WaitlistContextValue | null>(null)
-
-export function useWaitlist(): WaitlistContextValue {
-  const ctx = useContext(WaitlistContext)
-  if (!ctx) throw new Error('useWaitlist must be used within <WaitlistProvider>')
-  return ctx
-}
 
 export function WaitlistProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)

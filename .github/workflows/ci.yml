@@ -54,10 +54,11 @@ jobs:
       - name: Typecheck (root)
         run: npm run typecheck
 
-      # Root lint now exists (eslint.config.js, flat config, ESLint 9). It was excluded
-      # while the script exited 127 with no eslint dependency and no config.
-      # Warnings do NOT fail the build yet: three react-refresh findings remain, and
-      # --max-warnings 0 belongs in a later commit once those are at zero. Errors do fail.
+      # Root lint (eslint.config.js, flat config, ESLint 9). Excluded until 2026-08-11,
+      # when the script still exited 127 with no eslint dependency and no config.
+      # Runs with --max-warnings 0: the codebase is at zero findings, so warnings are held
+      # there rather than allowed to accumulate. Verified to go RED on one new warning
+      # before being trusted.
       - name: Lint (client)
         run: npm run lint
 

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { Logo } from '../../components/ui/Logo'
 import { useButtonHover } from '../../lib/motion'
-import { useWaitlist } from './WaitlistModal'
+import { useWaitlist } from './waitlistContext'
 
 /**
  * Chrome for the pre-launch landing site. Unlike the app's PublicShell there is NO login

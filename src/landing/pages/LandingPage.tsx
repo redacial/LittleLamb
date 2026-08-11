@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { LandingShell } from '../components/LandingShell'
-import { useWaitlist } from '../components/WaitlistModal'
+import { useWaitlist } from '../components/waitlistContext'
 import { LambMark } from '../../components/ui/Logo'
 import { Grain, Blob, DrawnUnderline, StickerBadge, FloatLoop, Sparkle } from '../../components/theme'
 import { useTiltHover, useButtonHover } from '../../lib/motion'

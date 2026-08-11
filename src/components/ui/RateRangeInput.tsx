@@ -9,7 +9,7 @@
 import { useId } from 'react'
 import { Input } from './Input'
 import { RateDisclaimer } from './RateDisclaimer'
-import { parseRateDollars, RATE_MAX_CENTS } from '../../lib/rates'
+import { validateRatePair } from '../../lib/rates'
 
 interface Props {
   /** Raw dollar strings, owned by the parent so wizard steps can persist them. */
@@ -19,23 +19,6 @@ interface Props {
   onMaxChange: (v: string) => void
   /** Whose rate this is — changes the labels and helper copy. */
   role: 'family' | 'nanny'
-}
-
-/**
- * Validate a min/max pair. Returns an error string, or null when the pair is usable.
- * Empty is allowed (the range is optional) — but a half-filled pair is not.
- */
-export function validateRatePair(min: string, max: string): string | null {
-  const bothEmpty = min.trim() === '' && max.trim() === ''
-  if (bothEmpty) return null
-
-  const lo = parseRateDollars(min)
-  const hi = parseRateDollars(max)
-  if (lo === null || hi === null) {
-    return `Enter both a minimum and a maximum, up to $${RATE_MAX_CENTS / 100} an hour.`
-  }
-  if (lo > hi) return 'The minimum can’t be more than the maximum.'
-  return null
 }
 
 export function RateRangeInput({ min, max, onMinChange, onMaxChange, role }: Props) {
