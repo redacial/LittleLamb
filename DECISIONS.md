@@ -446,3 +446,29 @@ updater, which is impure. Testing showed it produces no wrong behaviour — Stri
 the extra invoke rather than double-incrementing, and a real double-click lands in separate
 React batches (plus `Button` disables itself via `loading`). It is a style violation, not a
 correctness bug, and "fixing" it would have been churn dressed as rigour.
+
+### D64. LazyMotion does NOT shrink the landing bundle — measured, reverted, closed
+**Why:** The landing page is the only bundle real users load today: 287,720 bytes first paint,
+of which framer-motion is 122KB (42%). `LazyMotion` + `domAnimation` was the obvious next
+lever and had been named in two successive handoffs.
+
+**It was built, measured, and made things worse: 287,720 → 289,817 bytes (+2,097).** The split
+itself worked — a 29KB async chunk containing the animation features was correctly emitted and
+deferred — but framer-motion's *core renderer* (~120KB) is a static dependency of the `m`
+components themselves and cannot be deferred by any configuration. So the page paid for an
+extra request and got nothing back.
+
+Two things were found along the way and are worth keeping:
+- `manualChunks: { motion: ['framer-motion'] }` actively defeats `LazyMotion`, forcing the
+  library back into one eagerly-preloaded chunk (measured: it grew to 150KB and stayed in the
+  preload list). Any future attempt must exclude the landing target from that map.
+- The measurement was only trustworthy because the baseline was re-measured from a clean
+  `git stash` in the same session, rather than compared against a number from a previous one.
+
+**The only real lever left is removing framer-motion from the landing tree entirely.** All 14
+usages there are hover/tap effects (scale, translate, rotate) that CSS can express, which would
+recover the full 122KB. **David decided against it** (2026-08-11): `DESIGN_SYSTEM.md` mandates
+spring physics everywhere and explicitly bans "stiff transitions", and ~97KB gzipped loads
+acceptably on 4G. The brand feel is worth more than the bytes on a marketing page.
+
+**Do not re-attempt LazyMotion.** It is not an untried idea; it is a tried and rejected one.
