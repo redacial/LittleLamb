@@ -45,6 +45,23 @@ export default defineConfig(() => {
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
       css: false,
+      // src/lib/firebase.ts calls requireEnv() at MODULE scope and throws when a var is
+      // missing, so any test that transitively imports it dies at collection time — not as
+      // a failed assertion, but as an uncollectable file. .env is gitignored, so this makes
+      // the suite pass locally and fail on any clean checkout, CI included.
+      //
+      // These values are dummies: they are never sent anywhere. No test touches a real
+      // Firebase backend, and initializeApp() does not validate them or open a connection.
+      // Copying .env.example is NOT an alternative — its values are empty strings, which
+      // requireEnv rejects (`if (!value)`).
+      env: {
+        VITE_FIREBASE_API_KEY: 'test-api-key',
+        VITE_FIREBASE_AUTH_DOMAIN: 'test.firebaseapp.com',
+        VITE_FIREBASE_PROJECT_ID: 'test-project',
+        VITE_FIREBASE_STORAGE_BUCKET: 'test.appspot.com',
+        VITE_FIREBASE_MESSAGING_SENDER_ID: '000000000000',
+        VITE_FIREBASE_APP_ID: '1:000000000000:web:testappid',
+      },
       // Client tests only. The functions/ package has its own Node-environment
       // Vitest run (npm --prefix functions test) — don't pull its specs into jsdom.
       include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
