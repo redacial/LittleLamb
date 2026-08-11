@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { usePendingApplications, useAdminActions, useAllBookings } from '../../hooks/useAdmin'
 import { PageBody } from '../../components/layout/AppLayout'
-import { Button, Card, CardLabel, LoadErrorNotice } from '../../components/ui'
+import { Button, Card, CardLabel, LoadErrorNotice, TruncatedNotice } from '../../components/ui'
 import { Grain, Sparkle } from '../../components/theme'
 import { useSpringIn, useButtonHover } from '../../lib/motion'
 import { formatDate, formatTimeRange } from '../../lib/format'
@@ -18,13 +18,36 @@ import { formatDate, formatTimeRange } from '../../lib/format'
  */
 export function AdminDashboard() {
   const { profile } = useAuth()
-  const { items: allBookings, error: bookingsError } = useAllBookings()
+  const {
+    items: allBookings,
+    error: bookingsError,
+    truncated: bookingsTruncated,
+    loadMore: loadMoreBookings,
+    loadingMore: loadingMoreBookings,
+  } = useAllBookings()
   const sameDay = allBookings.filter((b) => b.status === 'same_day_review')
   const unmatched = allBookings.filter((b) => b.status === 'unmatched' || b.status === 'open')
-  const { items: pendingNannies, error: nanniesError } = usePendingApplications('nanny')
-  const { items: pendingFamilies, error: familiesError } = usePendingApplications('family')
+  const {
+    items: pendingNannies,
+    error: nanniesError,
+    truncated: nanniesTruncated,
+    loadMore: loadMoreNannies,
+    loadingMore: loadingMoreNannies,
+  } = usePendingApplications('nanny')
+  const {
+    items: pendingFamilies,
+    error: familiesError,
+    truncated: familiesTruncated,
+    loadMore: loadMoreFamilies,
+    loadingMore: loadingMoreFamilies,
+  } = usePendingApplications('family')
   // A failed read must never render as "nothing to do" — see LoadErrorNotice.
   const loadError = bookingsError || nanniesError || familiesError
+  // Nor must a PARTIAL read. This page filters the booking window client-side and counts
+  // the result, so a truncated read can hide same-day requests and pending applicants
+  // behind a confident "nothing needs your attention" — the same class of bug as an
+  // unreported error, and the reason `truncated` must never be dropped here.
+  const partialQueue = bookingsTruncated || nanniesTruncated || familiesTruncated
   const { approve, reject } = useAdminActions()
   const springIn = useSpringIn()
   const btnHover = useButtonHover()
@@ -50,9 +73,13 @@ export function AdminDashboard() {
           {loadError
             ? // Never claim the queue is clear when we failed to read it.
               'Some of your queue could not be loaded — see below.'
-            : queueCount === 0
-              ? 'Nothing needs your attention right now.'
-              : 'Everything that needs your attention, in priority order.'}
+            : partialQueue && queueCount === 0
+              ? // Nor when we only read part of it: "nothing to do" from a partial list is
+                // a wrong conclusion drawn from a page that simply stopped counting.
+                'No action items in what loaded so far — the list is partial, see below.'
+              : queueCount === 0
+                ? 'Nothing needs your attention right now.'
+                : 'Everything that needs your attention, in priority order.'}
         </p>
       </div>
 
@@ -62,6 +89,38 @@ export function AdminDashboard() {
         {bookingsError && <LoadErrorNotice what="same-day and unmatched bookings" />}
         {nanniesError && <LoadErrorNotice what="pending nanny applications" />}
         {familiesError && <LoadErrorNotice what="pending family applications" />}
+
+        {/* 0b. Partial reads rank alongside failures: this page derives its queue by
+            filtering a bounded booking window, so anything past the window is invisible
+            rather than merely further down. */}
+        {(bookingsTruncated || nanniesTruncated || familiesTruncated) && (
+          <div className="mb-4 space-y-2">
+            {bookingsTruncated && (
+              <TruncatedNotice
+                shown={allBookings.length}
+                what="bookings scanned for action items"
+                onLoadMore={loadMoreBookings}
+                loadingMore={loadingMoreBookings}
+              />
+            )}
+            {nanniesTruncated && (
+              <TruncatedNotice
+                shown={pendingNannies.length}
+                what="pending nanny applications"
+                onLoadMore={loadMoreNannies}
+                loadingMore={loadingMoreNannies}
+              />
+            )}
+            {familiesTruncated && (
+              <TruncatedNotice
+                shown={pendingFamilies.length}
+                what="pending family applications"
+                onLoadMore={loadMoreFamilies}
+                loadingMore={loadingMoreFamilies}
+              />
+            )}
+          </div>
+        )}
 
         {/* 1. Same-day banner — the #1 action item, given real visual dominance:
             terracotta-deep ground (AA-safe with white), alert sparkle, count up front. */}

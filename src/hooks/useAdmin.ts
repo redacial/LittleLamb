@@ -11,10 +11,13 @@ import {
   updateDoc,
   setDoc,
   serverTimestamp,
+  type DocumentData,
+  type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { notify, type NotificationEvent } from '../lib/notifications'
-import type { UserDoc, Role, NannyStage } from '../types'
+import { useGrowingCollection, type GrowingList } from './useGrowingCollection'
+import type { UserDoc, Role, NannyStage, Booking } from '../types'
 
 /** Fire-and-forget: a notification failure must never reject an admin write. */
 function fireNotify(event: NotificationEvent) {
@@ -83,131 +86,87 @@ export interface BillingAlert {
  * there are no pending applicants — while real people sit unreviewed. Callers must show a
  * distinct "couldn't load" state, never an empty state, when `error` is set.
  */
-export interface AdminList<T> {
-  items: T[]
-  error: Error | null
-  /**
-   * True when the query hit its cap, so `items` is NOT the whole set. Callers must
-   * surface this — for exactly the reason `error` exists. A silently truncated admin
-   * list reads as a complete one, which is how "there are no more failed payments"
-   * becomes a wrong conclusion drawn from a page that simply stopped counting.
-   */
-  truncated: boolean
-}
+export type AdminList<T> = GrowingList<T>
 
 /**
  * Page size for admin lists.
  *
  * These are live `onSnapshot` listeners over collections that grow forever, and several
  * mount on four different admin pages at once — unbounded, every booking ever made is
- * re-downloaded on every write. The cap is set high enough that real admin work is
- * unaffected at current scale and low enough that the listener can't grow without limit.
- * Real pagination (startAfter cursors) is the follow-up; this bounds the damage now and,
- * unlike silent truncation, tells the admin when they're seeing a partial list.
+ * re-downloaded on every write.
+ *
+ * Now that `useGrowingCollection` provides a real "load more", this is a first-page size
+ * rather than a hard ceiling, so it is deliberately much smaller than the old cap of 200:
+ * 50 fills an admin screen, and the common case (one page, nobody clicks) reads a quarter
+ * of what it used to on every single write.
  */
-export const ADMIN_PAGE_SIZE = 200
+export const ADMIN_PAGE_SIZE = 50
+
+// Doc mappers live at module scope because useGrowingCollection takes them as an effect
+// dependency — an inline arrow would be a new function every render and re-subscribe the
+// listener each time.
+const mapAlert = (d: QueryDocumentSnapshot<DocumentData>): BillingAlert => ({
+  id: d.id,
+  ...(d.data() as Omit<BillingAlert, 'id'>),
+})
+const mapUser = (d: QueryDocumentSnapshot<DocumentData>) => d.data() as UserDoc
+const mapBooking = (d: QueryDocumentSnapshot<DocumentData>) =>
+  ({ id: d.id, ...(d.data() as object) }) as Booking
 
 /** Live failed-payment alerts for the admin dashboard/billing page. */
-export function useBillingAlerts(): AdminList<BillingAlert> {
-  const [alerts, setAlerts] = useState<BillingAlert[]>([])
-  const [error, setError] = useState<Error | null>(null)
-  const [truncated, setTruncated] = useState(false)
-  useEffect(() => {
-    // Newest first: a failed payment from today matters more than one from last quarter.
-    const q = query(
-      collection(db, 'billing_alerts'),
-      orderBy('createdAt', 'desc'),
-      limit(ADMIN_PAGE_SIZE),
-    )
-    return onSnapshot(
-      q,
-      (snap) => {
-        setAlerts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BillingAlert, 'id'>) })))
-        setTruncated(snap.size >= ADMIN_PAGE_SIZE)
-        setError(null)
-      },
-      (err) => setError(err),
-    )
-  }, [])
-  return { items: alerts, error, truncated }
+export function useBillingAlerts(): GrowingList<BillingAlert> {
+  // Newest first: a failed payment from today matters more than one from last quarter.
+  const buildQuery = useCallback(
+    (n: number) => query(collection(db, 'billing_alerts'), orderBy('createdAt', 'desc'), limit(n)),
+    [],
+  )
+  return useGrowingCollection(buildQuery, mapAlert, ADMIN_PAGE_SIZE)
 }
 
 /** Pending applications of a given role, live. */
-export function usePendingApplications(role: Role): AdminList<UserDoc> {
-  const [items, setItems] = useState<UserDoc[]>([])
-  const [error, setError] = useState<Error | null>(null)
-  const [truncated, setTruncated] = useState(false)
-  useEffect(() => {
-    // No orderBy: the existing (role, approved, status) composite index covers this
-    // equality-only query, and adding a sort field would require a new index.
-    const q = query(
-      collection(db, 'users'),
-      where('role', '==', role),
-      where('approved', '==', false),
-      where('status', '==', 'pending'),
-      limit(ADMIN_PAGE_SIZE),
-    )
-    return onSnapshot(
-      q,
-      (snap) => {
-        setItems(snap.docs.map((d) => d.data() as UserDoc))
-        setTruncated(snap.size >= ADMIN_PAGE_SIZE)
-        setError(null)
-      },
-      (err) => setError(err),
-    )
-  }, [role])
-  return { items, error, truncated }
+export function usePendingApplications(role: Role): GrowingList<UserDoc> {
+  // No orderBy: the existing (role, approved, status) composite index covers this
+  // equality-only query, and adding a sort field would require a new index.
+  const buildQuery = useCallback(
+    (n: number) =>
+      query(
+        collection(db, 'users'),
+        where('role', '==', role),
+        where('approved', '==', false),
+        where('status', '==', 'pending'),
+        limit(n),
+      ),
+    [role],
+  )
+  return useGrowingCollection(buildQuery, mapUser, ADMIN_PAGE_SIZE)
 }
 
-/** All users of a role (any status) for the admin management tabs. */
-export function useUsersByRole(role: Role) {
-  const [users, setUsers] = useState<UserDoc[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-  const [truncated, setTruncated] = useState(false)
-  useEffect(() => {
-    const q = query(collection(db, 'users'), where('role', '==', role), limit(ADMIN_PAGE_SIZE))
-    return onSnapshot(
-      q,
-      (snap) => {
-        setUsers(snap.docs.map((d) => d.data() as UserDoc))
-        setTruncated(snap.size >= ADMIN_PAGE_SIZE)
-        setError(null)
-        setLoading(false)
-      },
-      (err) => {
-        setError(err)
-        setLoading(false)
-      },
-    )
-  }, [role])
-  return { users, loading, error, truncated }
+/**
+ * All users of a role (any status) for the admin management tabs.
+ *
+ * Returns `users` alongside the standard `items` purely for source compatibility — five
+ * call sites across four pages already destructure `users`, and renaming them would be
+ * churn for no behavioural gain.
+ */
+export function useUsersByRole(role: Role): GrowingList<UserDoc> & { users: UserDoc[] } {
+  const buildQuery = useCallback(
+    (n: number) => query(collection(db, 'users'), where('role', '==', role), limit(n)),
+    [role],
+  )
+  const growing = useGrowingCollection(buildQuery, mapUser, ADMIN_PAGE_SIZE)
+  return { ...growing, users: growing.items }
 }
 
 /** Every booking on the platform (admin Bookings page). */
-export function useAllBookings(): AdminList<import('../types').Booking> {
-  const [bookings, setBookings] = useState<import('../types').Booking[]>([])
-  const [error, setError] = useState<Error | null>(null)
-  const [truncated, setTruncated] = useState(false)
-  useEffect(() => {
-    // Newest first — every admin surface (dashboard queue, bookings list, billing,
-    // analytics) cares about recent activity, so a cap on the most recent N is the
-    // right slice. `date` is already indexed on this collection.
-    const q = query(collection(db, 'bookings'), orderBy('date', 'desc'), limit(ADMIN_PAGE_SIZE))
-    return onSnapshot(
-      q,
-      (snap) => {
-        setBookings(
-          snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as import('../types').Booking),
-        )
-        setTruncated(snap.size >= ADMIN_PAGE_SIZE)
-        setError(null)
-      },
-      (err) => setError(err),
-    )
-  }, [])
-  return { items: bookings, error, truncated }
+export function useAllBookings(): GrowingList<Booking> {
+  // Newest first — every admin surface (dashboard queue, bookings list, billing,
+  // analytics) cares about recent activity, so the most recent N is the right slice.
+  // `date` is already indexed on this collection.
+  const buildQuery = useCallback(
+    (n: number) => query(collection(db, 'bookings'), orderBy('date', 'desc'), limit(n)),
+    [],
+  )
+  return useGrowingCollection(buildQuery, mapBooking, ADMIN_PAGE_SIZE)
 }
 
 export function useAdminActions() {

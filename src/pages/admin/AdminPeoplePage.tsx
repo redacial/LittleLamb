@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useUsersByRole, useAdminActions } from '../../hooks/useAdmin'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
-import { Card, Button, Avatar, StatusPill } from '../../components/ui'
+import { Card, Button, Avatar, StatusPill, LoadErrorNotice, TruncatedNotice } from '../../components/ui'
 import { cn } from '../../lib/cn'
 import type { NannyStage, Role, UserDoc } from '../../types'
 
@@ -21,7 +21,7 @@ const STAGE_LABEL: Record<NannyStage, string> = {
  * tab strip and status pills carry colour; motion is limited to button hover/focus.
  */
 export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'family'> }) {
-  const { users, loading } = useUsersByRole(role)
+  const { users, loading, error, truncated, loadMore, loadingMore } = useUsersByRole(role)
   const { approve, reject, advanceStage } = useAdminActions()
   const [tab, setTab] = useState<Tab>('pending')
 
@@ -61,10 +61,32 @@ export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'famil
           })}
         </div>
 
+        {/* A failed read must never render as "Nobody in this list" — an empty approvals
+            queue reads as "no applicants" while real people sit unreviewed. */}
+        {error && <LoadErrorNotice what={role === 'nanny' ? 'the nanny list' : 'the family list'} />}
+
+        {/* Rendered per-tab, not only when the whole list is long: the tabs filter
+            client-side, so a partial read can hide pending applicants under a tab that
+            looks empty. */}
+        {truncated && !error && (
+          <div className="mb-4">
+            <TruncatedNotice
+              shown={users.length}
+              what={role === 'nanny' ? 'nannies' : 'families'}
+              onLoadMore={loadMore}
+              loadingMore={loadingMore}
+            />
+          </div>
+        )}
+
         {loading ? (
           <p className="text-ll-warm-gray">Loading…</p>
-        ) : filtered.length === 0 ? (
-          <Card className="bg-ll-cream"><p className="text-sm text-ll-warm-gray">Nobody in this list.</p></Card>
+        ) : error ? null : filtered.length === 0 ? (
+          <Card className="bg-ll-cream">
+            <p className="text-sm text-ll-warm-gray">
+              Nobody in this list{truncated ? ' yet — load more to keep looking.' : '.'}
+            </p>
+          </Card>
         ) : (
           <div className="space-y-3">
             {filtered.map((u) => (

@@ -21,7 +21,7 @@ const STATUSES: BookingStatus[] = ['confirmed', 'pending', 'cancelled', 'open', 
 
 /** Platform-wide bookings with filters, admin override actions (cancel), and manual create. */
 export function AdminBookingsPage() {
-  const { items: bookings, error: bookingsError, truncated } = useAllBookings()
+  const { items: bookings, error: bookingsError, truncated, loadMore, loadingMore } = useAllBookings()
   const { setStatus } = useBookingActions()
   const { users: families } = useUsersByRole('family')
   const { nannies } = useNannyDirectory()
@@ -48,7 +48,12 @@ export function AdminBookingsPage() {
         {bookingsError && <LoadErrorNotice what="the bookings list" />}
         {truncated && (
           <div className="mb-4">
-            <TruncatedNotice shown={bookings.length} what="bookings" />
+            <TruncatedNotice
+              shown={bookings.length}
+              what="bookings"
+              onLoadMore={loadMore}
+              loadingMore={loadingMore}
+            />
           </div>
         )}
         <div className="mb-4 flex flex-wrap gap-3">

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
+import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore'
 import { useGrowingCollection } from './useGrowingCollection'
 
 // The whole point of these tests is controlling what onSnapshot does, so firestore is
@@ -37,7 +38,8 @@ vi.mock('firebase/firestore', () => ({
 
 /** Stands in for a real Query; only the window size matters to the fake listener. */
 const buildQuery = (pageLimit: number) => ({ windowSize: pageLimit }) as never
-const mapDoc = (d: { data: () => number }) => d.data() as never
+/** The fake snapshot's data() returns the doc's index; the real signature is irrelevant here. */
+const mapDoc = (d: QueryDocumentSnapshot<DocumentData>) => d.data() as unknown as number
 
 const PAGE = 10
 const latest = () => listeners[listeners.length - 1]
