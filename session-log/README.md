@@ -69,3 +69,12 @@ was built, and what's left. This is the human-readable memory of the project's e
   failed** — root cause found and documented (`STRIPE_WEBHOOK_SECRET` missing from Secret
   Manager; the CLI validates every declared secret, so one missing value fails the batch). Five
   code-level hypotheses were investigated and ruled out. Contains David's full checklist.
+- `2026-08-11-functions-were-dead-now-live.md` — **The backend was never actually live.** Two
+  handoffs said "7 functions deployed"; they were all `state: FAILED` — containers that never
+  started (`Cannot find module @firebase/app`; the RTDB provider is eagerly loaded but that dep is
+  pruned from the container). **Fixed** by pinning `@firebase/app` (**D65**) + deleting the stale
+  HTTPS stubs; all 7 now ACTIVE and verified serving (webhook 400, callable 401). Also: **app
+  deployed** to `littlelamb-sb-app.web.app` (prod, unpromoted — apex stays landing) as the test bed;
+  `deploy:app:*` scripts + `scripts/make-admin.mjs` added; **David's launch checklist** shipped
+  (concierge refreshed + published artifact); messaging-spec SUPERSEDED banners; AdminDashboard
+  partial-read test. Green: 75 + 44 + 23 = 142. ⚠️ Do NOT remove `@firebase/app`.
