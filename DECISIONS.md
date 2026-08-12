@@ -472,3 +472,40 @@ spring physics everywhere and explicitly bans "stiff transitions", and ~97KB gzi
 acceptably on 4G. The brand feel is worth more than the bytes on a marketing page.
 
 **Do not re-attempt LazyMotion.** It is not an untried idea; it is a tried and rejected one.
+
+### D65. The functions deploy was never actually live — `@firebase/app` missing in the container
+**Why this matters:** Two prior handoffs recorded "all 7 functions deployed." They were listed by
+`functions:list` but **every one was in `state: FAILED`** — registered resources whose Cloud Run
+containers never started. The public URLs returned the Cloud Run "no service" 404. Nothing worked:
+no email, no billing, no waitlist notification. A launch off that state would have shipped a dead
+backend that *looked* deployed.
+
+**Two stacked causes, found this session (2026-08-11 late):**
+
+1. **Stale HTTPS stubs blocked every redeploy.** An early, incomplete deploy had registered the
+   functions as **HTTPS**-triggered. The current code defines them as event/scheduled/callable, so
+   every later deploy hit `Changing from an HTTPS function to a background triggered function is not
+   allowed` and left them FAILED. Fix: `firebase functions:delete <all> --force`, then deploy fresh.
+
+2. **The real container crash: `Cannot find module '@firebase/app'`.** Read from the Cloud Run logs
+   (`firebase functions:log`), not guessable from the deploy output. The require chain is
+   `firebase-functions/lib/v2/providers/database.js` → `firebase-admin/lib/database` →
+   `@firebase/database-compat/dist/index.standalone.js` → `require('@firebase/app')`. That package
+   is **not a declared dependency anywhere in the `firebase-admin@13.10` / `firebase-functions@6.6`
+   tree**, so it is absent from the pruned `/workspace/node_modules` the container builds — even
+   though we use no Realtime Database at all (the v2 barrel eagerly loads the RTDB provider). It
+   boots locally only because a dev machine's `node_modules` happens to resolve it transitively.
+
+   **Fix: pin `@firebase/app` (`^0.11.5`) directly in `functions/package.json`** so it ships to the
+   container. `@firebase/util` stayed at 1.15.2 (npm kept the tree consistent). Verified: the exact
+   failing `require('@firebase/app')` now resolves, `lib/index.js` loads, 44 functions tests green.
+
+   **Do NOT remove `@firebase/app` from `functions/package.json`** — it looks unused (nothing in our
+   code imports it) but it is load-bearing for the container. This is the classic "phantom
+   dependency" trap; the five earlier code-level hypotheses in the handoff (module-scope `.value()`,
+   pdfkit, Node 22-vs-20, `lib/` not shipping, missing runtime deps) were all wrong because they
+   never read the container log.
+
+**Verification that the backend is actually live** (not just listed): every function shows
+`state: ACTIVE` in `functions:list`, and `stripeWebhook` returns HTTP **400** ("Missing signature")
+— not 404 — to an unsigned POST.
