@@ -10,7 +10,8 @@ account/console tasks only you can do. Work top to bottom — they're in depende
 ---
 
 ## ✅ Already done — you don't need to touch these
-- All 7 Cloud Functions **deployed** to `us-central1`.
+- All 7 Cloud Functions **deployed and verified serving** (`state: ACTIVE`) in `us-central1` —
+  the webhook, callables, and both scheduled jobs all respond correctly.
 - The **app is deployed** to https://littlelamb-sb-app.web.app (not on the public domain yet — it's
   the test surface). The apex `littlelambnannies.com` still shows the pre-launch landing page.
 - **Domain is live with SSL**, DNS control is yours, Blaze + Firestore backups on.
@@ -38,7 +39,8 @@ records are missing.
 _Unblocks: every automated email (approvals, booking confirmations, invoices, calendar invites)._
 
 ### 2. Stripe webhook — register the endpoint · ~5 min
-The webhook function is deployed; it just needs to be registered in Stripe and given its secret.
+The webhook function is deployed **and verified live** (an unsigned request returns "Missing
+signature", so the endpoint is reachable). It just needs registering in Stripe and its secret.
 
 - [ ] Stripe dashboard → **Test mode** → Developers → Webhooks → **Add endpoint**.
 - [ ] Paste this exact URL:

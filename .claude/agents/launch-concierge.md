@@ -23,9 +23,12 @@ overwhelming him.
 - **Hosting sites:** `littlelamb-sb-landing` + `littlelamb-sb` (root, both serve the landing);
   **`littlelamb-sb-app` — the real app is DEPLOYED here ✅** at https://littlelamb-sb-app.web.app
   (not on the apex yet — reachable for testing, not public).
-- **Cloud Functions:** **all 7 DEPLOYED ✅** to `us-central1` (`createSetupIntent`,
+- **Cloud Functions:** **all 7 ACTIVE and verified serving ✅** in `us-central1` (`createSetupIntent`,
   `savePaymentMethod`, `stripeWebhook`, `onMailCreated`, `onWaitlistCreated`, `quarterlyCharge`,
-  `recurringAutoCancel`).
+  `recurringAutoCancel`). They spent two prior handoffs silently FAILED (`Cannot find module
+  @firebase/app` in the container) — fixed 2026-08-11 by pinning `@firebase/app` (DECISIONS D65).
+  `stripeWebhook` now returns 400 to an unsigned POST; `createSetupIntent` returns 401. **Do not let
+  anyone remove `@firebase/app` from `functions/package.json`** — it looks unused but is required.
 - **`stripeWebhook` URL:** `https://us-central1-littlelamb-sb.cloudfunctions.net/stripeWebhook`
 - **Sender address the code expects:** `hello@littlelambnannies.com` (`functions/src/config.ts:15`)
 - **Repo:** `/Users/davidmelesse/Code/LittleLamb`, branch `landing-page-prelaunch`
