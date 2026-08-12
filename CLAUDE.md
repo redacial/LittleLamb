@@ -485,6 +485,14 @@ Admin has no public-facing profile. My Profile does not appear in admin sidebar.
 ---
  
 ## Part 12 — Messages
+
+> ⚠️ **SUPERSEDED — NOT BUILT / REMOVED (see DECISIONS.md D44).** In-app messaging was cut from
+> the platform. There is no Messages page, no Family↔Nanny / Family↔Admin threads, no "Replied by
+> Lucy/David" reply tagging, and no Messages entry in any sidebar. This section is kept only as
+> historical spec — **do not build from it.** The same applies to the nanny "4.8 Messages Page",
+> the admin "Section 9 — Messages Page", and every "Messages" nav item listed elsewhere in this
+> file. Confirmations that used to reference messaging (e.g. admin confirming a Create-Booking
+> "via Messages") happen off-platform.
  
 ### 12.1 Family Messages
 - Conversation types: Family ↔ Admin · Family ↔ Nanny
@@ -941,6 +949,8 @@ Full financial management of the platform.
 ---
  
 ## Section 9 — Messages Page
+
+> ⚠️ **SUPERSEDED — messaging was removed (see Part 12 banner + DECISIONS.md D44). Do not build.**
  
 Unified inbox for all platform communications.
  
@@ -1688,6 +1698,9 @@ Nanny's own profile — editable at any time after setup wizard completion.
 ---
  
 ### 4.8 Messages Page
+
+> ⚠️ **SUPERSEDED — messaging was removed (see Part 12 banner + DECISIONS.md D44). Do not build.**
+
 Two-way inbox. All conversations in one place.
  
 **Conversation types:**
