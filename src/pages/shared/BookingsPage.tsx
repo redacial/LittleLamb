@@ -1,13 +1,23 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { useMyBookings, useBookingActions } from '../../hooks/useBookings'
+import { useMyBookings, useBookingActions, type BookingActor } from '../../hooks/useBookings'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { ReviewModal } from '../../components/ReviewModal'
 import { Card, Button, StatusPill, RateDisclaimer } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import { formatRate } from '../../lib/rates'
 import type { Booking, BookingStatus } from '../../types'
+
+/**
+ * The booking fields every notification email needs to address and describe itself. Mirrors the
+ * hook-private BookingMeta in useBookings.ts — same Pick over Booking, so a Booking satisfies it
+ * structurally and callers pass the booking straight through.
+ */
+type BookingMeta = Pick<
+  Booking,
+  'familyId' | 'familyName' | 'nannyId' | 'nannyName' | 'date' | 'startTime' | 'endTime' | 'address'
+>
 
 function tone(s: BookingStatus): 'confirmed' | 'pending' | 'cancelled' | 'open' | 'neutral' {
   if (s === 'confirmed') return 'confirmed'
@@ -83,7 +93,9 @@ function BookingRow({
 }: {
   booking: Booking
   role: 'family' | 'nanny'
-  onAction: (id: string, s: BookingStatus) => void
+  // Must mirror useBookingActions().setStatus. A narrower 2-param type here erased meta/actor
+  // at the type level, which is what kept these three buttons silently emailing nobody.
+  onAction: (id: string, s: BookingStatus, meta?: BookingMeta, actor?: BookingActor) => void
   onReview: () => void
   otherName: string | null
 }) {
@@ -119,12 +131,15 @@ function BookingRow({
       <div className="flex gap-2">
         {role === 'nanny' && b.status === 'pending' && (
           <>
-            <Button size="sm" onClick={() => onAction(b.id, 'confirmed')}>Accept</Button>
-            <Button size="sm" variant="secondary" onClick={() => onAction(b.id, 'cancelled')}>Decline</Button>
+            {/* Both guarded by role === 'nanny' above, so the actor is known statically here. */}
+            <Button size="sm" onClick={() => onAction(b.id, 'confirmed', b, 'nanny')}>Accept</Button>
+            {/* 'nanny' routes this to booking_request_declined → the FAMILY, who has to rebook.
+                Letting it default to 'family' emails the nanny about her own decline. */}
+            <Button size="sm" variant="secondary" onClick={() => onAction(b.id, 'cancelled', b, 'nanny')}>Decline</Button>
           </>
         )}
         {role === 'family' && (b.status === 'confirmed' || b.status === 'pending') && (
-          <Button size="sm" variant="secondary" onClick={() => onAction(b.id, 'cancelled')}>Cancel</Button>
+          <Button size="sm" variant="secondary" onClick={() => onAction(b.id, 'cancelled', b, 'family')}>Cancel</Button>
         )}
         {isPast && (
           <Button size="sm" variant="ghost" onClick={onReview}>Leave a review</Button>
