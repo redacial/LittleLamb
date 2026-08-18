@@ -1,3 +1,8 @@
 lib/
 node_modules/
 *.log
+
+# Local secret values for the Firebase emulator (dotenv format, read by the CLI for
+# defineSecret params). Holds real Stripe/Resend test keys — must never be committed.
+.secret.local
+.env.local

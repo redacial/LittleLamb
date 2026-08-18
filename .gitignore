@@ -16,3 +16,6 @@ firestore-debug.log
 # Design knowledge/gate layer (local only, not shipped)
 vendor/
 scripts.zip
+
+# Firebase emulator state (--import/--export-on-exit)
+.emulator-data/
