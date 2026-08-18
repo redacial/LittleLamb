@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useUsersByRole, useAdminActions } from '../../hooks/useAdmin'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Card, Button, Avatar, StatusPill, LoadErrorNotice, TruncatedNotice } from '../../components/ui'
+import { VerifiedBadgesModal } from '../../components/admin/VerifiedBadgesModal'
 import { cn } from '../../lib/cn'
 import type { NannyStage, Role, UserDoc } from '../../types'
 
@@ -119,6 +120,8 @@ function PersonRow({
   onReject: () => void
   onAdvance: (s: NannyStage) => void
 }) {
+  const [badgesOpen, setBadgesOpen] = useState(false)
+
   const nextStage =
     role === 'nanny' && u.stage
       ? NANNY_STAGES[Math.min(NANNY_STAGES.indexOf(u.stage) + 1, NANNY_STAGES.length - 1)]
@@ -138,6 +141,14 @@ function PersonRow({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <StatusPill status={u.status} tone={u.status === 'approved' ? 'confirmed' : u.status === 'rejected' ? 'cancelled' : 'pending'} />
+        {/* The post-interview pass. Offered on every nanny regardless of status: Lucy
+            often confirms CPR/First Aid during the interview, i.e. BEFORE the approve
+            click, and re-verifies certs that lapse long after. */}
+        {role === 'nanny' && (
+          <Button size="sm" variant="ghost" onClick={() => setBadgesOpen(true)}>
+            Badges
+          </Button>
+        )}
         {!u.approved && u.status === 'pending' && (
           <>
             {role === 'nanny' && nextStage && u.stage !== 'decision_made' && (
@@ -151,6 +162,14 @@ function PersonRow({
           </>
         )}
       </div>
+      {role === 'nanny' && (
+        <VerifiedBadgesModal
+          uid={u.uid}
+          fullName={u.fullName}
+          open={badgesOpen}
+          onClose={() => setBadgesOpen(false)}
+        />
+      )}
     </Card>
   )
 }

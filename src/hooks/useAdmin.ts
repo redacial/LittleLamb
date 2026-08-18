@@ -17,6 +17,7 @@ import {
 import { db } from '../lib/firebase'
 import { notify, type NotificationEvent } from '../lib/notifications'
 import { useGrowingCollection, type GrowingList } from './useGrowingCollection'
+import { DEFAULT_BADGES, setBadgeRegistry, type BadgeDef } from '../lib/badges'
 import type { UserDoc, Role, NannyStage, Booking } from '../types'
 
 /** Fire-and-forget: a notification failure must never reject an admin write. */
@@ -233,4 +234,101 @@ export function useAdminActions() {
   }, [])
 
   return { approve, reject, advanceStage }
+}
+
+/* ────────────────────────── Badges ──────────────────────────
+ * Two surfaces, both admin-only and both already permitted by the deployed rules:
+ *  - config/badges      — the editable master list (rules ~L244)
+ *  - nannies/{uid}.verifiedBadges — per-nanny, admin-writable + client-immutable (rules ~L130)
+ */
+
+/** Live master badge list (config/badges), falling back to the seed catalog in lib/badges. */
+export function useBadgeCatalog() {
+  const [badges, setBadges] = useState<BadgeDef[]>(DEFAULT_BADGES)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    return onSnapshot(
+      doc(db, 'config', 'badges'),
+      (snap) => {
+        const raw = snap.data()?.badges
+        // Validate defensively: this doc is hand-editable in the console, and a malformed
+        // entry here would render as a blank chip on every nanny profile in the directory.
+        const parsed = Array.isArray(raw)
+          ? (raw as unknown[]).filter(
+              (b): b is BadgeDef =>
+                !!b &&
+                typeof (b as BadgeDef).id === 'string' &&
+                typeof (b as BadgeDef).label === 'string' &&
+                ((b as BadgeDef).type === 'self' || (b as BadgeDef).type === 'verified'),
+            )
+          : []
+        const next = parsed.length > 0 ? parsed : DEFAULT_BADGES
+        setBadges(next)
+        // Publish to the module registry so the plain badgeLabel()/badgeType() helpers used
+        // across the directory and profile pages resolve admin-edited labels too.
+        setBadgeRegistry(next)
+        setLoading(false)
+      },
+      () => setLoading(false),
+    )
+  }, [])
+
+  const save = useCallback(async (next: BadgeDef[]) => {
+    await setDoc(doc(db, 'config', 'badges'), { badges: next, updatedAt: serverTimestamp() }, { merge: true })
+  }, [])
+
+  const self = badges.filter((b) => b.type === 'self')
+  const verified = badges.filter((b) => b.type === 'verified')
+
+  return { badges, self, verified, loading, save }
+}
+
+/**
+ * One nanny's admin-verified badges (nannies/{uid}.verifiedBadges) — the post-interview pass.
+ *
+ * `uid` is nullable so the caller can mount this hook unconditionally while the editor is
+ * closed (hooks can't be called conditionally); a null uid subscribes to nothing.
+ */
+export function useNannyVerifiedBadges(uid: string | null) {
+  const [verifiedBadges, setVerifiedBadges] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!uid) {
+      setVerifiedBadges([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    return onSnapshot(
+      doc(db, 'nannies', uid),
+      (snap) => {
+        const raw = snap.data()?.verifiedBadges
+        setVerifiedBadges(Array.isArray(raw) ? raw.filter((b): b is string => typeof b === 'string') : [])
+        setLoading(false)
+      },
+      () => setLoading(false),
+    )
+  }, [uid])
+
+  /**
+   * Writes ONLY verifiedBadges, merged. A merge (not a replace) matters: the nanny owns the
+   * rest of this doc — bio, video, availability, selfBadges — and an admin marking a CPR
+   * cert must never clobber it. The nanny profile doc may not exist yet for a nanny who
+   * hasn't run the setup wizard, so setDoc-with-merge is used rather than updateDoc.
+   */
+  const save = useCallback(
+    async (badgeIds: string[]) => {
+      if (!uid) return
+      await setDoc(
+        doc(db, 'nannies', uid),
+        { verifiedBadges: badgeIds, updatedAt: serverTimestamp() },
+        { merge: true },
+      )
+    },
+    [uid],
+  )
+
+  return { verifiedBadges, loading, save }
 }

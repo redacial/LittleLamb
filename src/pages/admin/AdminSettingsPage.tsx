@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Tabs } from '../../components/Tabs'
 import { Card, CardLabel, Input, Textarea, Button } from '../../components/ui'
-import { SELF_BADGES, VERIFIED_BADGES } from '../../lib/badges'
-import { Badge } from '../../components/ui'
-import { useBillingConfig } from '../../hooks/useAdmin'
+import { badgeIdFromLabel, type BadgeDef } from '../../lib/badges'
+import { Badge, Select } from '../../components/ui'
+import { useBillingConfig, useBadgeCatalog } from '../../hooks/useAdmin'
 
 /** Admin Settings — platform configuration (CLAUDE.md §10/Part 18). Editors for the config
  * collection. Values shown are the live defaults; persistence wires to config/{doc} (admin-only). */
@@ -34,21 +34,7 @@ export function AdminSettingsPage() {
                   <Button>Save template</Button>
                 </Card>
               )
-            if (active === 'Badges')
-              return (
-                <Card className="max-w-2xl space-y-3">
-                  <CardLabel>Badge master list</CardLabel>
-                  <p className="text-sm text-ll-warm-gray">Self-reported (sage) and admin-verified (periwinkle). Changes reflect everywhere.</p>
-                  <div className="flex flex-wrap gap-2">
-                    {VERIFIED_BADGES.map((b) => <Badge key={b.id} label={b.label} type="verified" size="sm" />)}
-                    {SELF_BADGES.map((b) => <Badge key={b.id} label={b.label} type="self" size="sm" />)}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input placeholder="New badge label" className="max-w-xs" />
-                    <Button size="sm">Add</Button>
-                  </div>
-                </Card>
-              )
+            if (active === 'Badges') return <BadgeCatalogCard />
             if (active === 'Policies')
               return (
                 <Card className="max-w-2xl space-y-3">
@@ -140,6 +126,127 @@ function BillingConfigCard() {
       </label>
       {saved && <p className="text-sm font-semibold text-ll-sage-deep">Saved.</p>}
       <Button onClick={onSave} loading={busy} disabled={loading}>Save</Button>
+    </Card>
+  )
+}
+
+
+/**
+ * The editable master badge list (config/badges).
+ *
+ * Ids are STABLE and labels are editable, deliberately: a badge id is persisted on every
+ * nanny doc that earned it, so renaming "CPR Certified" to "CPR (Infant + Child)" must
+ * rewrite the label only. Renaming the id would orphan the badge on every nanny at once.
+ * That is also why removal asks for confirmation — the id lingers on nanny docs, where
+ * badgeLabel() falls back to rendering the raw id.
+ */
+function BadgeCatalogCard() {
+  const { badges, loading, save } = useBadgeCatalog()
+  const [draft, setDraft] = useState<BadgeDef[]>([])
+  const [newLabel, setNewLabel] = useState('')
+  const [newType, setNewType] = useState<'self' | 'verified'>('self')
+  const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setDraft(badges)
+  }, [badges])
+
+  function addBadge() {
+    const label = newLabel.trim()
+    if (!label) return
+    const id = badgeIdFromLabel(label)
+    if (draft.some((b) => b.id === id)) {
+      setError(`A badge with the id “${id}” already exists.`)
+      return
+    }
+    setDraft((prev) => [...prev, { id, label, type: newType }])
+    setNewLabel('')
+    setError(null)
+    setSaved(false)
+  }
+
+  function renameBadge(id: string, label: string) {
+    setDraft((prev) => prev.map((b) => (b.id === id ? { ...b, label } : b)))
+    setSaved(false)
+  }
+
+  function removeBadge(id: string) {
+    setDraft((prev) => prev.filter((b) => b.id !== id))
+    setSaved(false)
+  }
+
+  async function onSave() {
+    setBusy(true)
+    setError(null)
+    setSaved(false)
+    try {
+      await save(draft.map((b) => ({ ...b, label: b.label.trim() })).filter((b) => b.label))
+      setSaved(true)
+    } catch {
+      setError('Could not save the badge list. Check your connection and try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="max-w-2xl space-y-4">
+      <CardLabel>Badge master list</CardLabel>
+      <p className="text-sm text-ll-warm-gray">
+        Self-reported (sage) badges are chosen by nannies. Admin-verified (periwinkle) badges are
+        assigned by you after an interview. Editing a label updates it everywhere; the badge stays
+        attached to the nannies who already have it.
+      </p>
+
+      {loading ? (
+        <p className="text-sm text-ll-warm-gray">Loading…</p>
+      ) : (
+        <div className="space-y-2">
+          {draft.map((b) => (
+            <div key={b.id} className="flex flex-wrap items-center gap-2">
+              <Badge label={b.label || b.id} type={b.type} size="sm" />
+              <Input
+                aria-label={`Label for ${b.id}`}
+                value={b.label}
+                onChange={(e) => renameBadge(b.id, e.target.value)}
+                className="max-w-xs flex-1"
+              />
+              <Button size="sm" variant="ghost" onClick={() => removeBadge(b.id)}>
+                Remove
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-end gap-2 border-t-1.5 border-ll-cream-dark pt-4">
+        <Input
+          label="New badge label"
+          placeholder="e.g. Infant Sleep Trained"
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          className="max-w-xs flex-1"
+        />
+        <Select
+          label="Type"
+          value={newType}
+          onChange={(e) => setNewType(e.target.value === 'verified' ? 'verified' : 'self')}
+        >
+          <option value="self">Self-reported</option>
+          <option value="verified">Admin-verified</option>
+        </Select>
+        <Button size="sm" variant="secondary" onClick={addBadge} disabled={!newLabel.trim()}>
+          Add
+        </Button>
+      </div>
+
+      {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+      {saved && <p className="text-sm font-semibold text-ll-sage-deep">Saved.</p>}
+      <Button onClick={onSave} loading={busy} disabled={loading}>
+        Save badge list
+      </Button>
     </Card>
   )
 }
