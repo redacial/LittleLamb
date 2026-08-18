@@ -10,6 +10,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { db } from '../firebase'
 import { REGION, STRIPE_SECRET_KEY } from '../config'
 import { getStripe } from './stripe'
+import { initialBillingCycle } from './quarterlyCharge'
 
 /** Ensure the family has a Stripe Customer; returns the customer id. */
 async function ensureCustomer(uid: string, email: string | undefined): Promise<string> {
@@ -61,7 +62,8 @@ export const savePaymentMethod = onCall(
     }
 
     const famRef = db.collection('families').doc(uid)
-    const customerId = (await famRef.get()).data()?.stripeCustomerId
+    const fam = await famRef.get()
+    const customerId = fam.data()?.stripeCustomerId
     if (typeof customerId !== 'string') {
       throw new HttpsError('failed-precondition', 'No Stripe customer for this family.')
     }
@@ -72,9 +74,21 @@ export const savePaymentMethod = onCall(
       invoice_settings: { default_payment_method: paymentMethodId },
     })
 
+    // Start the billing clock the moment the family becomes billable.
+    // quarterlyCharge selects on `where('nextChargeDate','<=',today)`, and nothing else
+    // in the codebase ever initializes that field — without this the due query matches
+    // zero families forever and billing silently invoices nobody.
+    // initialBillingCycle returns null when a cycle already exists, so re-saving a card
+    // never pushes out (or pulls in) an in-flight cycle.
+    const cycle = initialBillingCycle(fam.data(), new Date())
+
     // Server is the ONLY writer of hasPaymentMethod now (client rule forbids it).
     await famRef.set(
-      { hasPaymentMethod: true, paymentMethodUpdatedAt: FieldValue.serverTimestamp() },
+      {
+        hasPaymentMethod: true,
+        paymentMethodUpdatedAt: FieldValue.serverTimestamp(),
+        ...(cycle ?? {}),
+      },
       { merge: true },
     )
     return { ok: true }
