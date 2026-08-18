@@ -78,3 +78,16 @@ was built, and what's left. This is the human-readable memory of the project's e
   `deploy:app:*` scripts + `scripts/make-admin.mjs` added; **David's launch checklist** shipped
   (concierge refreshed + published artifact); messaging-spec SUPERSEDED banners; AdminDashboard
   partial-read test. Green: 75 + 44 + 23 = 142. ⚠️ Do NOT remove `@firebase/app`.
+- `2026-08-18-three-bugs-and-a-safe-lab.md` — **Three launch-blocking bugs, found by reading.**
+  (1) `nextChargeDate` was never initialized, so quarterly billing selected **nobody** — prod logs
+  confirm `invoiced:0` on every run since deploy; switching billing on would have charged no one
+  while looking successful. (2) Booking emails were dead at **four** call sites (accept, decline,
+  family cancel, admin cancel all sent zero email). (3) A nanny's decline emailed **the nanny**, so
+  the family who had to rebook was never told. Also: fabricated "120+ families / 4.9 rating" removed
+  before it could go public, post-interview **verified-badge assignment built** (it did not exist),
+  and a `functions/.secret.local` leak closed before the file existed. **Built the local lab** —
+  `npm run billing:local` runs the real engine on the emulator (verified: $27 dryRun invoice, PDF
+  rendered, cycle +90d, invoice emails `sent` with nothing leaving the machine). ⚠️ **Dry-run
+  protects the card, not the inbox** — `enqueueMail` is outside the `if (enabled)` block. D66–D69.
+  Green: 92 + 64 + 23 = **179**. Nothing deployed, nothing public. ⚠️ **Apex SPF record is GONE** —
+  David's DNS step is an ADD, not a merge.

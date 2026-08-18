@@ -509,3 +509,70 @@ backend that *looked* deployed.
 **Verification that the backend is actually live** (not just listed): every function shows
 `state: ACTIVE` in `functions:list`, and `stripeWebhook` returns HTTP **400** ("Missing signature")
 — not 404 — to an unsigned POST.
+
+### D66. Test-first is a hard rule, because three shipped bugs prove it
+**Why this matters:** `nextChargeDate` never initialized (billing invoiced nobody), booking emails
+dead at four call sites, and a decline notifying the wrong party. **In all three the code looked
+correct and the existing tests passed.** Tests written after the fact assert what the code *does*,
+not what it *should* do — which is exactly why none of them caught these.
+
+So: write the test, **run it and watch it fail for the right reason**, then implement. A test that
+passes on its first run is suspect — either the behavior already worked or the assertion is wrong.
+
+"The right reason" is load-bearing. During this session an agent wrote a failing test that failed
+with `TypeError: initialBillingCycle is not a function` — a missing-export error, which proves
+nothing. It correctly rejected its own test and rewrote it to drive the real shipped callable,
+getting `expected undefined not to be undefined`. That is the difference between a test that
+demonstrates a bug and one that merely fails.
+
+Where a test passed on the first run, the fix was verified by **sabotage** — re-breaking the
+implementation and confirming the assertion bites. Recorded in `CLAUDE.md` § Testing.
+
+### D67. The billing backfill starts a fresh 90-day cycle and never backdates
+**Why this matters:** D65-era families have no `nextChargeDate` and are invisible to billing
+forever. The obvious fix — reconstruct each family's real cycle from their signup date — is
+actively dangerous.
+
+The due query is `where('nextChargeDate','<=',today)`. **`<=` means today counts as due.** So any
+backdated value makes a family immediately due *and* backdates `cycleStart`, and `cycleStart` is
+the lower bound for counting billable bookings — so the first invoice would sweep in every booking
+ever made. For a family with 40 historical bookings that is a $65 surprise instead of $25.
+
+**This is not made safe by billing being off.** `enqueueMail` sits *outside* the `if (enabled)`
+block (`quarterlyCharge.ts:227`), so a due family receives a real invoice email even in dry-run.
+Dry-run protects the card, not the inbox.
+
+Everyone therefore gets a fresh 90-day cycle from the day of the backfill; nobody is billed for
+anything predating it. The pre-launch revenue forgone is zero. The decision is delegated to
+`initialBillingCycle()` — the same unit-tested function `savePaymentMethod` uses — so the backfill
+and the live path cannot drift, and re-running is a no-op.
+
+Families without a card are skipped deliberately: they can never be charged, and their cycle should
+start when they actually become billable, which `savePaymentMethod` already handles.
+
+### D68. The local no-op mail transport is gated on TWO conditions, not one
+**Why this matters:** the feature is "don't send email locally." The failure mode that actually
+hurts is the inverse — `MAIL_TRANSPORT=noop` leaking into production and **silently** killing every
+approval, booking confirmation and invoice. Silent, because a no-op returns success, so `mail` docs
+would read `status: 'sent'` while nothing was delivered.
+
+So the guard requires `MAIL_TRANSPORT === 'noop'` **and** `FUNCTIONS_EMULATOR === 'true'`.
+`FUNCTIONS_EMULATOR` is set only by the emulator runtime and never by deployed Cloud Run —
+`firebase-functions` trusts the same signal internally. A stray flag in production is therefore
+inert rather than catastrophic. The property is pinned by a test named for it, verified by removing
+the second condition and watching that test fail.
+
+It also sits *above* `getClient()`, so a no-op run never reads `RESEND_API_KEY` and works with no
+key configured at all.
+
+### D69. Don't use the pubsub emulator to test scheduled functions — call the function
+**Why this matters:** the obvious path (add `"pubsub"` to `firebase.json`, trigger the schedule)
+looks right and is a dead end. **The emulator does not run a cron.** `onSchedule` merely registers
+a Pub/Sub topic (`firebase-tools/lib/emulator/functionsEmulator.js:788`), so "triggering" it means
+hand-publishing a base64 envelope to a topic whose name you have to guess from the region-qualified
+trigger id.
+
+Calling the extracted `runQuarterlyCharge(deps)` directly is strictly better: `now` is injectable
+(so cycle boundaries are testable — the pubsub path hardcodes `new Date()`), `enabled` is explicit
+rather than depending on a Firestore doc, and it returns `{invoiced, skipped}` instead of requiring
+log scraping. That is what the extraction in D-billing was for. `scripts/run-billing.mjs`.
