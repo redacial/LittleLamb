@@ -35,7 +35,8 @@
     "seed": "node scripts/seed.mjs",
     "preview:local": "firebase emulators:exec --only auth,firestore,storage \"npm run seed && npm run dev\"",
     "emulators:all": "firebase emulators:start --only auth,firestore,storage,functions --project littlelamb-demo --import .emulator-data --export-on-exit .emulator-data",
-    "billing:local": "npm --prefix functions run build && node scripts/run-billing.mjs"
+    "billing:local": "npm --prefix functions run build && node scripts/run-billing.mjs",
+    "backfill:billing": "npm --prefix functions run build && node scripts/backfill-billing-cycle.mjs"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^3.10.0",
