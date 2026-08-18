@@ -28,12 +28,21 @@ records are missing.
 
 - [ ] In **Resend → Domains → littlelambnannies.com**, view the DNS records it wants.
 - [ ] Add the **MX** and **DKIM** (`resend._domainkey`) records in your DNS editor.
-- [ ] ⚠️ **The SPF record must be MERGED into your existing one — never add a second `v=spf1`
-      record.** Your current SPF is `v=spf1 include:spf.messagingengine.com ?all`. If Resend asks
-      for its own include, the merged value is something like
-      `v=spf1 include:spf.messagingengine.com include:amazonses.com ?all`.
-      **Send me the exact record Resend shows and I'll give you the precise merged string.**
-- [ ] Leave Fastmail's MX/DKIM/SPF/DMARC records **in place** — don't delete them.
+- [ ] ⚠️ **Your SPF record is currently MISSING** — re-checked 2026-08-18. The only TXT record on
+      the apex is Firebase's `hosting-site=littlelamb-sb`. The
+      `v=spf1 include:spf.messagingengine.com ?all` recorded in the earlier handoff is **gone**
+      (it was probably dropped during the Wix→Firebase DNS move). Fastmail's MX and DKIM
+      (`fm1._domainkey`) survived, and DMARC is present as `v=DMARC1; p=none;`.
+      **This means you ADD one SPF record, you do not merge into an existing one.** It must cover
+      both senders in a single record — never create two `v=spf1` records:
+      ```
+      v=spf1 include:spf.messagingengine.com include:amazonses.com ?all
+      ```
+      (Resend sends via Amazon SES. **Send me the exact include Resend shows you** and I'll
+      confirm the final string before you save it.)
+- [ ] ⚠️ Missing SPF also means your **Fastmail email has been sending unauthenticated** — worth
+      fixing regardless of Resend.
+- [ ] Leave Fastmail's MX/DKIM/DMARC records **in place** — don't delete them.
 - [ ] Click **Verify** in Resend. Then tell me — I'll send a test email and confirm delivery.
 
 _Unblocks: every automated email (approvals, booking confirmations, invoices, calendar invites)._
