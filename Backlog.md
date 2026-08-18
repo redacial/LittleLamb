@@ -1,5 +1,41 @@
 # Backlog.md — Resume Point
 
+## ⚠️ HELD FOR DAVID'S REVIEW — two money-facing bugs (found 2026-08-18, NOT fixed)
+
+Both are verified and neither is fixed, at David's instruction. Both are display/consistency bugs
+rather than mischarges — **no card is charged incorrectly today** — but both mislead people about
+money, and one is a trap for whoever touches it next.
+
+### M1. Billing rates are hardcoded in three UIs while `config/billing` is authoritative
+`src/pages/family/FamilyBillingPage.tsx:9-10`, `src/pages/admin/AdminBillingPage.tsx:9-10`,
+`src/pages/admin/AdminAnalyticsPage.tsx:7-8` each declare `const SUBSCRIPTION = 25` /
+`const PER_BOOKING = 1`.
+
+The server reads rates from `config/billing` (`quarterlyCharge.ts` → `loadRates()`), and the admin
+Settings > Billing tab writes that doc. So the moment anyone changes the price in Settings:
+- the family's "estimated next bill" keeps showing the OLD price while their card is charged the NEW one,
+- the admin's CSV export — the file handed to a bookkeeper — is computed from the stale constant,
+- Analytics revenue is wrong.
+
+`useBillingConfig()` already exists (`src/hooks/useAdmin.ts:43-69`) and is the fix: read the live
+rates in all three files. Low effort. Held only because it touches money display.
+
+### M2. Invoices are written by the server and read by nobody, and the type doesn't match
+`grep "collection(db, 'invoices')" src/` → **zero matches.** Both invoice-history UIs are static
+placeholder text, and `FamilyBillingPage`'s Download button regenerates a *client-side estimate*
+rather than the stored invoice (`pdfPath` is written and stored but never offered).
+
+The trap: the client `Invoice` type (`src/types/index.ts`) does not describe what is stored.
+**`total` (dollars) vs the server's `totalCents`** — a $27.00 invoice is stored as `2700`. Wiring a
+list to the declared type renders `$undefined`; "fixing" it by renaming without dividing ships a
+100× overstatement. A full warning now sits at the type definition.
+
+Recommended when David is ready: pick cents as the single representation, convert only at render,
+and reconcile the whole type in ONE change rather than field-by-field.
+
+---
+
+
 > **UPDATE (Phase 6–7, 2026-06-11):** Two further phases shipped after the Phase 5 snapshot below.
 > - **Phase 6 — Design System Migration ✅** Full migration off the old Warm Editorial system to the
 >   locked **Premium Playful** `DESIGN_SYSTEM.md` (`ll-*` tokens, Caveat/DM Sans/DM Mono, Framer Motion

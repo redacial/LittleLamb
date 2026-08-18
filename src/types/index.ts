@@ -145,6 +145,27 @@ export interface Booking {
   createdAt: Timestamp | null
 }
 
+/**
+ * ⚠️ DO NOT WIRE A UI TO THIS TYPE WITHOUT READING THIS FIRST. It does NOT describe what is
+ * actually stored in the `invoices` collection, and getting it wrong is a 100× money error.
+ *
+ * The server is the only writer (`functions/src/billing/quarterlyCharge.ts` → `writeInvoice`,
+ * which spreads an `InvoiceData`). It writes:
+ *
+ *     invoiceId, familyId, familyName, periodStart, periodEnd, lineItems,
+ *     totalCents, status, pdfPath, dryRun, createdAt
+ *
+ * Not one money field below matches. `id` vs `invoiceId`, `quarterLabel` vs
+ * `periodStart`/`periodEnd`, and — the dangerous one — **`total` (dollars) vs `totalCents`**.
+ * A $27.00 invoice is stored as `2700`. Bind `total` to that value and every invoice reads
+ * $2,700.00; "fix" it by renaming the field without dividing and you have shipped a 100×
+ * overstatement on a page families read.
+ *
+ * There is currently NO client reader — both invoice-history UIs are placeholder text
+ * (`FamilyBillingPage`, `AdminBillingPage`), so nothing is broken today. Reconciling this type
+ * with the server's shape is deliberately held for David's review; do it as one considered
+ * change (pick cents everywhere, convert only at render) rather than field-by-field.
+ */
 export interface Invoice {
   id: string
   familyId: string
@@ -153,6 +174,7 @@ export interface Invoice {
   subscriptionFee: number
   bookingCount: number
   bookingFees: number
+  /** DOLLARS here, but the server stores CENTS as `totalCents`. See the warning above. */
   total: number
   status: 'paid' | 'pending' | 'failed'
   issuedAt: string
