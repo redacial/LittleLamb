@@ -38,6 +38,18 @@ const PENDING_NANNY_UID = 'seed-pending-nanny'
 
 const now = FieldValue.serverTimestamp()
 
+/** Calendar date N days from today, as a Date. Negative N is in the past. */
+function daysFromNow(n) {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
+  return d
+}
+
+/** YYYY-MM-DD, matching the `ymd()` the billing engine stores and queries on. */
+function ymd(d) {
+  return d.toISOString().slice(0, 10)
+}
+
 /** Create or overwrite an emulator auth user with a fixed uid. */
 async function upsertAuthUser({ uid, email, displayName }) {
   try {
@@ -120,6 +132,18 @@ async function seed() {
     coParentEmail: 'daniel@littlelamb.test',
     specialNotes: 'Theo has soccer practice Tuesdays at 4pm.',
     hasPaymentMethod: true,
+    // Billing-ready, so `npm run billing:local` actually produces an invoice instead of
+    // silently finding nobody due. quarterlyCharge requires ALL THREE of stripeCustomerId,
+    // hasPaymentMethod and a due nextChargeDate — omitting any one makes the dry-run a
+    // no-op that looks like a pass. The customer id is a Stripe *test-mode* shape and is
+    // never charged: billing:local runs with enabled=false unless --charge is passed.
+    stripeCustomerId: 'cus_seedfamily001',
+    // Deliberately in the past so the family is due on the very first local run.
+    // NOTE: only ever do this in the emulator. The real backfill must schedule the first
+    // charge in the FUTURE — a past date makes a family immediately due and backdates
+    // cycleStart, sweeping every historical booking into a surprise first invoice.
+    nextChargeDate: ymd(daysFromNow(-1)),
+    cycleStart: ymd(daysFromNow(-90)),
     // $22-30/hr. The three seeded nannies below deliberately straddle this so the
     // match / out-of-budget paths are both visible without editing any data.
     rateRange: { minCents: 2200, maxCents: 3000 },
