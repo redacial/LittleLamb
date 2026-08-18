@@ -25,6 +25,13 @@ export function HomePage() {
   )
 }
 
+/**
+ * Hero credential chips. Every line here must be a promise Little Lamb keeps about
+ * every nanny on day one — no customer counts, ratings, or review averages. Reviews
+ * are admin-only by design and never surface publicly.
+ */
+const HERO_CREDENTIALS = ['Background-checked', 'Interviewed by the founders', 'Intro video on file']
+
 /* ----------------------------------------------------------------------- Hero */
 function Hero() {
   const rise = 'motion-safe:animate-spring-in'
@@ -82,12 +89,15 @@ function Hero() {
           <p className={cn('mt-4 text-sm text-ll-warm-gray', rise)} style={delay(4)}>
             Background-checked and interviewed before going live. Free to browse.
           </p>
-          <div className={cn('mt-6 flex items-center gap-3', rise)} style={delay(5)}>
-            <AvatarStack />
-            <p className="font-mono text-mono-sm text-ll-warm-gray">
-              Trusted by 120+ Santa Barbara families
-            </p>
-          </div>
+          {/* Credential chips, not social proof — Little Lamb is new, so we lead with what
+              we actually guarantee about every nanny rather than a customer count. */}
+          <ul className={cn('mt-6 flex flex-wrap gap-2', rise)} style={delay(5)}>
+            {HERO_CREDENTIALS.map((c) => (
+              <li key={c} className="trust-chip">
+                <ShieldIcon /> {c}
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* Right — blob-masked illustration with floating sticker credentials */}
@@ -119,7 +129,7 @@ function HeroScene() {
       </div>
       <div className="absolute -left-3 top-1/2">
         <StickerBadge tone="terra" rotate={-3} delay={0.3}>
-          <StarIcon /> 4.9 rating
+          <StarIcon /> Interviewed
         </StickerBadge>
       </div>
       <div className="absolute -bottom-2 right-6">
@@ -127,25 +137,6 @@ function HeroScene() {
           Santa Barbara local
         </StickerBadge>
       </div>
-    </div>
-  )
-}
-
-function AvatarStack() {
-  const rings = ['border-ll-sage', 'border-ll-peri', 'border-ll-terra-soft', 'border-ll-sage-mid']
-  return (
-    <div className="flex -space-x-2">
-      {rings.map((ring, i) => (
-        <span
-          key={i}
-          className={cn(
-            'grid h-9 w-9 place-items-center rounded-full border-1.5 bg-ll-cream-dark shadow-soft',
-            ring,
-          )}
-        >
-          <LambMark className="h-5 w-5" />
-        </span>
-      ))}
     </div>
   )
 }
@@ -260,7 +251,8 @@ function NannyPreview() {
           ))}
         </div>
         <p className="mx-auto mt-8 max-w-prose text-center text-sm text-ll-warm-gray">
-          Profiles shown are illustrative. Approved families see the full, live network.
+          Profiles shown are illustrative examples, not real nannies. Approved families see the
+          full, live network.
         </p>
       </div>
     </section>
