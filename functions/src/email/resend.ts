@@ -3,6 +3,7 @@
 // stay green without RESEND_API_KEY, and the key is read from the bound secret only
 // when an email is actually sent at runtime.
 import { Resend } from 'resend'
+import { logger } from 'firebase-functions/v2'
 import { RESEND_API_KEY, EMAIL_FROM } from '../config'
 
 export interface OutboundEmail {
@@ -25,6 +26,25 @@ function getClient(): Resend {
 
 /** Send one email through Resend. Throws on provider error (caller records it). */
 export async function sendEmail(msg: OutboundEmail): Promise<void> {
+  // Local no-op transport. Lets the emulator exercise the whole pipeline — the claim
+  // transaction, quota metering, recipient resolution, template render, iCal attachment —
+  // without a single email leaving the machine. Sits above getClient() so a no-op run never
+  // reads RESEND_API_KEY and works with no key configured at all.
+  //
+  // Deliberately requires BOTH the opt-in flag and FUNCTIONS_EMULATOR. The dangerous failure
+  // is the inverse of the feature: MAIL_TRANSPORT leaking into a deployed environment and
+  // silently killing every approval, booking confirmation and invoice. FUNCTIONS_EMULATOR is
+  // set only by the emulator runtime and never by Cloud Run, so a stray flag in production is
+  // inert rather than catastrophic. Pinned by a test in resend.test.ts.
+  if (process.env.FUNCTIONS_EMULATOR === 'true' && process.env.MAIL_TRANSPORT === 'noop') {
+    logger.info('mail: noop transport, not sent', {
+      to: msg.to,
+      subject: msg.subject,
+      ical: msg.ical?.method ?? null,
+    })
+    return
+  }
+
   const attachments = msg.ical
     ? [
         {
