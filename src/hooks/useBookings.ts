@@ -22,6 +22,12 @@ type BookingMeta = Pick<
   'familyId' | 'familyName' | 'nannyId' | 'nannyName' | 'date' | 'startTime' | 'endTime' | 'address'
 >
 
+/**
+ * Who initiated a status change. A 'cancelled' transition means a different thing — and emails a
+ * different party — depending on which side clicked, so the caller must say. See setStatus.
+ */
+export type BookingActor = 'family' | 'nanny' | 'admin'
+
 /** Build the shared booking payload the notification events expect. */
 function bookingPayload(id: string, m: BookingMeta) {
   return {
@@ -129,8 +135,16 @@ export async function createBooking(input: CreateBookingInput): Promise<string> 
 export function useBookingActions() {
   // `meta` is optional so existing callers (which pass only id+status) keep compiling.
   // When provided, the right automated-email stub fires for the transition.
+  //
+  // `actor` says WHO drove the transition, because 'cancelled' is not one event — it is three
+  // different emails to two different people depending on who clicked. Deriving it from the
+  // signed-in user's role was rejected: an admin acts on bookings they are not party to, so the
+  // caller's role and the booking's parties are unrelated, and the page that owns the button is
+  // the only place that reliably knows the intent. Defaults to 'family' — the historical
+  // behaviour — so the 2-arg callback in src/pages/shared/BookingsPage.tsx (family cancel) keeps
+  // working untouched.
   const setStatus = useCallback(
-    async (id: string, status: BookingStatus, meta?: BookingMeta) => {
+    async (id: string, status: BookingStatus, meta?: BookingMeta, actor: BookingActor = 'family') => {
       await updateDoc(doc(db, 'bookings', id), { status })
       if (!meta) return
       const base = bookingPayload(id, meta)
@@ -138,8 +152,22 @@ export function useBookingActions() {
         // Nanny accepted an out-of-hours request → confirm the family.
         fireNotify({ type: 'booking_request_accepted', to: 'family', ...base })
       } else if (status === 'cancelled') {
-        // A cancellation notifies the other party (family cancel → nanny; nanny decline → family).
-        fireNotify({ type: 'booking_cancelled_by_family', to: 'nanny', ...base })
+        if (actor === 'nanny') {
+          // Nanny declined the request. The nanny already knows; the FAMILY is the one who has
+          // to go rebook, so they are the recipient (CLAUDE.md Part 19, "Nanny declines booking
+          // request → Family"). Emailing the nanny here was the shipped bug.
+          fireNotify({ type: 'booking_request_declined', to: 'family', ...base })
+        } else {
+          // Family cancel, and admin override cancel, both withdraw a booking the NANNY is
+          // holding — so both send the nanny the cancellation notice, which is the only
+          // cancellation template carrying a CANCEL iCal to clear their calendar hold. Its copy
+          // ("a booking assigned to you was cancelled") is actor-neutral and reads correctly for
+          // an admin override too. The family is deliberately NOT emailed on an admin cancel:
+          // the only family-facing cancellation template asserts the nanny couldn't take the
+          // booking, which is false for an override, and CLAUDE.md has no admin-cancel row —
+          // admin cancels are coordinated with the family off-platform (Part 20 / §7.3).
+          fireNotify({ type: 'booking_cancelled_by_family', to: 'nanny', ...base })
+        }
       }
     },
     [],

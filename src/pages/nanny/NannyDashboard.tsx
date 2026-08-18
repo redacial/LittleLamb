@@ -96,10 +96,19 @@ export function NannyDashboard() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => setStatus(b.id, 'confirmed')}>
+                  {/*
+                    Both actions pass the booking itself as `meta` and 'nanny' as the actor.
+                    Without meta setStatus writes the status and emails nobody; without the
+                    actor a decline would notify the nanny instead of the family.
+                  */}
+                  <Button size="sm" onClick={() => setStatus(b.id, 'confirmed', b, 'nanny')}>
                     Accept
                   </Button>
-                  <Button size="sm" variant="secondary" onClick={() => setStatus(b.id, 'cancelled')}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setStatus(b.id, 'cancelled', b, 'nanny')}
+                  >
                     Decline
                   </Button>
                 </div>

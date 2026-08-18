@@ -81,8 +81,13 @@ export function AdminBookingsPage() {
                   </div>
                   <p className="text-sm text-ll-warm-gray">{formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)} · {b.address}</p>
                 </div>
+                {/*
+                  Cancel passes the booking as `meta` (without it no cancellation email is
+                  enqueued at all) and 'admin' as the actor, so the nanny holding this slot gets
+                  the cancellation notice + CANCEL calendar invite.
+                */}
                 {b.status !== 'cancelled' && (
-                  <Button size="sm" variant="danger" onClick={() => setStatus(b.id, 'cancelled')}>Cancel</Button>
+                  <Button size="sm" variant="danger" onClick={() => setStatus(b.id, 'cancelled', b, 'admin')}>Cancel</Button>
                 )}
               </Card>
             ))}
