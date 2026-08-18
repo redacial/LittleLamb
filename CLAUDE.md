@@ -87,6 +87,29 @@ OUTPUT: append all findings to design-audit.md. Final output is a prioritized fi
 - Run tests after every feature, fix recursively until passing
 - Do not stop until the full task is complete
 
+## Testing — CRITICAL, applies to every behavioral change
+
+**Write the test first, and prove it fails before writing the fix.**
+
+1. Write the test that describes the behavior you want.
+2. **Run it and watch it fail — and check it fails for the *right reason*.** A test that errors
+   on a typo or a missing import has proved nothing.
+3. Only then write the implementation.
+4. Run it again and watch it pass.
+
+**A test that passes the first time you run it is suspect.** Either the behavior already worked
+(so the test wasn't needed for this change) or the test isn't asserting what you think it is.
+Make it fail deliberately — break the assertion or comment out the fix — before you trust it.
+
+Why this is a hard rule here: this project has already shipped three bugs that unit tests would
+have caught only if written first — `nextChargeDate` never initialized (billing invoiced nobody),
+booking emails dead at every call site, and a decline notifying the wrong party. In all three the
+code *looked* correct and the existing tests passed. Tests written after the fact tend to assert
+what the code does, not what it should do.
+
+Applies to: bug fixes, new business logic, notification wiring, anything touching money.
+Exempt: pure copy changes, formatting, config, and docs.
+
 ## User Flows
 
 # Little Lamb Nannies — Master User Flow
