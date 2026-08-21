@@ -1,11 +1,9 @@
-import { useAllBookings, useUsersByRole } from '../../hooks/useAdmin'
+import { useAllBookings, useUsersByRole, useBillingConfig } from '../../hooks/useAdmin'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Tabs } from '../../components/Tabs'
 import { SummaryCard } from '../../components/SummaryCard'
 import { money } from '../../lib/format'
 
-const SUBSCRIPTION = 25
-const PER_BOOKING = 1
 const TARGET_RATIO = 4
 
 /** Admin analytics — Overview / Platform Health / Revenue / Bookings / Growth (live where possible). */
@@ -24,7 +22,19 @@ export function AdminAnalyticsPage() {
   const cancelled = bookings.filter((b) => b.status === 'cancelled').length
   const unmatched = bookings.filter((b) => b.status === 'unmatched').length
   const recurring = bookings.filter((b) => b.recurring).length
-  const revenue = activeFamilies * SUBSCRIPTION + confirmed * PER_BOOKING
+
+  // Revenue was computed from hardcoded 25 / 1 while the server charges from config/billing,
+  // so every figure here went stale the moment a price changed in Settings.
+  // UNITS: config is CENTS (2500) — divide once, here; everything downstream is DOLLARS.
+  const { config: rates, loading: ratesLoading } = useBillingConfig()
+  const subscription = rates.subscriptionCents / 100
+  const perBooking = rates.perBookingCents / 100
+  const revenue = activeFamilies * subscription + confirmed * perBooking
+
+  // Unlike the family page (which blanks entirely), only the money cards depend on the rate
+  // config — counts and ratios are already correct. Show a dash for the money figures rather
+  // than a confidently wrong dollar amount, and leave the rest of the dashboard usable.
+  const dollars = (n: number) => (ratesLoading ? '—' : money(n))
   const ratio = activeFamilies > 0 ? (activeNannies / activeFamilies).toFixed(1) : 'n/a'
   const pendingNannies = nannies.filter((n) => n.status === 'pending').length
   const completionRate = confirmed + cancelled > 0 ? Math.round((confirmed / (confirmed + cancelled)) * 100) : 0
@@ -53,7 +63,7 @@ export function AdminAnalyticsPage() {
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <SummaryCard label="Active families" value={activeFamilies} accent />
                   <SummaryCard label="Active nannies" value={activeNannies} />
-                  <SummaryCard label="Quarterly revenue" value={money(revenue)} />
+                  <SummaryCard label="Quarterly revenue" value={dollars(revenue)} />
                   <SummaryCard label="Confirmed bookings" value={confirmed} />
                 </div>
               )
@@ -68,9 +78,9 @@ export function AdminAnalyticsPage() {
             if (active === 'Revenue')
               return (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <SummaryCard label="Quarterly revenue" value={money(revenue)} accent />
-                  <SummaryCard label="MRR (subscriptions)" value={money((activeFamilies * SUBSCRIPTION) / 3)} />
-                  <SummaryCard label="Avg revenue / family" value={money(activeFamilies ? revenue / activeFamilies : 0)} />
+                  <SummaryCard label="Quarterly revenue" value={dollars(revenue)} accent />
+                  <SummaryCard label="MRR (subscriptions)" value={dollars((activeFamilies * subscription) / 3)} />
+                  <SummaryCard label="Avg revenue / family" value={dollars(activeFamilies ? revenue / activeFamilies : 0)} />
                 </div>
               )
             if (active === 'Bookings')

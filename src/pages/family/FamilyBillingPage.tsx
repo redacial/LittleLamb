@@ -1,20 +1,28 @@
 import { useAuth } from '../../context/AuthContext'
 import { useMyBookings } from '../../hooks/useBookings'
+import { useBillingConfig } from '../../hooks/useAdmin'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Card, CardLabel, Button } from '../../components/ui'
 import { SummaryCard } from '../../components/SummaryCard'
 import { money } from '../../lib/format'
 import { printInvoice } from '../../lib/exporters'
 
-const SUBSCRIPTION = 25
-const PER_BOOKING = 1
-
 /** Family billing — running quarter count, estimated next bill, invoice history. */
 export function FamilyBillingPage() {
   const { user, profile } = useAuth()
   const { bookings } = useMyBookings(user?.uid, 'family')
+  // Rates were hardcoded here as 25 / 1 while the server charges from config/billing
+  // (functions/src/billing/quarterlyCharge.ts → loadRates). Any price change in
+  // Settings left this page quoting the OLD figure — including on the printed invoice.
+  //
+  // UNITS: the config stores CENTS (2500); everything below this line is DOLLARS, which is
+  // what money() and printInvoice expect. Convert once, here, and never again downstream.
+  const { config, loading: ratesLoading } = useBillingConfig()
+  const subscription = config.subscriptionCents / 100
+  const perBooking = config.perBookingCents / 100
+
   const confirmedThisQuarter = bookings.filter((b) => b.status === 'confirmed').length
-  const estimate = SUBSCRIPTION + confirmedThisQuarter * PER_BOOKING
+  const estimate = subscription + confirmedThisQuarter * perBooking
 
   // Current-quarter summary rendered as a print-ready invoice (browser "Save as PDF").
   function downloadInvoice() {
@@ -25,12 +33,25 @@ export function FamilyBillingPage() {
       quarterLabel: `Q${Math.floor(new Date().getMonth() / 3) + 1} ${new Date().getFullYear()}`,
       issuedAt,
       lineItems: [
-        { label: 'Platform subscription', amount: SUBSCRIPTION },
-        { label: `Confirmed bookings (${confirmedThisQuarter} × ${money(PER_BOOKING)})`, amount: confirmedThisQuarter * PER_BOOKING },
+        { label: 'Platform subscription', amount: subscription },
+        { label: `Confirmed bookings (${confirmedThisQuarter} × ${money(perBooking)})`, amount: confirmedThisQuarter * perBooking },
       ],
       total: estimate,
     })
   }
+
+  // Hold the whole page until the rates resolve. Rendering the hook's safe default first
+  // would flash $25 at a family on a $30 plan — a number they may well screenshot, and one
+  // that would be PRINTED if they hit download during that frame.
+  if (ratesLoading)
+    return (
+      <>
+        <PageHeader title="Billing" subtitle="Simple, quarterly, no surprises." />
+        <PageBody>
+          <p className="text-ll-warm-gray">Loading…</p>
+        </PageBody>
+      </>
+    )
 
   return (
     <>
@@ -51,14 +72,14 @@ export function FamilyBillingPage() {
             <li className="flex gap-2.5">
               <Dot />
               <span>
-                <span className="font-mono text-ll-peri-ink">{money(SUBSCRIPTION)}</span> flat platform
+                <span className="font-mono text-ll-peri-ink">{money(subscription)}</span> flat platform
                 subscription per quarter
               </span>
             </li>
             <li className="flex gap-2.5">
               <Dot />
               <span>
-                <span className="font-mono text-ll-peri-ink">{money(PER_BOOKING)}</span> per confirmed
+                <span className="font-mono text-ll-peri-ink">{money(perBooking)}</span> per confirmed
                 booking, accumulated through the quarter
               </span>
             </li>
