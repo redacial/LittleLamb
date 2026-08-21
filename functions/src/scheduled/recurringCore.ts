@@ -71,9 +71,21 @@ export async function runRecurringAutoCancel(deps: RecurringJobDeps): Promise<Re
 
   let cancelled = 0
   for (const b of conflicts) {
-    // Idempotency: a booking already cancelled is skipped by the candidate query, but
-    // guard here too in case of overlap between runs.
-    if (b.status === 'cancelled') continue
+    // Only a CONFIRMED booking represents a slot the nanny actually agreed to, and so is
+    // the only kind that can be broken by the nanny later withdrawing that availability.
+    //
+    // A `pending` booking is pending PRECISELY BECAUSE it sits outside the nanny's hours
+    // (see resolveBookingStatus in src/lib/rates.ts), so isCovered is false for it by
+    // construction — every outstanding recurring request would be auto-cancelled the
+    // moment it entered the 48h window, and both parties emailed that the nanny's
+    // "availability changed" when nothing changed at all. `same_day_review` is likewise
+    // still with a human. This also subsumes the old `cancelled` guard: a booking already
+    // cancelled (by the family, or by a previous overlapping run of this job) is not
+    // confirmed, so it can never be cancelled or emailed twice.
+    //
+    // Unreachable until recurring became settable from the family calendar — exactly the
+    // class of latent bug this project has shipped before.
+    if (b.status !== 'confirmed') continue
     await deps.cancelBooking(b.id)
     await deps.enqueueMail(cancelEvent(b))
     cancelled++

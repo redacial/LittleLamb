@@ -7,7 +7,7 @@
 // then writing the cancellation and firing notify(recurring_booking_auto_cancelled) — is
 // DEFERRED and lives outside this module.
 
-import type { AvailabilityBlock, Booking } from '../types'
+import type { AvailabilityBlock, Booking, BookingStatus } from '../types'
 
 /** Map of nannyId -> that nanny's current weekly availability blocks. */
 export type AvailabilityByNanny = Record<string, AvailabilityBlock[]>
@@ -64,4 +64,61 @@ export function findRecurringConflicts(
     const blocks = availabilityByNanny[booking.nannyId] ?? []
     return !isCovered(booking, blocks)
   })
+}
+
+// ---------------------------------------------------------------------------
+// Recurring request gate — decides whether a family's "Make this recurring"
+// tick is actually honoured on the booking it is created with.
+// ---------------------------------------------------------------------------
+
+/** Why a requested recurring booking was refused. null = nothing to explain. */
+export type RecurringRefusal = 'no-nanny' | 'outside-availability' | 'not-confirmed'
+
+export interface RecurringDecision {
+  /** The value to write to Booking.recurring. */
+  recurring: boolean
+  /** Set only when the family ASKED for recurring and did not get it. */
+  reason: RecurringRefusal | null
+}
+
+/**
+ * Should this booking be created as recurring?
+ *
+ * A recurring booking is a standing weekly claim on a nanny's time, and CLAUDE.md §11.4
+ * gives it a privileged auto-cancel path. So it is granted only when all three hold:
+ *
+ *  1. A specific nanny is chosen. An open/unmatched booking has nobody to recur WITH.
+ *  2. That nanny's stated weekly availability fully covers this weekday and time window.
+ *     Without this a family could lock a weekly slot the nanny never opened.
+ *  3. The booking itself resolved to `confirmed`. `pending` (out-of-hours or rate
+ *     mismatch) and `same_day_review` both mean a human has yet to agree — a series must
+ *     never be spawned off an unanswered request. Deliberately conservative: the family
+ *     still gets the booking, just as a one-off they can re-request weekly.
+ *
+ * Pure, so the rule is unit-tested rather than buried in a click handler (same rationale
+ * as resolveBookingStatus in ./rates).
+ */
+export function resolveRecurring(args: {
+  requested: boolean
+  nannyId: string | null
+  availability: AvailabilityBlock[] | undefined
+  date: string
+  startTime: string
+  endTime: string
+  status: BookingStatus
+}): RecurringDecision {
+  const { requested, nannyId, availability, date, startTime, endTime, status } = args
+  if (!requested) return { recurring: false, reason: null }
+
+  if (!nannyId) return { recurring: false, reason: 'no-nanny' }
+
+  const day = weekday(date)
+  const covered = (availability ?? []).some(
+    (b) => b.day === day && b.start <= startTime && b.end >= endTime,
+  )
+  if (!covered) return { recurring: false, reason: 'outside-availability' }
+
+  if (status !== 'confirmed') return { recurring: false, reason: 'not-confirmed' }
+
+  return { recurring: true, reason: null }
 }

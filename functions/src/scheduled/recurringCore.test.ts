@@ -120,3 +120,66 @@ describe('runRecurringAutoCancel', () => {
     expect(h.cancelled).toEqual(['drop'])
   })
 })
+
+describe('runRecurringAutoCancel — reachability guards (recurring is now settable from the UI)', () => {
+  const day = new Date('2026-06-15T00:00:00').getDay() // Monday = 1
+
+  it('never auto-cancels a booking that is already cancelled, even if it reaches the core', async () => {
+    // The candidate query filters these out, but a race between the query and a family
+    // cancelling the same instance can slip one through. Cancelling twice would fire a
+    // SECOND auto-cancel email for a booking the family already withdrew.
+    const h = harness([booking({ id: 'gone', status: 'cancelled' })], { n1: [] })
+    const res = await runRecurringAutoCancel(h.deps)
+    expect(h.cancelled).toEqual([])
+    expect(h.mailed).toEqual([])
+    expect(res.cancelled).toBe(0)
+  })
+
+  it('does not auto-cancel a PENDING recurring request the nanny has not answered', async () => {
+    // A pending booking is pending precisely BECAUSE it sits outside the nanny's hours.
+    // Treating that as an "availability conflict" would auto-cancel every outstanding
+    // request 48h out and email the family that the nanny "changed their availability" —
+    // which never happened. Only confirmed bookings represent a slot the nanny agreed to.
+    const h = harness([booking({ id: 'unanswered', status: 'pending' })], { n1: [] })
+    const res = await runRecurringAutoCancel(h.deps)
+    expect(h.cancelled).toEqual([])
+    expect(h.mailed).toEqual([])
+    expect(res.cancelled).toBe(0)
+  })
+
+  it('cancels only the conflicting instance, never sibling instances of the same series', async () => {
+    // One doc per instance. Cancelling the Monday instance must leave the following
+    // Monday's instance untouched — the family keeps the rest of the series.
+    const h = harness(
+      [
+        booking({ id: 'inst-1', date: '2026-06-15', status: 'confirmed' }),
+        booking({ id: 'inst-2', date: '2026-06-22', status: 'confirmed' }), // > 48h out
+      ],
+      { n1: [] },
+    )
+    const res = await runRecurringAutoCancel(h.deps)
+    expect(h.cancelled).toEqual(['inst-1'])
+    expect(res.cancelled).toBe(1)
+  })
+
+  it('emails exactly once per cancelled instance', async () => {
+    const h = harness(
+      [
+        booking({ id: 'a', nannyId: 'n1' }),
+        booking({ id: 'b', nannyId: 'n2' }),
+      ],
+      { n1: [], n2: [] },
+    )
+    await runRecurringAutoCancel(h.deps)
+    expect(h.mailed).toHaveLength(2)
+    expect(h.mailed.map((m) => m.bookingId).sort()).toEqual(['a', 'b'])
+  })
+
+  it('leaves a confirmed booking alone once the nanny still covers it', async () => {
+    const h = harness([booking({ status: 'confirmed' })], {
+      n1: [{ day, start: '14:00', end: '21:00' }],
+    })
+    const res = await runRecurringAutoCancel(h.deps)
+    expect(res.cancelled).toBe(0)
+  })
+})
