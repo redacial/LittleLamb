@@ -1,20 +1,92 @@
 import { useAllBookings, useUsersByRole, useBillingAlerts } from '../../hooks/useAdmin'
+import { useInvoices, invoiceDollars } from '../../hooks/useInvoices'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Tabs } from '../../components/Tabs'
 import { Card, CardLabel, Button, LoadErrorNotice, TruncatedNotice } from '../../components/ui'
 import { SummaryCard } from '../../components/SummaryCard'
 import { money } from '../../lib/format'
 import { downloadCSV } from '../../lib/exporters'
+import type { Invoice } from '../../types'
 
 const SUBSCRIPTION = 25
 const PER_BOOKING = 1
 const DONATION_RATE = 0.1
+
+const STATUS_STYLE: Record<Invoice['status'], string> = {
+  paid: 'bg-ll-sage-light text-ll-sage-deep border-ll-sage',
+  pending: 'bg-ll-terra-light text-ll-terra-deep border-ll-terra-soft',
+  failed: 'bg-red-100 text-red-800 border-red-300',
+}
+
+/**
+ * One invoice row.
+ *
+ * Two things here are load-bearing and must not be "simplified":
+ *
+ * 1. `invoiceDollars()` before `money()`. The stored value is CENTS — `money(2700)` renders
+ *    $2,700.00 for a $27.00 invoice.
+ * 2. The dry-run treatment. A dry-run invoice records a real-looking `status` but no money
+ *    ever moved, so the marking cannot be subtle: the row is restyled, the amount is struck
+ *    through, and the status pill is replaced outright by "Not charged". An admin skimming
+ *    for revenue must not be able to mistake one for a payment.
+ */
+function InvoiceRow({ inv }: { inv: Invoice }) {
+  return (
+    <Card
+      data-testid={`invoice-${inv.invoiceId}`}
+      className={
+        inv.dryRun
+          ? 'flex flex-wrap items-center justify-between gap-3 border-dashed border-ll-warm-gray bg-ll-cream'
+          : 'flex flex-wrap items-center justify-between gap-3'
+      }
+    >
+      <div className="min-w-0">
+        <p className="font-semibold text-ll-ink">{inv.familyName}</p>
+        <p className="text-sm text-ll-warm-gray">
+          <span className="font-mono">{inv.periodStart}</span> —{' '}
+          <span className="font-mono">{inv.periodEnd}</span>
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <span
+          className={
+            inv.dryRun
+              ? 'font-mono text-lg text-ll-warm-gray line-through'
+              : 'font-mono text-lg font-medium text-ll-ink'
+          }
+        >
+          {money(invoiceDollars(inv.totalCents))}
+        </span>
+        {inv.dryRun ? (
+          // Deliberately loud, and it REPLACES the status pill rather than sitting beside
+          // it — `status: 'paid'` on a dry run would otherwise read as money received.
+          <span className="rounded-full border-1.5 border-red-400 bg-red-100 px-3 py-1 text-mono-sm uppercase tracking-wide text-red-800">
+            Not charged — dry run
+          </span>
+        ) : (
+          <span
+            className={`rounded-full border-1.5 px-3 py-1 text-mono-sm capitalize ${STATUS_STYLE[inv.status]}`}
+          >
+            {inv.status}
+          </span>
+        )}
+      </div>
+    </Card>
+  )
+}
 
 /** Admin Billing & Accounting — Overview / Current Billing / Invoice History / Accounting. */
 export function AdminBillingPage() {
   const { items: bookings, truncated: bookingsTruncated } = useAllBookings()
   const { users: families, truncated: familiesTruncated } = useUsersByRole('family')
   const { items: billingAlerts, error: alertsError, truncated: alertsTruncated } = useBillingAlerts()
+  const {
+    items: invoices,
+    error: invoicesError,
+    hasMore: moreInvoices,
+    loadingMore: loadingMoreInvoices,
+    loadMore: loadMoreInvoices,
+  } = useInvoices()
   // Revenue here is counted off these arrays, so a capped read understates it.
   const partialData = bookingsTruncated || familiesTruncated || alertsTruncated
   const activeFamilies = families.filter((f) => f.approved).length
@@ -113,10 +185,42 @@ export function AdminBillingPage() {
 
             if (active === 'Invoice history')
               return (
-                <Card className="bg-ll-cream">
-                  <CardLabel>Invoice history</CardLabel>
-                  <p className="text-sm text-ll-warm-gray">Invoices appear here as billing cycles close. Searchable by family and date; per-invoice PDF download.</p>
-                </Card>
+                <div className="space-y-3">
+                  {/* A failed read must never render as "no invoices" — see useInvoices. */}
+                  {invoicesError ? (
+                    <LoadErrorNotice what="invoices" />
+                  ) : invoices.length === 0 ? (
+                    <Card className="bg-ll-cream">
+                      <CardLabel>Invoice history</CardLabel>
+                      <p className="text-sm text-ll-warm-gray">
+                        No invoices yet. They appear here as billing cycles close.
+                      </p>
+                    </Card>
+                  ) : (
+                    <>
+                      {invoices.some((i) => i.dryRun) && (
+                        <Card className="border-red-300 bg-red-50">
+                          <p className="text-sm text-red-900">
+                            <span className="font-semibold">Some invoices below were never charged.</span>{' '}
+                            Dry-run invoices are recorded when billing runs with payments disabled — they
+                            are not revenue.
+                          </p>
+                        </Card>
+                      )}
+                      {invoices.map((inv) => (
+                        <InvoiceRow key={inv.invoiceId} inv={inv} />
+                      ))}
+                      {moreInvoices && (
+                        <TruncatedNotice
+                          shown={invoices.length}
+                          what="invoices"
+                          onLoadMore={loadMoreInvoices}
+                          loadingMore={loadingMoreInvoices}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
               )
 
             return (

@@ -145,40 +145,60 @@ export interface Booking {
   createdAt: Timestamp | null
 }
 
+/** A single priced row on an invoice. Mirrors `InvoiceLineItem` in functions/src/billing/types.ts. */
+export interface InvoiceLineItem {
+  label: string
+  quantity: number
+  /** CENTS. Price of one unit. */
+  unitCents: number
+  /** CENTS. quantity × unitCents. */
+  amountCents: number
+}
+
 /**
- * ⚠️ DO NOT WIRE A UI TO THIS TYPE WITHOUT READING THIS FIRST. It does NOT describe what is
- * actually stored in the `invoices` collection, and getting it wrong is a 100× money error.
+ * An invoice as the server actually stores it in `invoices/{invoiceId}`.
  *
- * The server is the only writer (`functions/src/billing/quarterlyCharge.ts` → `writeInvoice`,
- * which spreads an `InvoiceData`). It writes:
+ * 💵 ALL MONEY ON THIS TYPE IS IN **CENTS**. A $27.00 invoice is `totalCents: 2700`.
+ * Convert exactly once, at render, via `invoiceDollars()` in hooks/useInvoices.ts —
+ * never store, sum, or pass around a dollars-valued invoice figure. Binding a cents field
+ * straight into a dollar formatter is a silent 100× overstatement on a page where money is
+ * reconciled, which is the specific bug this shape exists to make impossible.
  *
- *     invoiceId, familyId, familyName, periodStart, periodEnd, lineItems,
- *     totalCents, status, pdfPath, dryRun, createdAt
- *
- * Not one money field below matches. `id` vs `invoiceId`, `quarterLabel` vs
- * `periodStart`/`periodEnd`, and — the dangerous one — **`total` (dollars) vs `totalCents`**.
- * A $27.00 invoice is stored as `2700`. Bind `total` to that value and every invoice reads
- * $2,700.00; "fix" it by renaming the field without dividing and you have shipped a 100×
- * overstatement on a page families read.
- *
- * There is currently NO client reader — both invoice-history UIs are placeholder text
- * (`FamilyBillingPage`, `AdminBillingPage`), so nothing is broken today. Reconciling this type
- * with the server's shape is deliberately held for David's review; do it as one considered
- * change (pick cents everywhere, convert only at render) rather than field-by-field.
+ * The server is the ONLY writer (`functions/src/billing/quarterlyCharge.ts` → `writeInvoice`,
+ * which spreads an `InvoiceData` and adds `status`, `pdfPath`, `dryRun`, `createdAt`). These
+ * field names are therefore not ours to choose — they must keep matching that writer. This
+ * interface was previously a hand-written guess that matched it on zero money fields; it was
+ * reconciled to the real shape (D-invoice-reconcile) when the first client reader was built.
  */
 export interface Invoice {
-  id: string
+  /** The document id. Also stored in the doc body by the server. */
+  invoiceId: string
   familyId: string
   familyName: string
-  quarterLabel: string
-  subscriptionFee: number
-  bookingCount: number
-  bookingFees: number
-  /** DOLLARS here, but the server stores CENTS as `totalCents`. See the warning above. */
-  total: number
+  /** YYYY-MM-DD — start of the billing cycle this invoice covers. */
+  periodStart: string
+  /** YYYY-MM-DD — end of the billing cycle (the day the job ran). */
+  periodEnd: string
+  lineItems: InvoiceLineItem[]
+  /** CENTS. The invoice total. Divide by 100 only at render. */
+  totalCents: number
+  /**
+   * Whether the Stripe charge succeeded. NOTE: independent of `dryRun` — a dry-run invoice
+   * still records a status, so status ALONE never tells you whether money actually moved.
+   */
   status: 'paid' | 'pending' | 'failed'
-  issuedAt: string
+  /**
+   * Cloud Storage path (`invoices/{familyId}/{invoiceId}.pdf`), not a URL. Downloading it
+   * requires a signed URL or an authorized Storage SDK read. Null when the render failed.
+   */
   pdfPath?: string | null
+  /**
+   * True when the billing job ran with Stripe DISABLED. The invoice was computed and
+   * recorded but **no money was ever charged**. Any UI showing invoices must mark these
+   * unmistakably — an admin reconciling revenue must never count one as a real payment.
+   */
+  dryRun: boolean
+  createdAt: Timestamp | null
 }
 
 export interface Review {
