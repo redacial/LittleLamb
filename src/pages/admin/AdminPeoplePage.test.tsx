@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AdminPeoplePage } from './AdminPeoplePage'
 import { SELF_BADGES, VERIFIED_BADGES } from '../../lib/badges'
-import type { UserDoc } from '../../types'
+import type { Review, UserDoc } from '../../types'
 
 const nannyBadges = { current: [] as string[] }
 
@@ -25,6 +25,21 @@ const hookResult = {
 }
 
 const saveVerifiedBadges = vi.fn(async () => {})
+
+const reviewsResult = {
+  items: [] as Review[],
+  error: null as Error | null,
+  truncated: false,
+  hasMore: false,
+  loading: false,
+  loadingMore: false,
+  loadMore: vi.fn(),
+}
+
+vi.mock('../../hooks/useReviews', () => ({
+  useReviews: () => reviewsResult,
+  useSubmitReview: () => vi.fn(),
+}))
 
 vi.mock('../../hooks/useAdmin', () => ({
   useUsersByRole: () => hookResult,
@@ -60,7 +75,29 @@ beforeEach(() => {
   reset()
   nannyBadges.current = []
   saveVerifiedBadges.mockClear()
+  Object.assign(reviewsResult, {
+    items: [],
+    error: null,
+    truncated: false,
+    hasMore: false,
+    loading: false,
+    loadingMore: false,
+  })
 })
+
+function review(over: Partial<Review> = {}): Review {
+  return {
+    id: 'rev_1',
+    bookingId: 'bk_20260410',
+    authorId: 'fam_1',
+    authorRole: 'family',
+    subjectId: 'nanny-1',
+    rating: 5,
+    comment: 'Maria was wonderful with the twins.',
+    createdAt: null,
+    ...over,
+  } as Review
+}
 
 /** The page opens on the 'pending' tab; approved people live under 'active'. */
 async function openActiveTab() {
@@ -202,5 +239,100 @@ describe('AdminPeoplePage — assigning verified badges after an interview', () 
     await openActiveTab()
 
     expect(screen.queryByRole('button', { name: /badges/i })).not.toBeInTheDocument()
+  })
+})
+
+
+// Reviews were a WRITE-ONLY collection. useSubmitReview wrote to `reviews` from three
+// surfaces and NOTHING in the codebase ever read it back — so families and nannies were
+// asked to write feedback that no human being could open, while CLAUDE.md says reviews
+// exist precisely to give Lucy and David ground-level insight into match quality.
+// This suite pins the admin reader end of that round trip.
+describe('AdminPeoplePage — reading the reviews left about someone', () => {
+  it('opens a reviews panel for a person', async () => {
+    reset({ users: [approvedNanny()], items: [approvedNanny()] })
+    reviewsResult.items = [review()]
+
+    render(<AdminPeoplePage role="nanny" />)
+    await openActiveTab()
+    await userEvent.click(screen.getByRole('button', { name: /reviews/i }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('shows the rating, the comment, and which booking it refers to', async () => {
+    reset({ users: [approvedNanny()], items: [approvedNanny()] })
+    reviewsResult.items = [review()]
+
+    render(<AdminPeoplePage role="nanny" />)
+    await openActiveTab()
+    await userEvent.click(screen.getByRole('button', { name: /reviews/i }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/Maria was wonderful with the twins/i)).toBeInTheDocument()
+    expect(within(dialog).getByText(/5\s*\/\s*5/)).toBeInTheDocument()
+    // The booking is what makes a review actionable — "which visit was this?"
+    expect(within(dialog).getByText(/bk_20260410/)).toBeInTheDocument()
+  })
+
+  it('says who wrote it, by role — a family reviewing a nanny is not the same signal', async () => {
+    reset({ users: [approvedNanny()], items: [approvedNanny()] })
+    reviewsResult.items = [review({ authorRole: 'family' })]
+
+    render(<AdminPeoplePage role="nanny" />)
+    await openActiveTab()
+    await userEvent.click(screen.getByRole('button', { name: /reviews/i }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/from the family/i)).toBeInTheDocument()
+  })
+
+  it('renders a review with no comment — a bare rating is still signal', async () => {
+    reset({ users: [approvedNanny()], items: [approvedNanny()] })
+    reviewsResult.items = [review({ comment: '' })]
+
+    render(<AdminPeoplePage role="nanny" />)
+    await openActiveTab()
+    await userEvent.click(screen.getByRole('button', { name: /reviews/i }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/2\s*\/\s*5|5\s*\/\s*5/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/no comment/i)).toBeInTheDocument()
+  })
+
+  it('shows a load error, NOT "no reviews yet", when the read fails', async () => {
+    // The D50 failure again: a permission error renders identically to "nobody has left
+    // feedback", and an admin would draw exactly the wrong conclusion about match quality.
+    reset({ users: [approvedNanny()], items: [approvedNanny()] })
+    reviewsResult.error = new Error('permission-denied')
+
+    render(<AdminPeoplePage role="nanny" />)
+    await openActiveTab()
+    await userEvent.click(screen.getByRole('button', { name: /reviews/i }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).queryByText(/no reviews yet/i)).not.toBeInTheDocument()
+    expect(within(dialog).getByText(/loading problem, not an empty list/i)).toBeInTheDocument()
+  })
+
+  it('still says there are none when the read SUCCEEDS and returns nothing', async () => {
+    reset({ users: [approvedNanny()], items: [approvedNanny()] })
+
+    render(<AdminPeoplePage role="nanny" />)
+    await openActiveTab()
+    await userEvent.click(screen.getByRole('button', { name: /reviews/i }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/no reviews yet/i)).toBeInTheDocument()
+  })
+
+  it('offers the reviews panel for families too — reviews run both ways', async () => {
+    const fam = approvedNanny({ uid: 'fam-1', role: 'family', fullName: 'The Chens' })
+    reset({ users: [fam], items: [fam] })
+
+    render(<AdminPeoplePage role="family" />)
+    await openActiveTab()
+
+    expect(screen.getByRole('button', { name: /reviews/i })).toBeInTheDocument()
   })
 })

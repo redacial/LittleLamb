@@ -5,6 +5,7 @@
 // payment_intent.payment_failed  -> mark the invoice failed + raise a billing_alert
 //   (surfaced on the admin dashboard).
 import { onRequest } from 'firebase-functions/v2/https'
+import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 import { logger } from 'firebase-functions/v2'
 import { FieldValue } from 'firebase-admin/firestore'
 import type Stripe from 'stripe'
@@ -27,8 +28,18 @@ export interface WebhookDeps {
   claimEvent(event: Stripe.Event): Promise<boolean>
   /** Record a handler error against the already-claimed event marker. Never throws. */
   recordHandlerError(eventId: string, message: string): Promise<void>
-  /** Set the invoice status. No-ops when the invoice doc does not exist. */
-  markInvoice(invoiceId: string, status: 'paid' | 'failed'): Promise<void>
+  /**
+   * Merge the status into the invoice doc. Returns TRUE if the invoice existed and was
+   * updated, FALSE if it does not exist yet (the writeInvoice race).
+   *
+   * MUST NOT create the doc when it is missing — see recordPendingReconciliation.
+   */
+  markInvoice(invoiceId: string, status: 'paid' | 'failed'): Promise<boolean>
+  /**
+   * Park a payment outcome durably, keyed by invoiceId, for an invoice that does not
+   * exist yet. Drained onto the invoice once it appears.
+   */
+  recordPendingReconciliation(invoiceId: string, status: 'paid' | 'failed'): Promise<void>
   raiseBillingAlert(alert: {
     familyId: string
     invoiceId: string | null
@@ -94,12 +105,12 @@ export async function handleStripeWebhook(
     if (event.type === 'payment_intent.succeeded') {
       const pi = event.data.object as Stripe.PaymentIntent
       const invoiceId = pi.metadata?.invoiceId
-      if (invoiceId) await deps.markInvoice(invoiceId, 'paid')
+      if (invoiceId) await reconcile(deps, invoiceId, 'paid')
     } else if (event.type === 'payment_intent.payment_failed') {
       const pi = event.data.object as Stripe.PaymentIntent
       const invoiceId = pi.metadata?.invoiceId
       const familyId = pi.metadata?.familyId
-      if (invoiceId) await deps.markInvoice(invoiceId, 'failed')
+      if (invoiceId) await reconcile(deps, invoiceId, 'failed')
       if (familyId) {
         await deps.raiseBillingAlert({
           familyId,
@@ -118,6 +129,37 @@ export async function handleStripeWebhook(
     await deps.recordHandlerError(event.id, String(err))
     res.status(200).send('ok')
   }
+}
+
+/**
+ * Apply a payment outcome to an invoice, without ever losing it.
+ *
+ * THE RACE: quarterlyCharge calls Stripe BEFORE it writes the invoice doc, so the webhook
+ * can land first. The old code did a get(), found nothing, and returned — silently. The
+ * event id was already claimed, so Stripe's redelivery got eaten by the duplicate guard,
+ * and a genuinely-charged invoice stayed `pending` forever with no log line.
+ *
+ * WHY A SIDE COLLECTION rather than creating the invoice here: `invoices` is rendered
+ * verbatim by the admin invoice list. A placeholder doc holding nothing but a status would
+ * appear there as a real (blank, $0) invoice, and — worse — writing by id would RESURRECT
+ * an invoice an admin had deliberately deleted. `invoice_reconciliations` is server-only
+ * (no rules match => default deny), so nothing user-facing can ever render it.
+ */
+async function reconcile(
+  deps: WebhookDeps,
+  invoiceId: string,
+  status: 'paid' | 'failed',
+): Promise<void> {
+  const applied = await deps.markInvoice(invoiceId, status)
+  if (applied) return
+  // Invoice not written yet. Park the outcome so writeInvoice (or the repair pass) can
+  // pick it up. A throw here propagates to the handler's catch, which records it against
+  // the event marker — losing this silently is the exact bug being fixed.
+  logger.warn('stripeWebhook: invoice not written yet, parking reconciliation', {
+    invoiceId,
+    status,
+  })
+  await deps.recordPendingReconciliation(invoiceId, status)
 }
 
 /** Wire the engine to the real Firestore + Stripe. */
@@ -149,11 +191,31 @@ export function liveWebhookDeps(): WebhookDeps {
         .catch(() => undefined)
     },
     markInvoice: async (invoiceId, status) => {
+      // update() rather than get()-then-set(): it fails with NOT_FOUND on a missing doc
+      // instead of creating one, which is both atomic (no TOCTOU window between the read
+      // and the write) and structurally incapable of producing a phantom invoice.
       const ref = db.collection('invoices').doc(invoiceId)
-      const snap = await ref.get()
-      if (snap.exists) {
-        await ref.set({ status, reconciledAt: FieldValue.serverTimestamp() }, { merge: true })
+      try {
+        await ref.update({ status, reconciledAt: FieldValue.serverTimestamp() })
+        return true
+      } catch (err) {
+        const code = (err as { code?: number | string }).code
+        // 5 === NOT_FOUND (gRPC). Anything else is a real failure and must propagate.
+        if (code === 5 || code === 'not-found') return false
+        throw err
       }
+    },
+    recordPendingReconciliation: async (invoiceId, status) => {
+      // Keyed by invoiceId so a Stripe redelivery overwrites rather than duplicating, and
+      // so the drain is a single get() by id. Server-only collection: no firestore.rules
+      // match, so the default-deny at the bottom of the file covers it.
+      await db
+        .collection('invoice_reconciliations')
+        .doc(invoiceId)
+        .set(
+          { invoiceId, status, recordedAt: FieldValue.serverTimestamp() },
+          { merge: true },
+        )
     },
     raiseBillingAlert: async ({ familyId, invoiceId, amountCents }) => {
       await db.collection('billing_alerts').add({
@@ -166,6 +228,78 @@ export function liveWebhookDeps(): WebhookDeps {
     },
   }
 }
+
+/** Collaborators for the drain, injected so the logic is testable without Firestore. */
+export interface ParkedDeps {
+  /** The parked status for this invoice, or null when there is none. */
+  readParked(invoiceId: string): Promise<'paid' | 'failed' | null>
+  /** Write the status onto the (now existing) invoice doc. */
+  applyStatus(invoiceId: string, status: 'paid' | 'failed'): Promise<void>
+  /** Delete the parked record. Only called AFTER applyStatus succeeds. */
+  clearParked(invoiceId: string): Promise<void>
+}
+
+/**
+ * Drain a parked payment outcome onto an invoice that has now been written.
+ *
+ * Stripe is the authority on whether money moved, so the parked status deliberately WINS
+ * over whatever writeInvoice just recorded — in dry-run it writes `pending`, and its own
+ * `paid`/`failed` return path is a guess made before the webhook confirmed anything.
+ *
+ * The clear happens only after the apply succeeds: clearing first would mean a transient
+ * write error destroys the only durable record of a real payment, which is exactly the
+ * loss this mechanism exists to prevent. Re-running is harmless — applyStatus is a merge.
+ */
+export async function applyParkedReconciliation(
+  invoiceId: string,
+  deps: ParkedDeps,
+): Promise<void> {
+  const parked = await deps.readParked(invoiceId)
+  if (!parked) return
+  await deps.applyStatus(invoiceId, parked)
+  await deps.clearParked(invoiceId)
+}
+
+/** Wire the drain to the real Firestore. */
+export function liveParkedDeps(): ParkedDeps {
+  return {
+    readParked: async (invoiceId) => {
+      const snap = await db.collection('invoice_reconciliations').doc(invoiceId).get()
+      const status = snap.data()?.status
+      return status === 'paid' || status === 'failed' ? status : null
+    },
+    applyStatus: async (invoiceId, status) => {
+      await db
+        .collection('invoices')
+        .doc(invoiceId)
+        .set({ status, reconciledAt: FieldValue.serverTimestamp() }, { merge: true })
+    },
+    clearParked: async (invoiceId) => {
+      await db.collection('invoice_reconciliations').doc(invoiceId).delete()
+    },
+  }
+}
+
+/**
+ * Self-healing half of the race fix: the moment an invoice doc appears, apply any outcome
+ * Stripe already told us about. Fires on create only — a later admin edit must not be
+ * clobbered by a stale parked record (and there is none, since the drain deletes it).
+ */
+export const onInvoiceCreated = onDocumentCreated(
+  { region: REGION, document: 'invoices/{invoiceId}' },
+  async (event) => {
+    const invoiceId = event.params.invoiceId
+    try {
+      await applyParkedReconciliation(invoiceId, liveParkedDeps())
+    } catch (err) {
+      // Left parked deliberately — a retry or the next create can still repair it.
+      logger.error('onInvoiceCreated: draining parked reconciliation failed', {
+        invoiceId,
+        err: String(err),
+      })
+    }
+  },
+)
 
 export const stripeWebhook = onRequest(
   { region: REGION, secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] },

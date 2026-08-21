@@ -16,7 +16,12 @@
 //      deliberate trade and it is pinned here so nobody flips it by accident.
 import { describe, it, expect, vi } from 'vitest'
 import type Stripe from 'stripe'
-import { handleStripeWebhook, type WebhookDeps, type WebhookRequest } from './webhook'
+import {
+  handleStripeWebhook,
+  applyParkedReconciliation,
+  type WebhookDeps,
+  type WebhookRequest,
+} from './webhook'
 
 // ---- fakes ----------------------------------------------------------------
 
@@ -75,6 +80,8 @@ interface Harness {
   alerts: Array<{ familyId: string; invoiceId: string | null; amountCents: number }>
   claimed: Set<string>
   handlerErrors: Array<{ eventId: string; message: string }>
+  /** Durable outcomes parked for an invoice that had not been written yet. */
+  pendingReconciliations: Array<{ invoiceId: string; status: 'paid' | 'failed' }>
 }
 
 function harness(
@@ -88,6 +95,8 @@ function harness(
     claimThrows?: boolean
     /** Make markInvoice blow up, to exercise the 200-on-error path. */
     markThrows?: boolean
+    /** Make the durable pending-reconciliation write blow up. */
+    pendingThrows?: boolean
   } = {},
 ): Harness {
   const invoices = new Map<string, { status?: string }>()
@@ -95,12 +104,14 @@ function harness(
   const alerts: Harness['alerts'] = []
   const claimed = new Set<string>()
   const handlerErrors: Harness['handlerErrors'] = []
+  const pendingReconciliations: Harness['pendingReconciliations'] = []
 
   return {
     invoices,
     alerts,
     claimed,
     handlerErrors,
+    pendingReconciliations,
     deps: {
       constructEvent: () => {
         if (opts.badSignature) throw new Error('No signatures found matching the expected signature')
@@ -117,10 +128,17 @@ function harness(
       },
       markInvoice: async (invoiceId, status) => {
         if (opts.markThrows) throw new Error('write failed')
-        // Mirrors liveWebhookDeps.markInvoice: read-then-write, silently no-op when the
-        // doc does not exist. That no-op is the behavior under test below.
+        // Mirrors liveWebhookDeps.markInvoice: merge into the invoice doc when it exists,
+        // and NEVER create one when it does not (a phantom doc would render in the admin
+        // invoice list as a real invoice). The durable side-record below is what stops
+        // the status being lost in that case.
         const existing = invoices.get(invoiceId)
         if (existing) invoices.set(invoiceId, { ...existing, status })
+        return existing !== undefined
+      },
+      recordPendingReconciliation: async (invoiceId, status) => {
+        if (opts.pendingThrows) throw new Error('reconciliation write failed')
+        pendingReconciliations.push({ invoiceId, status })
       },
       raiseBillingAlert: async (alert) => {
         alerts.push(alert)
@@ -278,23 +296,17 @@ describe('stripeWebhook — duplicate delivery (Stripe redelivers events)', () =
 // ---- the missing-invoice race --------------------------------------------
 
 describe('stripeWebhook — the missing-invoice race (webhook beats writeInvoice)', () => {
-  it('SILENTLY DROPS the paid status when the invoice doc does not exist yet', async () => {
-    // ACTUAL CURRENT BEHAVIOR, asserted deliberately — see the note below.
+  it('does NOT lose the paid status when the invoice doc does not exist yet', async () => {
+    // quarterlyCharge calls Stripe (chargeCustomer) BEFORE it calls writeInvoice, so
+    // Stripe can deliver payment_intent.succeeded before the invoice doc exists.
     //
-    // quarterlyCharge calls Stripe (chargeCustomer) BEFORE it calls writeInvoice. Stripe
-    // can therefore deliver payment_intent.succeeded before the invoice doc exists.
-    // markInvoice does a get() and, finding nothing, returns without writing anything.
+    // The old behavior was a silent drop: markInvoice did a get(), found nothing, and
+    // returned without writing OR logging anything. The event id had already been claimed,
+    // so Stripe's redelivery — the retry that would have fixed the race — was eaten by the
+    // duplicate guard. A real card charge could sit recorded `pending` forever.
     //
-    // NOT DESIRABLE. The failure is completely silent:
-    //   - nothing is written, and nothing is logged;
-    //   - the event id has ALREADY been claimed above, so Stripe's redelivery of this
-    //     same event is discarded as a duplicate — the retry that would have fixed the
-    //     race is exactly what the duplicate guard eats;
-    //   - quarterlyCharge then writes the invoice as `pending` (dry-run) or `paid` from
-    //     its own return path, so a real card charge can end up recorded `pending`
-    //     forever with no alert and no log line.
-    // The dangerous direction is payment_failed (next test): the money is genuinely not
-    // collected and nobody is told.
+    // The fix parks the outcome DURABLY, keyed by invoiceId, in a side collection that the
+    // admin invoice list never reads. Nothing is lost, and no phantom invoice is created.
     const h = harness({
       event: piEvent('payment_intent.succeeded', { invoiceId: 'inv_missing' }),
       existingInvoices: [], // writeInvoice has not committed yet
@@ -303,14 +315,14 @@ describe('stripeWebhook — the missing-invoice race (webhook beats writeInvoice
 
     await handleStripeWebhook(req(), res, h.deps)
 
-    expect(h.invoices.has('inv_missing')).toBe(false) // nothing created
-    expect(sent).toEqual([{ status: 200, body: 'ok' }]) // and we told Stripe "all good"
-    expect(h.handlerErrors).toHaveLength(0) // not even recorded as an error
+    // The outcome survives...
+    expect(h.pendingReconciliations).toEqual([{ invoiceId: 'inv_missing', status: 'paid' }])
+    // ...without inventing an invoice doc.
+    expect(h.invoices.has('inv_missing')).toBe(false)
+    expect(sent).toEqual([{ status: 200, body: 'ok' }])
   })
 
-  it('still raises the billing alert when a FAILED payment races the invoice write', async () => {
-    // The saving grace: the alert does not depend on the invoice doc existing, so an
-    // admin is still told about a failed payment even if the status write is lost.
+  it('parks a FAILED status durably too, and still raises the billing alert', async () => {
     const h = harness({
       event: piEvent('payment_intent.payment_failed', {
         invoiceId: 'inv_missing',
@@ -322,8 +334,56 @@ describe('stripeWebhook — the missing-invoice race (webhook beats writeInvoice
 
     await handleStripeWebhook(req(), fakeRes().res, h.deps)
 
-    expect(h.invoices.has('inv_missing')).toBe(false) // status write lost
+    expect(h.pendingReconciliations).toEqual([{ invoiceId: 'inv_missing', status: 'failed' }])
+    expect(h.invoices.has('inv_missing')).toBe(false)
     expect(h.alerts).toEqual([{ familyId: 'f1', invoiceId: 'inv_missing', amountCents: 2800 }])
+  })
+
+  it('does NOT park anything when the invoice already exists — no redundant side record', async () => {
+    // The side collection is a repair queue, not a log. Writing to it on the happy path
+    // would mean every single payment leaves a row nobody ever drains.
+    const h = harness({
+      event: piEvent('payment_intent.succeeded', { invoiceId: 'inv_1' }),
+      existingInvoices: ['inv_1'],
+    })
+
+    await handleStripeWebhook(req(), fakeRes().res, h.deps)
+
+    expect(h.invoices.get('inv_1')?.status).toBe('paid')
+    expect(h.pendingReconciliations).toHaveLength(0)
+  })
+
+  it('creates no invoice document at all when the invoice is missing', async () => {
+    // The load-bearing constraint. The admin invoice list renders every doc in `invoices`,
+    // so a placeholder written here would show up as a real (blank, $0) invoice — and
+    // would RESURRECT an invoice an admin had deliberately deleted. The whole reason the
+    // status goes to a side collection instead of into `invoices` directly.
+    const h = harness({
+      event: piEvent('payment_intent.succeeded', { invoiceId: 'inv_deleted' }),
+      existingInvoices: [],
+    })
+
+    await handleStripeWebhook(req(), fakeRes().res, h.deps)
+
+    expect(h.invoices.size).toBe(0)
+  })
+
+  it('surfaces a failed park as a handler error rather than acking silently', async () => {
+    // If even the durable park fails we are back to losing the reconciliation. That must
+    // be recorded against the event marker so it is findable, not swallowed.
+    const h = harness({
+      event: piEvent('payment_intent.succeeded', { id: 'evt_park', invoiceId: 'inv_missing' }),
+      existingInvoices: [],
+      pendingThrows: true,
+    })
+    const { res, sent } = fakeRes()
+
+    await handleStripeWebhook(req(), res, h.deps)
+
+    expect(h.handlerErrors).toHaveLength(1)
+    expect(h.handlerErrors[0]).toMatchObject({ eventId: 'evt_park' })
+    // Still 200 — the deliberate contract below is unchanged.
+    expect(sent).toEqual([{ status: 200, body: 'ok' }])
   })
 
   it('ignores a payment_intent carrying no invoiceId metadata at all', async () => {
@@ -334,7 +394,74 @@ describe('stripeWebhook — the missing-invoice race (webhook beats writeInvoice
     await handleStripeWebhook(req(), res, h.deps)
 
     expect(markSpy).not.toHaveBeenCalled()
+    expect(h.pendingReconciliations).toHaveLength(0)
     expect(sent).toEqual([{ status: 200, body: 'ok' }])
+  })
+})
+
+// ---- draining a parked reconciliation ------------------------------------
+
+// Parking the outcome only helps if something later applies it. When writeInvoice finally
+// commits the invoice — as `pending` in dry-run, or from its own return path — the parked
+// status must win, because Stripe is the authority on whether money actually moved.
+
+describe('applyParkedReconciliation — the invoice finally appears', () => {
+  it('overwrites the freshly-written status with the parked Stripe outcome', async () => {
+    // writeInvoice recorded `pending`; Stripe already told us it was paid.
+    const parked = new Map([['inv_1', 'paid' as const]])
+    const invoices = new Map<string, { status?: string }>([['inv_1', { status: 'pending' }]])
+
+    await applyParkedReconciliation('inv_1', {
+      readParked: async (id) => parked.get(id) ?? null,
+      applyStatus: async (id, status) => {
+        invoices.set(id, { ...invoices.get(id), status })
+      },
+      clearParked: async (id) => void parked.delete(id),
+    })
+
+    expect(invoices.get('inv_1')?.status).toBe('paid')
+  })
+
+  it('clears the parked record so it is applied exactly once', async () => {
+    const parked = new Map([['inv_1', 'paid' as const]])
+
+    await applyParkedReconciliation('inv_1', {
+      readParked: async (id) => parked.get(id) ?? null,
+      applyStatus: async () => {},
+      clearParked: async (id) => void parked.delete(id),
+    })
+
+    expect(parked.has('inv_1')).toBe(false)
+  })
+
+  it('does nothing at all when there is no parked outcome (the normal case)', async () => {
+    const applied: string[] = []
+
+    await applyParkedReconciliation('inv_1', {
+      readParked: async () => null,
+      applyStatus: async (id) => void applied.push(id),
+      clearParked: async () => {},
+    })
+
+    expect(applied).toHaveLength(0)
+  })
+
+  it('does NOT clear the parked record when applying it fails', async () => {
+    // Otherwise a transient write failure would destroy the only durable record of a
+    // real payment — precisely the loss this whole mechanism exists to prevent.
+    const parked = new Map([['inv_1', 'failed' as const]])
+
+    await expect(
+      applyParkedReconciliation('inv_1', {
+        readParked: async (id) => parked.get(id) ?? null,
+        applyStatus: async () => {
+          throw new Error('write failed')
+        },
+        clearParked: async (id) => void parked.delete(id),
+      }),
+    ).rejects.toThrow(/write failed/)
+
+    expect(parked.has('inv_1')).toBe(true)
   })
 })
 

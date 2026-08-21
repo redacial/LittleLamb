@@ -3,6 +3,7 @@ import { useUsersByRole, useAdminActions } from '../../hooks/useAdmin'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Card, Button, Avatar, StatusPill, LoadErrorNotice, TruncatedNotice } from '../../components/ui'
 import { VerifiedBadgesModal } from '../../components/admin/VerifiedBadgesModal'
+import { PersonReviewsModal } from '../../components/admin/PersonReviewsModal'
 import { cn } from '../../lib/cn'
 import type { NannyStage, Role, UserDoc } from '../../types'
 
@@ -121,6 +122,7 @@ function PersonRow({
   onAdvance: (s: NannyStage) => void
 }) {
   const [badgesOpen, setBadgesOpen] = useState(false)
+  const [reviewsOpen, setReviewsOpen] = useState(false)
 
   const nextStage =
     role === 'nanny' && u.stage
@@ -149,6 +151,11 @@ function PersonRow({
             Badges
           </Button>
         )}
+        {/* Offered for BOTH roles: reviews run in both directions (a nanny reviews the
+            family too), and until now nothing in the app read the collection back at all. */}
+        <Button size="sm" variant="ghost" onClick={() => setReviewsOpen(true)}>
+          Reviews
+        </Button>
         {!u.approved && u.status === 'pending' && (
           <>
             {role === 'nanny' && nextStage && u.stage !== 'decision_made' && (
@@ -170,6 +177,12 @@ function PersonRow({
           onClose={() => setBadgesOpen(false)}
         />
       )}
+      <PersonReviewsModal
+        uid={u.uid}
+        fullName={u.fullName}
+        open={reviewsOpen}
+        onClose={() => setReviewsOpen(false)}
+      />
     </Card>
   )
 }
