@@ -18,6 +18,7 @@ import { db } from '../lib/firebase'
 import { notify, type NotificationEvent } from '../lib/notifications'
 import { useGrowingCollection, type GrowingList } from './useGrowingCollection'
 import { DEFAULT_BADGES, setBadgeRegistry, type BadgeDef } from '../lib/badges'
+import { DEFAULT_POLICIES, parsePolicies, type Policies } from '../lib/policies'
 import type { UserDoc, Role, NannyStage, Booking } from '../types'
 
 /** Fire-and-forget: a notification failure must never reject an admin write. */
@@ -66,6 +67,74 @@ export function useBillingConfig() {
   }, [])
 
   return { config, loading, save }
+}
+
+/** The interview-scheduling link, stored in config/calendly. */
+export interface CalendlyConfig {
+  /** Empty means NOT CONFIGURED — consumers must hide the CTA rather than link nowhere. */
+  url: string
+}
+
+/**
+ * Live read of the Calendly config doc.
+ *
+ * The URL was previously hardcoded in two places — NannyHoldingPage and the Settings tab —
+ * and the hardcoded value 404s, so the one call-to-action at the most important moment in
+ * the nanny funnel was a dead link. There is deliberately NO default URL here: an unset
+ * config yields '', and the holding page hides the button entirely. A missing CTA is
+ * recoverable (Lucy emails her); a broken one burns the applicant's trust.
+ */
+export function useCalendlyConfig() {
+  const [config, setConfig] = useState<CalendlyConfig>({ url: '' })
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    return onSnapshot(
+      doc(db, 'config', 'calendly'),
+      (snap) => {
+        const d = snap.data()
+        setConfig({ url: typeof d?.url === 'string' ? d.url : '' })
+        setLoading(false)
+      },
+      () => setLoading(false),
+    )
+  }, [])
+
+  const save = useCallback(async (next: Partial<CalendlyConfig>) => {
+    await setDoc(doc(db, 'config', 'calendly'), { ...next, updatedAt: serverTimestamp() }, { merge: true })
+  }, [])
+
+  return { config, loading, save }
+}
+
+/**
+ * Live policy copy (config/policies), falling back per-field to the shipped defaults.
+ *
+ * Per-field (not all-or-nothing) fallback is the point: a cleared textarea or a bad
+ * hand-edit in the console must never blank the page that explains cancellations and
+ * billing to every family and nanny. See parsePolicies in lib/policies.
+ */
+export function usePolicies() {
+  const [policies, setPolicies] = useState<Policies>(DEFAULT_POLICIES)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    return onSnapshot(
+      doc(db, 'config', 'policies'),
+      (snap) => {
+        setPolicies(parsePolicies(snap.data()))
+        setLoading(false)
+      },
+      // A failed read leaves the defaults in place — the same complete page the app shipped
+      // with, which is the right degradation for static reference copy.
+      () => setLoading(false),
+    )
+  }, [])
+
+  const save = useCallback(async (next: Policies) => {
+    await setDoc(doc(db, 'config', 'policies'), { ...next, updatedAt: serverTimestamp() }, { merge: true })
+  }, [])
+
+  return { policies, loading, save }
 }
 
 /** A server-written failed-payment flag (billing_alerts), admin-read-only. */

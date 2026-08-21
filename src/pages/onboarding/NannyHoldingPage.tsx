@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
+import { useCalendlyConfig } from '../../hooks/useAdmin'
 import { signOut } from '../../lib/auth'
 import { Logo, Button, Card } from '../../components/ui'
 import { useSpringIn } from '../../lib/motion'
@@ -14,14 +15,14 @@ const STAGES: { key: NannyStage; label: string }[] = [
   { key: 'decision_made', label: 'Decision made' },
 ]
 
-// Configured in admin Settings (Calendly is a documented open item). Placeholder until set.
-const CALENDLY_URL = 'https://calendly.com/littlelamb/interview'
-
 export function NannyHoldingPage() {
   const { profile } = useAuth()
   const stage = profile?.stage ?? 'application_received'
   const currentIndex = STAGES.findIndex((s) => s.key === stage)
   const springIn = useSpringIn()
+  // Admin-configured in Settings > Calendly. Empty until Lucy sets it — see below.
+  const { config: calendly } = useCalendlyConfig()
+  const calendlyUrl = calendly.url.trim()
 
   return (
     <main className="min-h-screen bg-ll-cream">
@@ -74,8 +75,15 @@ export function NannyHoldingPage() {
               })}
             </ol>
 
-            {stage === 'interview_scheduled' && (
-              <a href={CALENDLY_URL} target="_blank" rel="noreferrer">
+            {/*
+              Only rendered when a link is actually configured. This CTA used to point at a
+              hardcoded URL that 404s, so the nanny's one action at the most important step
+              of the funnel was a dead link — worse than no button, because she clicks it,
+              lands on an error, and concludes the platform is broken. With nothing
+              configured we say nothing and let the "we'll email you" copy above stand.
+            */}
+            {stage === 'interview_scheduled' && calendlyUrl && (
+              <a href={calendlyUrl} target="_blank" rel="noreferrer">
                 <Button className="mt-5">Book your interview slot</Button>
               </a>
             )}

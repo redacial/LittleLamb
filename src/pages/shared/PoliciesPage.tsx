@@ -1,11 +1,18 @@
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Card, CardLabel } from '../../components/ui'
+import { usePolicies } from '../../hooks/useAdmin'
+import { policyParagraphs } from '../../lib/policies'
 
 /**
  * Policies page, shared by families + nannies. Platform-wide rules on top, role-specific below.
- * Content is editable by admin in Settings (Phase 4) — these are sensible defaults until then.
+ *
+ * Content is admin-editable in Settings > Policies (config/policies). The hook falls back
+ * per-field to the shipped defaults, so a missing or malformed config doc renders exactly
+ * what this page rendered before it was config-backed — never an empty card.
  */
 export function PoliciesPage({ role }: { role: 'family' | 'nanny' }) {
+  const { policies } = usePolicies()
+
   return (
     <>
       <PageHeader title="Policies" subtitle="How we keep Little Lamb safe and trustworthy." />
@@ -13,31 +20,32 @@ export function PoliciesPage({ role }: { role: 'family' | 'nanny' }) {
         <div className="max-w-prose space-y-6">
           <Card>
             <CardLabel>Little Lamb policies</CardLabel>
-            <div className="prose-sm mt-2 space-y-2 text-ll-ink">
-              <p>Treat every member of the community with kindness and respect.</p>
-              <p>Communicate through the platform so the Little Lamb team can support you if anything comes up.</p>
-              <p>Every nanny is background-checked and personally interviewed before their profile goes live.</p>
-            </div>
+            <PolicyText text={policies.platform} />
           </Card>
 
           <Card>
             <CardLabel>{role === 'family' ? 'Family policies' : 'Nanny policies'}</CardLabel>
-            <div className="prose-sm mt-2 space-y-2 text-ll-ink">
-              {role === 'family' ? (
-                <>
-                  <p>Cancellations are made from your Calendar or Bookings page; your nanny is notified automatically.</p>
-                  <p>Quarterly billing covers the platform — wages are arranged directly with your nanny.</p>
-                </>
-              ) : (
-                <>
-                  <p>Keep your availability current so families only book times that work for you.</p>
-                  <p>Cancellations are handled with the Little Lamb team — message us and we’ll take care of it.</p>
-                </>
-              )}
-            </div>
+            <PolicyText text={role === 'family' ? policies.family : policies.nanny} />
           </Card>
         </div>
       </PageBody>
     </>
+  )
+}
+
+/**
+ * Renders a policy block as paragraphs split on newlines.
+ *
+ * Deliberately plain text, not Markdown or HTML: this is admin-authored copy displayed to
+ * every family and nanny on the platform, so rendering it as markup would put an XSS
+ * surface on the most-read shared page for the sake of bold text nobody asked for.
+ */
+function PolicyText({ text }: { text: string }) {
+  return (
+    <div className="prose-sm mt-2 space-y-2 text-ll-ink">
+      {policyParagraphs(text).map((line, i) => (
+        <p key={i}>{line}</p>
+      ))}
+    </div>
   )
 }

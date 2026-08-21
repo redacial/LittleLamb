@@ -4,7 +4,8 @@ import { Tabs } from '../../components/Tabs'
 import { Card, CardLabel, Input, Textarea, Button } from '../../components/ui'
 import { badgeIdFromLabel, type BadgeDef } from '../../lib/badges'
 import { Badge, Select } from '../../components/ui'
-import { useBillingConfig, useBadgeCatalog } from '../../hooks/useAdmin'
+import { useBillingConfig, useBadgeCatalog, useCalendlyConfig, usePolicies } from '../../hooks/useAdmin'
+import type { Policies } from '../../lib/policies'
 
 /** Admin Settings — platform configuration (CLAUDE.md §10/Part 18). Editors for the config
  * collection. Values shown are the live defaults; persistence wires to config/{doc} (admin-only). */
@@ -35,30 +36,145 @@ export function AdminSettingsPage() {
                 </Card>
               )
             if (active === 'Badges') return <BadgeCatalogCard />
-            if (active === 'Policies')
-              return (
-                <Card className="max-w-2xl space-y-3">
-                  <CardLabel>Platform policies</CardLabel>
-                  <Textarea label="Little Lamb policies (platform-wide)" rows={4} />
-                  <Textarea label="Family policies" rows={3} />
-                  <Textarea label="Nanny policies" rows={3} />
-                  <Button>Save policies</Button>
-                </Card>
-              )
+            if (active === 'Policies') return <PoliciesCard />
             if (active === 'Billing') return <BillingConfigCard />
 
-            return (
-              <Card className="max-w-lg space-y-4">
-                <CardLabel>Calendly integration</CardLabel>
-                <p className="text-sm text-ll-warm-gray">The interview scheduling link used in nanny status emails and the holding page.</p>
-                <Input label="Calendly link" defaultValue="https://calendly.com/littlelamb/interview" />
-                <Button>Save</Button>
-              </Card>
-            )
+            return <CalendlyCard />
           }}
         </Tabs>
       </PageBody>
     </>
+  )
+}
+
+/**
+ * The interview-scheduling link (config/calendly).
+ *
+ * This tab used to be an input with a hardcoded `defaultValue` and a Save button with no
+ * handler — so it displayed a URL that 404s as though it were configured, and typing a real
+ * one and clicking Save silently discarded it. NannyHoldingPage held a second copy of the
+ * same hardcoded string, free to drift from this one. Both now read config/calendly, and
+ * an empty value here means the holding page shows no button at all.
+ */
+function CalendlyCard() {
+  const { config, loading, save } = useCalendlyConfig()
+  const [url, setUrl] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setUrl(config.url)
+  }, [config])
+
+  async function onSave() {
+    setBusy(true)
+    setSaved(false)
+    setError(null)
+    try {
+      await save({ url: url.trim() })
+      setSaved(true)
+    } catch {
+      setError('Could not save the Calendly link. Check your connection and try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="max-w-lg space-y-4">
+      <CardLabel>Calendly integration</CardLabel>
+      <p className="text-sm text-ll-warm-gray">
+        The interview scheduling link used in nanny status emails and on the holding page.
+      </p>
+      <Input
+        label="Calendly link"
+        placeholder="https://calendly.com/your-account/interview"
+        hint="Leave blank until your Calendly is live — nannies see no booking button while it's empty, rather than a broken link."
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        disabled={loading}
+      />
+      {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+      {saved && <p className="text-sm font-semibold text-ll-sage-deep">Saved.</p>}
+      <Button onClick={onSave} loading={busy} disabled={loading}>Save</Button>
+    </Card>
+  )
+}
+
+/**
+ * Editable policy copy (config/policies) — the three blocks rendered on the shared
+ * Policies page. Previously three textareas with no value/onChange and a dead Save.
+ *
+ * Saved as plain text; the Policies page splits it on newlines into paragraphs and never
+ * renders it as markup.
+ */
+function PoliciesCard() {
+  const { policies, loading, save } = usePolicies()
+  const [draft, setDraft] = useState<Policies>(policies)
+  const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setDraft(policies)
+  }, [policies])
+
+  function edit(key: keyof Policies, value: string) {
+    setDraft((prev) => ({ ...prev, [key]: value }))
+    setSaved(false)
+  }
+
+  async function onSave() {
+    setBusy(true)
+    setSaved(false)
+    setError(null)
+    try {
+      await save({
+        platform: draft.platform.trim(),
+        family: draft.family.trim(),
+        nanny: draft.nanny.trim(),
+      })
+      setSaved(true)
+    } catch {
+      setError('Could not save the policies. Check your connection and try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="max-w-2xl space-y-3">
+      <CardLabel>Platform policies</CardLabel>
+      <p className="text-sm text-ll-warm-gray">
+        Shown on the Policies page for families and nannies. One rule per line — each line
+        becomes its own paragraph. Clearing a box restores the built-in default.
+      </p>
+      <Textarea
+        label="Little Lamb policies (platform-wide)"
+        rows={4}
+        value={draft.platform}
+        onChange={(e) => edit('platform', e.target.value)}
+        disabled={loading}
+      />
+      <Textarea
+        label="Family policies"
+        rows={3}
+        value={draft.family}
+        onChange={(e) => edit('family', e.target.value)}
+        disabled={loading}
+      />
+      <Textarea
+        label="Nanny policies"
+        rows={3}
+        value={draft.nanny}
+        onChange={(e) => edit('nanny', e.target.value)}
+        disabled={loading}
+      />
+      {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+      {saved && <p className="text-sm font-semibold text-ll-sage-deep">Saved.</p>}
+      <Button onClick={onSave} loading={busy} disabled={loading}>Save policies</Button>
+    </Card>
   )
 }
 
