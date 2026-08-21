@@ -40,6 +40,12 @@ const alerts: Growing = blank()
 const invoices: Growing = blank()
 
 vi.mock('../../hooks/useAdmin', () => ({
+  // The page reads its rates from config/billing rather than hardcoded constants, so this
+  // mock must supply them (see AdminBillingPage.rates.test.tsx for the rate behaviour itself).
+  useBillingConfig: () => ({
+    config: { subscriptionCents: 2500, perBookingCents: 100, enabled: false },
+    loading: false,
+  }),
   useAllBookings: () => bookings,
   useUsersByRole: () => ({ ...families, users: families.items }),
   useBillingAlerts: () => alerts,

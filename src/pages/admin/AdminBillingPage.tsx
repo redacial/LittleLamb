@@ -1,4 +1,4 @@
-import { useAllBookings, useUsersByRole, useBillingAlerts } from '../../hooks/useAdmin'
+import { useAllBookings, useUsersByRole, useBillingAlerts, useBillingConfig } from '../../hooks/useAdmin'
 import { useInvoices, invoiceDollars } from '../../hooks/useInvoices'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Tabs } from '../../components/Tabs'
@@ -8,8 +8,11 @@ import { money } from '../../lib/format'
 import { downloadCSV } from '../../lib/exporters'
 import type { Invoice } from '../../types'
 
-const SUBSCRIPTION = 25
-const PER_BOOKING = 1
+// Rates are NOT hardcoded here. config/billing is what the server actually charges from
+// (functions/src/billing/quarterlyCharge.ts loadRates), and Settings writes it — so a constant
+// would silently diverge from real charges the moment anyone changed the price. Worse on this
+// page than the others: these figures are exported to CSV and handed to a bookkeeper.
+// UNITS: the config stores CENTS; everything below this hook is DOLLARS.
 const DONATION_RATE = 0.1
 
 const STATUS_STYLE: Record<Invoice['status'], string> = {
@@ -87,6 +90,11 @@ export function AdminBillingPage() {
     loadingMore: loadingMoreInvoices,
     loadMore: loadMoreInvoices,
   } = useInvoices()
+  const { config: billingConfig } = useBillingConfig()
+  // Convert cents -> dollars exactly once. Everything downstream is dollars.
+  const SUBSCRIPTION = billingConfig.subscriptionCents / 100
+  const PER_BOOKING = billingConfig.perBookingCents / 100
+
   // Revenue here is counted off these arrays, so a capped read understates it.
   const partialData = bookingsTruncated || familiesTruncated || alertsTruncated
   const activeFamilies = families.filter((f) => f.approved).length
