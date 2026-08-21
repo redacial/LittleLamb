@@ -3,13 +3,13 @@
 **Start by reading:** `CLAUDE.md` (esp. § Testing — test-first is a hard rule), `DECISIONS.md`
 D66–D69, `session-log/2026-08-18-three-bugs-and-a-safe-lab.md`, then `git log --oneline -12`.
 
-**Branch:** `landing-page-prelaunch`. **13 commits unpushed.** Tree clean apart from `scratchpad/`.
+**Branch:** `landing-page-prelaunch`. **19 commits unpushed.** Tree clean apart from `scratchpad/`.
 
 ---
 
 ## State
 
-**Green: 92 client / 64 functions / 23 rules = 179.** tsc clean, lint 0, both builds OK.
+**Green: 132 client / 88 functions / 23 rules = 243.** tsc clean, lint 0, both builds OK.
 **Nothing is deployed. Nothing is public.** The apex still serves the pre-launch landing page.
 
 Verified against real infrastructure:
@@ -27,6 +27,28 @@ a $27.00 `dryRun` invoice with PDF, advanced the cycle 90 days, and delivered bo
 `status:sent` with **nothing leaving the machine**.
 
 ---
+
+---
+
+## 0. FIRST — finish the recurring checkbox (~30 min, everything else is ready)
+
+The tested logic landed in `35c8482`; only the UI control is missing, so `recurring: true` is still
+set nowhere and the whole recurring subsystem stays unreachable.
+
+The test-first draft is already written: `docs/wip/FamilyCalendarPage.recurring.test.tsx.draft`.
+Move it to `src/pages/family/FamilyCalendarPage.test.tsx`, confirm it fails for the right reason
+(`createBooking` never called), then add the checkbox gated on `resolveRecurring()` from
+`src/lib/recurring.ts`, then watch it pass. See `docs/wip/README.md`.
+
+## 0b. Two known bugs, documented and deliberately NOT fixed
+
+- **The webhook missing-invoice race** (`functions/src/billing/webhook.ts`). `markInvoice` does a
+  read-then-write and silently no-ops when the invoice doc doesn't exist, so a webhook that beats
+  `quarterlyCharge`'s `writeInvoice` **drops the paid status** and the invoice stays `pending`
+  forever though Stripe took the money. Pinned by a test asserting the current behavior. Fix before
+  billing goes live — it's a behavior change and deserves its own reviewed commit.
+- **The two money bugs in `Backlog.md`** (rates hardcoded in 3 UIs; `total` vs `totalCents`). Held
+  for David's review. The 100× warning lives on the `Invoice` type itself.
 
 ## 1. Stripe CLI — real signed webhooks locally (~1h)
 

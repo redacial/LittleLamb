@@ -133,3 +133,56 @@ guessed topic name. Calling the extracted function directly is strictly better: 
 3. Then Gate 2: push, deploy functions/rules, David's console tasks (Resend DNS, real webhook
    secret, first admin), E2E on `littlelamb-sb-app.web.app` with billing still dry-run.
 4. **Before billing ever goes live:** run `backfill:billing --prod` (reports before it writes).
+
+---
+
+## Wave 3 (later the same session) — four parallel agents, three more bugs
+
+Ran four agents on disjoint file sets. All four were killed mid-flight by the session limit, but
+their work survived and was triaged file-by-file rather than committed blind. **Three more bugs of
+the same "wiring exists but one end isn't connected" class:**
+
+### The 5th dead notification call site
+`assignNanny` bails before notifying unless passed `meta`, and its ONLY call site omitted it. A
+nanny claimed an open booking, it flipped to `confirmed`, and the family got **no email and no
+calendar invite** — the one path where the family doesn't already know a nanny is coming. So
+`open_booking_picked_up` was 100% dead in production. The test file that should have caught it
+mocked `assignNanny` and never asserted on it.
+
+### Same-day bookings were a guaranteed dead end
+Family books same-day → gets "we're checking" → lands on an admin banner **with no action
+buttons** → never hears back. Per David, same-day is now a **job board post** any nanny can claim:
+no admin matchmaking, families don't pick a nanny, Lucy emails nannies off-platform.
+
+Implemented by normalising the stored status to `open` rather than widening the client query —
+because `firestore.rules:166,192` hardcode `status in ['open','unmatched']`, so widening only the
+client would have rendered a claimable post that Firestore then rejects.
+
+### Recurring auto-cancel would have mass-cancelled pending requests
+Found while verifying the cancellation logic David asked about. The job skipped only `cancelled`
+bookings — but a **pending** recurring booking is pending *precisely because* it sits outside the
+nanny's hours, so `isCovered` is false for it by construction. The moment recurring became
+settable, every outstanding pending request entering the 48h window would have been auto-cancelled,
+emailing both parties that the nanny's "availability changed" when nothing had. Now only
+`confirmed` bookings can be auto-cancelled.
+
+### Also landed
+- **`webhook.ts`: 19 tests + a DI refactor.** It was the highest-risk untested module — money-
+  terminal, and it returns 200 even on handler error, so a bug there loses the Stripe event
+  permanently. Behavior deliberately unchanged; every test verified by mutation.
+  **Found and documented, not fixed:** `markInvoice` silently no-ops when the invoice doc doesn't
+  exist, so a webhook that beats `writeInvoice` **drops a paid status on the floor** and the
+  invoice stays `pending` forever though Stripe took the money.
+- **Calendly + policies config-driven.** The Calendly URL was a **live 404** shown at the single
+  most important moment in the nanny funnel; it now hides when unset rather than rendering a dead
+  link. Policies fall back per-field so a malformed config can never blank the page.
+- **Two money bugs documented, NOT fixed** at David's instruction (`dad5277`) — see Backlog.md.
+
+**Green: 132 client / 88 functions / 23 rules = 243** (was 179). 19 commits. Still nothing deployed.
+
+### Not finished
+`FamilyCalendarPage` never got its "Make this recurring" checkbox, so recurring is still
+unreachable. The tested logic layer landed; the test-first draft for the UI is preserved at
+`docs/wip/FamilyCalendarPage.recurring.test.tsx.draft` (kept out of the build — it fails to
+typecheck precisely because the control doesn't exist, which is the failure it should have).
+
