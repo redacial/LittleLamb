@@ -9,13 +9,27 @@
 
 export type CSVRow = Record<string, string | number>
 
-/** RFC-4180-ish: quote any field containing a comma, quote, CR or LF; double internal quotes. */
+/**
+ * RFC-4180-ish: quote any field containing a comma, quote, CR or LF; double internal quotes.
+ *
+ * Also neutralises spreadsheet formula injection. This CSV is opened in Excel/Sheets, where a
+ * leading =, + or @ makes the cell a FORMULA — and the values here include family names, which
+ * are user input. `=HYPERLINK("http://evil","Click")` in a name would become a live link in the
+ * bookkeeper's spreadsheet. Prefixing an apostrophe is the standard fix: the text displays
+ * unchanged and is never evaluated.
+ *
+ * A leading `-` is deliberately NOT neutralised: negative numbers are real accounting data
+ * (refunds, credits), and quoting them would corrupt every one of them. The formula risk from a
+ * bare `-` is negligible next to that, and numeric values never reach here as attacker input.
+ */
 function escapeField(value: string | number): string {
   const s = String(value ?? '')
-  if (/[",\r\n]/.test(s)) {
-    return `"${s.replace(/"/g, '""')}"`
+  const risky = typeof value === 'string' && /^[=+@]/.test(s)
+  const body = risky ? `'${s}` : s
+  if (/[",\r\n]/.test(body)) {
+    return `"${body.replace(/"/g, '""')}"`
   }
-  return s
+  return body
 }
 
 /**

@@ -92,20 +92,37 @@ describe('toCSV — shape', () => {
 })
 
 describe('toCSV — spreadsheet formula injection', () => {
-  // DOCUMENTING CURRENT BEHAVIOUR, NOT ENDORSING IT. This output is opened in Excel, where a
-  // leading =, +, - or @ makes the cell a FORMULA. A family display name of
-  // `=HYPERLINK("http://evil","Click")` becomes a live link in the bookkeeper's spreadsheet.
-  // toCSV does not neutralise these today. Changing that silently would alter every export's
-  // contents, so it is REPORTED rather than fixed here; these tests pin the status quo so a
-  // future fix is a deliberate, visible change to this file.
-  it.each(['=1+1', '+1', '-1', '@SUM(A1)'])('does NOT neutralise a leading %s today', (payload) => {
-    expect(lines(toCSV([{ name: payload }]))[1]).toBe(payload)
+  // This output is opened in Excel/Sheets, where a leading =, +, - or @ makes the cell a
+  // FORMULA rather than text. A family display name of `=HYPERLINK("http://evil","Click")`
+  // would become a live link in the bookkeeper's spreadsheet — the export is attacker-
+  // influenced, because names come from user input. toCSV now prefixes a single quote, the
+  // standard neutralisation: spreadsheets show the original text and never evaluate it.
+  it.each(['=1+1', '+1', '@SUM(A1)'])('neutralises a leading %s', (payload) => {
+    expect(lines(toCSV([{ name: payload }]))[1]).toBe(`'${payload}`)
   })
 
-  it('a formula payload containing a comma is still only comma-quoted', () => {
+  // `-` is deliberately excluded: see escapeField. Neutralising it would corrupt every
+  // negative figure in the accounting export, which is a certain harm against a marginal one.
+  it('leaves a leading - alone, string or number, so refunds survive the export', () => {
+    expect(lines(toCSV([{ a: '-1' }]))[1]).toBe('-1')
+    expect(lines(toCSV([{ a: -1 }]))[1]).toBe('-1')
+  })
+
+  it('neutralises a formula payload that also needs comma-quoting', () => {
     const csv = toCSV([{ name: '=HYPERLINK("http://x","Click")' }])
-    // Quoted because of the comma and quotes — but Excel still evaluates it as a formula.
-    expect(lines(csv)[1]).toBe('"=HYPERLINK(""http://x"",""Click"")"')
+    // Prefixed AND quoted: the quote goes inside the field, before the payload.
+    expect(lines(csv)[1]).toBe('"\'=HYPERLINK(""http://x"",""Click"")"')
+  })
+
+  it('leaves ordinary values completely alone', () => {
+    // A negative number is the case that matters: over-eager neutralisation would corrupt
+    // every refund and credit in the accounting export.
+    expect(lines(toCSV([{ a: 'The Ortegas', b: 'a-b', c: 'x=y' }]))[1]).toBe('The Ortegas,a-b,x=y')
+  })
+
+  it('does NOT neutralise a negative number, which is real accounting data', () => {
+    expect(lines(toCSV([{ amount: -42 }]))[1]).toBe('-42')
+    expect(lines(toCSV([{ amount: '-42.50' }]))[1]).toBe('-42.50')
   })
 })
 
