@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { AdminDashboard } from './AdminDashboard'
 
 // This suite guards ONE bug class on the admin home: a failed OR partial read rendering as a
@@ -120,5 +120,65 @@ describe('AdminDashboard — the queue must never lie about being empty', () => 
     expect(screen.queryByText(/nothing needs your attention/i)).not.toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent(/same-day booking/i)
     expect(screen.getByText(/The Hartleys/)).toBeInTheDocument()
+  })
+})
+
+describe('AdminDashboard — every control must actually do something', () => {
+  // D66: admin does NOT do matchmaking. The unmatched card carried an "Assign a nanny" button
+  // with no onClick — clicking it did nothing, silently. A control that looks live and isn't
+  // is worse than no control: Lucy clicks it, believes the family is handled, and moves on.
+  // The list itself stays (she still needs to SEE the queue to send her off-platform email);
+  // the button that lies does not.
+
+  const unmatched = {
+    id: 'b7',
+    status: 'unmatched',
+    familyName: 'The Ngs',
+    date: '2026-08-20',
+    startTime: '09:00',
+    endTime: '13:00',
+    address: '4 Anacapa St',
+  }
+
+  it('lists unmatched bookings for awareness', () => {
+    set(bookings, { items: [unmatched] })
+
+    render(<AdminDashboard />)
+
+    expect(screen.getByText(/The Ngs/)).toBeInTheDocument()
+    expect(screen.getByText(/4 Anacapa St/)).toBeInTheDocument()
+  })
+
+  it('offers NO dead "assign a nanny" control on an unmatched booking', () => {
+    set(bookings, { items: [unmatched] })
+
+    render(<AdminDashboard />)
+
+    expect(screen.queryByRole('button', { name: /assign a nanny/i })).not.toBeInTheDocument()
+  })
+
+  it('the same-day banner stays visible but presents no buttons', () => {
+    // Lucy needs to see same-day posts to email nannies off-platform. What she must NOT get
+    // is a button implying the platform will route it for her — nannies claim these
+    // themselves from their own dashboard now.
+    set(bookings, {
+      items: [
+        {
+          id: 'b1',
+          status: 'same_day_review',
+          familyName: 'The Hartleys',
+          date: '2026-08-12',
+          startTime: '15:00',
+          endTime: '18:00',
+          address: '12 Olive St',
+        },
+      ],
+    })
+
+    render(<AdminDashboard />)
+
+    const banner = screen.getByRole('alert')
+    expect(banner).toHaveTextContent(/The Hartleys/)
+    expect(within(banner).queryByRole('button')).not.toBeInTheDocument()
   })
 })

@@ -62,7 +62,6 @@ export function AdminDashboard() {
   const partialQueue = bookingsTruncated || nanniesTruncated || familiesTruncated
   const { approve, reject } = useAdminActions()
   const springIn = useSpringIn()
-  const btnHover = useButtonHover()
 
   const firstName = profile?.fullName?.split(' ')[0] ?? 'there'
   const queueCount =
@@ -134,8 +133,12 @@ export function AdminDashboard() {
           </div>
         )}
 
-        {/* 1. Same-day banner — the #1 action item, given real visual dominance:
-            terracotta-deep ground (AA-safe with white), alert sparkle, count up front. */}
+        {/* 1. Same-day banner — kept visually dominant, but it is now AWARENESS, not a queue.
+            Same-day bookings are posted to the nanny job board and claimed by whoever is free
+            (D66); admin does no matchmaking. Lucy still needs to SEE them, because she emails
+            nannies about urgent posts off-platform — so the banner stays and deliberately
+            carries NO buttons. It previously offered none either, but its copy promised
+            "manual processing" that no control on this page could perform. */}
         {sameDay.length > 0 && (
           <motion.div
             {...springIn}
@@ -152,7 +155,10 @@ export function AdminDashboard() {
             </div>
             <p className="mt-2 font-display text-display-md leading-tight">
               <span className="font-mono">{sameDay.length}</span> same-day booking
-              {sameDay.length > 1 ? 's' : ''} need manual processing
+              {sameDay.length > 1 ? 's' : ''} on the nanny board
+            </p>
+            <p className="mt-1.5 text-sm text-white/85">
+              Nannies claim these themselves. Email the group if one needs a nudge.
             </p>
             <div className="mt-4 space-y-2">
               {sameDay.map((b) => (
@@ -171,7 +177,11 @@ export function AdminDashboard() {
         )}
 
         <div className="space-y-8">
-          {/* 2. Unmatched bookings — action cards get the alive tilt + pop. */}
+          {/* 2. Unmatched bookings — awareness only. These sit on the nanny job board waiting
+              to be claimed, so there is nothing for admin to click: the "Assign a nanny" button
+              that used to live here had no onClick and did nothing, which is worse than no
+              button at all (Lucy clicks it, assumes the family is handled, moves on). The list
+              itself stays so she knows who is still waiting. */}
           <Section title="Unmatched bookings" count={unmatched.length}>
             {unmatched.length === 0 ? (
               <Empty>No unmatched bookings. Every request has a nanny.</Empty>
@@ -190,9 +200,6 @@ export function AdminDashboard() {
                         {formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)} · {b.address}
                       </p>
                     </div>
-                    <motion.div {...btnHover} className="inline-block">
-                      <Button size="sm" variant="secondary">Assign a nanny</Button>
-                    </motion.div>
                   </Card>
                 ))}
               </div>

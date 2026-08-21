@@ -136,9 +136,17 @@ export function NannyDashboard() {
                     {formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)} · {b.address}
                   </p>
                 </div>
+                {/*
+                  `b` is passed as meta for the same reason as the accept/decline handlers
+                  above: assignNanny's email branch is guarded on receiving it, so without it
+                  the booking flipped to confirmed and the family was emailed NOTHING. This
+                  was the worst of the five dead call sites — on every other path the family
+                  already chose the nanny, but an open post has no nanny attached, so
+                  open_booking_picked_up is the only thing telling them anyone is coming.
+                */}
                 <Button
                   size="sm"
-                  onClick={() => user && profile && assignNanny(b.id, user.uid, profile.fullName)}
+                  onClick={() => user && profile && assignNanny(b.id, user.uid, profile.fullName, b)}
                 >
                   Accept this booking
                 </Button>

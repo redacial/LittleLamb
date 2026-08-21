@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useBookingActions } from './useBookings'
+import { useBookingActions, createBooking } from './useBookings'
 import type { NotificationEvent } from '../lib/notifications'
 
 // D-BUG2/D-BUG3 regression suite.
@@ -21,6 +21,9 @@ import type { NotificationEvent } from '../lib/notifications'
 
 const notify = vi.fn<[NotificationEvent], Promise<void>>(() => Promise.resolve())
 const updateDoc = vi.fn(() => Promise.resolve())
+const addDoc = vi.fn<[unknown, Record<string, unknown>], Promise<{ id: string }>>(() =>
+  Promise.resolve({ id: 'new' }),
+)
 
 vi.mock('../lib/notifications', () => ({
   notify: (e: NotificationEvent) => notify(e),
@@ -32,7 +35,7 @@ vi.mock('firebase/firestore', () => ({
   where: vi.fn(() => ({})),
   orderBy: vi.fn(() => ({})),
   onSnapshot: vi.fn(() => () => {}),
-  addDoc: vi.fn(() => Promise.resolve({ id: 'new' })),
+  addDoc: (ref: unknown, data: Record<string, unknown>) => addDoc(ref, data),
   doc: vi.fn(() => ({})),
   updateDoc: (...a: unknown[]) => updateDoc(...(a as [])),
   serverTimestamp: vi.fn(() => 'ts'),
@@ -60,7 +63,20 @@ function soleEvent(): NotificationEvent {
 beforeEach(() => {
   notify.mockClear()
   updateDoc.mockClear()
+  addDoc.mockClear()
 })
+
+/** A new booking's input, minus the status under test. */
+const newBooking = {
+  familyId: 'f1',
+  familyName: 'The Ortegas',
+  nannyId: null,
+  nannyName: null,
+  date: '2026-09-04',
+  startTime: '15:00',
+  endTime: '19:00',
+  address: '5 Cliff Dr, Santa Barbara, CA',
+}
 
 describe('useBookingActions().setStatus — who gets emailed when', () => {
   it('a nanny ACCEPTING a request confirms the FAMILY', async () => {
@@ -113,5 +129,101 @@ describe('useBookingActions().setStatus — who gets emailed when', () => {
     await result.current.setStatus('b1', 'cancelled', meta)
 
     expect(soleEvent()).toMatchObject({ type: 'booking_cancelled_by_family', to: 'nanny' })
+  })
+})
+
+describe('useBookingActions().assignNanny — the family must be told a nanny is coming', () => {
+  // BUG 5, the fifth dead call site. assignNanny bails on `if (!meta) return` before firing
+  // open_booking_picked_up, and its only call site (NannyDashboard) omitted meta — so the
+  // booking flipped to `confirmed` and the family heard nothing at all. On this path the
+  // family never chose a nanny, so this email is the ONLY signal anyone is showing up.
+
+  it('enqueues open_booking_picked_up to the family, stamped with the claiming nanny', async () => {
+    const { result } = renderHook(() => useBookingActions())
+
+    await result.current.assignNanny('b9', 'n2', 'Marisol', { ...meta, nannyId: null, nannyName: null })
+
+    expect(soleEvent()).toMatchObject({
+      type: 'open_booking_picked_up',
+      to: 'family',
+      bookingId: 'b9',
+      familyId: 'f1',
+      // The claim overwrites the (empty) nanny fields on the post — the family is told WHO.
+      nannyId: 'n2',
+      nannyName: 'Marisol',
+      date: '2026-09-04',
+      address: '5 Cliff Dr, Santa Barbara, CA',
+    })
+  })
+
+  it('still writes the assignment when meta is missing, but that path emails nobody', async () => {
+    // Documents the guard that made the bug silent: the Firestore write succeeds either way,
+    // which is precisely why a missing email left no trace in the UI.
+    const { result } = renderHook(() => useBookingActions())
+
+    await result.current.assignNanny('b9', 'n2', 'Marisol')
+
+    expect(updateDoc).toHaveBeenCalled()
+    expect(notify).not.toHaveBeenCalled()
+  })
+})
+
+describe('createBooking — same-day bookings are job-board posts, not an admin dead end', () => {
+  // D66. `same_day_review` told the family "we're checking" via same_day_booking_outcome
+  // (outcome: 'pending') and then routed to an admin banner with NO ACTION BUTTONS — so the
+  // follow-up that promise implies could never be sent by anyone. A guaranteed dead end.
+  //
+  // Same-day is now a posting on the EXISTING nanny job board: any nanny can claim it, and
+  // claiming it fires open_booking_picked_up to the family (see assignNanny above).
+  //
+  // The normalisation happens HERE rather than in resolveBookingStatus because the board is
+  // defined by the stored `status` field: useOpenBookings queries status in ['open',
+  // 'unmatched'], and firestore.rules grants a nanny read+update on a booking that is not
+  // theirs by that same literal list. A `same_day_review` doc is unreadable and unclaimable
+  // by a nanny at the RULES layer, so widening the client query alone would have produced
+  // permission-denied, not a job board.
+
+  /** The doc fields written to Firestore by the last createBooking call. */
+  function written(): Record<string, unknown> {
+    expect(addDoc).toHaveBeenCalledTimes(1)
+    return addDoc.mock.calls[0][1]
+  }
+
+  it('stores a same-day booking as an `open` board post, not `same_day_review`', async () => {
+    await createBooking({ ...newBooking, status: 'same_day_review' })
+
+    // `open` is what both useOpenBookings and firestore.rules recognise as claimable.
+    expect(written()).toMatchObject({ status: 'open' })
+  })
+
+  it('drops any nanny the family picked — same-day is claimed, not assigned', async () => {
+    // A same-day request must not sit reserved against one nanny who may never see it;
+    // it goes to the whole board. The family cannot pick a nanny for same-day (D66).
+    await createBooking({ ...newBooking, nannyId: 'n1', nannyName: 'Priya', status: 'same_day_review' })
+
+    expect(written()).toMatchObject({ status: 'open', nannyId: null, nannyName: null })
+  })
+
+  it('does NOT promise a same-day family a follow-up nobody can send', async () => {
+    await createBooking({ ...newBooking, status: 'same_day_review' })
+
+    expect(notify).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'same_day_booking_outcome' }),
+    )
+  })
+
+  it('emails nobody on creation of a board post — the email comes when a nanny claims it', async () => {
+    await createBooking({ ...newBooking, status: 'same_day_review' })
+
+    expect(addDoc).toHaveBeenCalled()
+    expect(notify).not.toHaveBeenCalled()
+  })
+
+  it('leaves a normal confirmed booking untouched', async () => {
+    // Guard against the normalisation over-reaching: only same-day is rerouted.
+    await createBooking({ ...newBooking, nannyId: 'n1', nannyName: 'Priya', status: 'confirmed' })
+
+    expect(written()).toMatchObject({ status: 'confirmed', nannyId: 'n1' })
+    expect(soleEvent()).toMatchObject({ type: 'booking_auto_confirmed' })
   })
 })

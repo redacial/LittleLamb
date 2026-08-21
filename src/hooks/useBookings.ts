@@ -107,7 +107,40 @@ export interface CreateBookingInput {
   rateAgreed?: boolean
 }
 
-export async function createBooking(input: CreateBookingInput): Promise<string> {
+/**
+ * Same-day bookings are posted to the nanny job board rather than held for admin (D66).
+ *
+ * The old `same_day_review` route was a guaranteed dead end: it emailed the family
+ * `same_day_booking_outcome` with outcome 'pending' ("we're checking") and then surfaced on an
+ * admin banner that had NO action buttons — so the follow-up that promise implies could not be
+ * sent by anybody. The family was told to wait, and then never heard back.
+ *
+ * The fix reuses machinery that already exists rather than building admin matchmaking: an
+ * `open` booking is already rendered on the nanny dashboard as "Open bookings you can pick up"
+ * with a working Accept button, and claiming it emails the family (see assignNanny).
+ *
+ * Why normalise the stored status here instead of widening useOpenBookings' query to include
+ * 'same_day_review': the board is defined at the RULES layer, not just the client. firestore.rules
+ * grants a nanny read AND update on a booking that isn't theirs only when
+ * `status in ['open', 'unmatched']` — the same literal list the query uses. A `same_day_review`
+ * doc is therefore unreadable and unclaimable by a nanny no matter what the client asks for, so
+ * widening the query alone would have produced permission-denied rather than a job board. Mapping
+ * to `open` keeps firestore.rules untouched and makes the post claimable for real.
+ *
+ * Admin still SEES same-day work: these posts appear in the dashboard's unmatched/open section,
+ * which is what Lucy needs in order to email nannies about urgent posts off-platform. What she no
+ * longer gets is a control implying the platform will route it for her.
+ *
+ * The nanny is also cleared: a same-day request must not sit reserved against one nanny who may
+ * never open the app in time. Families do not pick a nanny for same-day — the board does.
+ */
+function routeSameDay(input: CreateBookingInput): CreateBookingInput {
+  if (input.status !== 'same_day_review') return input
+  return { ...input, status: 'open', nannyId: null, nannyName: null }
+}
+
+export async function createBooking(rawInput: CreateBookingInput): Promise<string> {
+  const input = routeSameDay(rawInput)
   const address = cleanLine(input.address, 300)
   const ref = await addDoc(collection(db, 'bookings'), {
     ...input,
@@ -124,10 +157,11 @@ export async function createBooking(input: CreateBookingInput): Promise<string> 
     fireNotify({ type: 'booking_auto_confirmed', to: 'family+nanny', ...base })
   } else if (input.status === 'pending') {
     fireNotify({ type: 'booking_request_sent', to: 'family+nanny', ...base })
-  } else if (input.status === 'same_day_review') {
-    fireNotify({ type: 'same_day_booking_outcome', to: 'family', outcome: 'pending', ...base })
   }
-  // open/unmatched: no email until a nanny picks it up (see assignNanny).
+  // open/unmatched (which now includes same-day): no email until a nanny picks it up. Staying
+  // silent here is deliberate — the only same-day template says "we're checking and will let you
+  // know", and nothing on the platform was ever going to send that follow-up. The family's real
+  // confirmation is open_booking_picked_up, fired by assignNanny when a nanny claims the post.
 
   return ref.id
 }
