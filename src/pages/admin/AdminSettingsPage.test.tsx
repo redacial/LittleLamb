@@ -20,6 +20,12 @@ const savePolicies = vi.fn(async () => {})
 // refire that effect on every keystroke and wipe what admin typed. Mirror the real shape.
 const calendly = { current: { url: '' } }
 const policies = { current: DEFAULT_POLICIES }
+// Same stability requirement, and it BITES here: BadgeCatalogCard syncs this into a draft with
+// `useEffect(..., [badges])`. Returning `[...SELF_BADGES, ...VERIFIED_BADGES]` inline from the
+// mock builds a new array identity every render, so the effect refires, setDraft re-renders,
+// and the test hangs until the worker runs out of memory. Badges is now the FIRST tab, so it
+// mounts in every render() in this file — hoist the array once.
+const BADGE_CATALOG = [...SELF_BADGES, ...VERIFIED_BADGES]
 
 vi.mock('../../hooks/useAdmin', () => ({
   useCalendlyConfig: () => ({ config: calendly.current, loading: false, save: saveCalendly }),
@@ -30,7 +36,7 @@ vi.mock('../../hooks/useAdmin', () => ({
     save: vi.fn(),
   }),
   useBadgeCatalog: () => ({
-    badges: [...SELF_BADGES, ...VERIFIED_BADGES],
+    badges: BADGE_CATALOG,
     self: SELF_BADGES,
     verified: VERIFIED_BADGES,
     loading: false,
@@ -119,5 +125,62 @@ describe('AdminSettingsPage — Policies tab', () => {
       family: 'Cancel 24h ahead.',
       nanny: 'Nanny text',
     })
+  })
+})
+
+// ---------------------------------------------------------------------------------------
+// The last two DEAD CHROME tabs. Both were `defaultValue` inputs over a Save button with no
+// onClick — Lucy could type a new password or rewrite an approval email, click Save, and lose
+// it with no error. Both were REMOVED rather than faked further:
+//
+//  - Account: a real password change needs Firebase Auth (reauthenticateWithCredential +
+//    updatePassword), which belongs in src/lib/auth.ts under this project's rule that UI never
+//    calls Firebase directly. Half-implementing it in the page — especially skipping
+//    reauthentication, which Firebase REQUIRES for a password change after a stale login —
+//    trades a silent no-op for a confusing auth/requires-recent-login error.
+//
+//  - Email templates: every subject and body is built by a hardcoded switch in
+//    functions/src/email/templates.ts. Nothing the tab saved could change a single sent email
+//    until the server reads a config doc, so the tab promised a capability that does not exist.
+//    It is replaced by an honest read-only note.
+//
+// These assert ABSENCE, so they are the kind of test that passes for the wrong reason if the
+// query is wrong. Each pairs the absence with a positive control proving the page rendered.
+
+describe('AdminSettingsPage — removed dead chrome', () => {
+  it('has no Account tab (password change was never wired to Firebase Auth)', () => {
+    render(<AdminSettingsPage />)
+
+    // Positive control: the tablist rendered, so a missing Account tab means removed, not unmounted.
+    expect(screen.getByRole('tab', { name: /badges/i })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /account/i })).not.toBeInTheDocument()
+  })
+
+  it('offers no password field on the tab that opens by default', () => {
+    // Account was the FIRST tab, so its password box was what Settings opened on. Asserting on
+    // the default tab (rather than clicking through all of them, which is what actually
+    // rendered the dead form) is the tightest check that it is gone.
+    render(<AdminSettingsPage />)
+
+    expect(screen.getByRole('tab', { name: /badges/i })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument()
+    expect(document.querySelector('input[type="password"]')).toBeNull()
+  })
+
+  it('has no editable email-template tab', () => {
+    render(<AdminSettingsPage />)
+
+    expect(screen.getByRole('tab', { name: /badges/i })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /email templates/i })).not.toBeInTheDocument()
+  })
+
+  it('says plainly that email copy is developer-managed, with nothing to click', async () => {
+    render(<AdminSettingsPage />)
+    await openTab(/emails/i)
+
+    expect(screen.getByText(/developer-managed/i)).toBeInTheDocument()
+    // The whole point: no control that looks like it saves.
+    expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 })

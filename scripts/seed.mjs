@@ -35,6 +35,13 @@ const NANNY3_UID = 'seed-nanny-003'
 // Pending applicants so the admin dashboard has approval actions to show.
 const PENDING_FAMILY_UID = 'seed-pending-family'
 const PENDING_NANNY_UID = 'seed-pending-nanny'
+// A second pending nanny parked at 'interview_scheduled'. The holding page's "Book your
+// interview slot" CTA renders only when stage === 'interview_scheduled' AND config/calendly
+// holds a URL. With only an under_review applicant seeded, that step of the funnel had TWO
+// independent reasons to render nothing, so a local walkthrough looked like a bug in the CTA
+// when the data simply never reached the stage. Seeding both stages makes the whole nanny
+// funnel visible without hand-advancing anyone in the admin UI.
+const INTERVIEW_NANNY_UID = 'seed-interview-nanny'
 
 const now = FieldValue.serverTimestamp()
 
@@ -96,6 +103,7 @@ async function seed() {
     upsertAuthUser({ uid: NANNY3_UID, email: 'nanny3@littlelamb.test', displayName: 'Grace Okafor' }),
     upsertAuthUser({ uid: PENDING_FAMILY_UID, email: 'pending-family@littlelamb.test', displayName: 'The Nguyen Family' }),
     upsertAuthUser({ uid: PENDING_NANNY_UID, email: 'pending-nanny@littlelamb.test', displayName: 'Ella Thompson' }),
+    upsertAuthUser({ uid: INTERVIEW_NANNY_UID, email: 'interview-nanny@littlelamb.test', displayName: 'Priya Raman' }),
   ])
 
   // ---- users/{uid} ----------------------------------------------------------------------
@@ -108,6 +116,9 @@ async function seed() {
     // Pending applicants — approved=false, status=pending (admin dashboard surfaces these).
     [PENDING_FAMILY_UID]: userDoc({ uid: PENDING_FAMILY_UID, role: 'family', email: 'pending-family@littlelamb.test', fullName: 'The Nguyen Family', phone: '805-555-0160', approved: false, status: 'pending', wizardComplete: false }),
     [PENDING_NANNY_UID]: userDoc({ uid: PENDING_NANNY_UID, role: 'nanny', email: 'pending-nanny@littlelamb.test', fullName: 'Ella Thompson', phone: '805-555-0161', approved: false, status: 'pending', wizardComplete: false, stage: 'under_review' }),
+    // Log in as this one to see the interview step of the holding page (needs config/calendly
+    // below to be set, which it now is).
+    [INTERVIEW_NANNY_UID]: userDoc({ uid: INTERVIEW_NANNY_UID, role: 'nanny', email: 'interview-nanny@littlelamb.test', fullName: 'Priya Raman', phone: '805-555-0162', approved: false, status: 'pending', wizardComplete: false, stage: 'interview_scheduled' }),
   }
   for (const [uid, data] of Object.entries(users)) {
     await db.collection('users').doc(uid).set(data)
@@ -277,11 +288,62 @@ async function seed() {
     ],
   })
 
+  // ---- config: calendly -----------------------------------------------------------------
+  // The one that actually caused confusion. useCalendlyConfig has NO default URL on purpose —
+  // an unset config means NannyHoldingPage hides the "Book your interview slot" CTA entirely,
+  // because a missing button is recoverable but a 404ing one burns the applicant. Correct in
+  // production, but it meant a local E2E showed no interview CTA and read as a broken feature.
+  // Seeding any non-empty URL makes the CTA render so the funnel is walkable locally.
+  //
+  // This placeholder does NOT resolve — it is a stand-in so the button appears, not a working
+  // booking page, and following it locally will 404. That is fine HERE and only here: this
+  // script is emulator-only, and the whole point of the empty-means-hidden rule is to protect
+  // real applicants, who never see this doc. Lucy sets the live link in Settings > Calendly,
+  // which writes this same doc in the real project.
+  await db.collection('config').doc('calendly').set({
+    url: 'https://calendly.com/littlelamb-demo/interview-placeholder',
+  })
+
+  // ---- config: billing ------------------------------------------------------------------
+  // Written EXPLICITLY rather than left to the hook's client-side default, so a local run
+  // exercises the real "config doc exists and says don't charge" path. enabled:false is the
+  // dry-run: quarterly billing computes totals and writes invoices but never touches a card.
+  // Leaving the doc absent tested the fallback instead of the thing production actually reads.
+  await db.collection('config').doc('billing').set({
+    subscriptionCents: 2500,
+    perBookingCents: 100,
+    enabled: false,
+  })
+
+  // ---- config: policies -----------------------------------------------------------------
+  // Mirrors DEFAULT_POLICIES in src/lib/policies.ts. Mirrored rather than imported because
+  // this script is plain node with no TS loader. The app falls back to the same copy per-field
+  // when the doc is missing, so this changes nothing visually — it seeds the doc admin edits
+  // on Settings > Policies, so the editor opens on real saved content instead of a fallback
+  // that silently reverts. Keep in sync with src/lib/policies.ts if that copy changes.
+  await db.collection('config').doc('policies').set({
+    platform: [
+      'Treat every member of the community with kindness and respect.',
+      'Communicate through the platform so the Little Lamb team can support you if anything comes up.',
+      'Every nanny is background-checked and personally interviewed before their profile goes live.',
+    ].join('\n'),
+    family: [
+      'Cancellations are made from your Calendar or Bookings page; your nanny is notified automatically.',
+      'Quarterly billing covers the platform — wages are arranged directly with your nanny.',
+    ].join('\n'),
+    nanny: [
+      'Keep your availability current so families only book times that work for you.',
+      'Cancellations are handled with the Little Lamb team — message us and we’ll take care of it.',
+    ].join('\n'),
+  })
+
   console.log('\nSeed complete. Temp accounts (password for all: ' + PASSWORD + '):')
   console.log('  Family : family@littlelamb.test')
   console.log('  Nanny  : nanny@littlelamb.test')
   console.log('  Admin  : admin@littlelamb.test')
-  console.log('\nPlus 2 extra nannies, 2 pending applicants, and sample bookings/invoices.')
+  console.log('  Nanny (interview stage) : interview-nanny@littlelamb.test')
+  console.log('\nPlus 2 extra nannies, 3 pending applicants, and sample bookings/invoices.')
+  console.log('Config seeded: badges, calendly, billing (enabled=false — dry run), policies.')
 }
 
 seed()

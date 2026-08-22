@@ -8,7 +8,30 @@ import { badgeLabel, badgeType } from '../../lib/badges'
 import { DAYS } from '../../components/onboarding/AvailabilityEditor'
 import { to12h } from '../../lib/format'
 
-/** Full nanny profile — shared by families and nannies. Booking buttons show for families only. */
+/**
+ * Full nanny profile — shared by families and nannies. Booking buttons show for families only.
+ *
+ * CLAUDE.md §11.2 Path B also specs a "Request outside hours" CTA here. It is deliberately NOT
+ * rendered yet. It previously existed as a secondary button with no onClick, which is the worst
+ * of the three options: a family looking at a nanny whose posted hours don't fit would click the
+ * button built for exactly that case and get nothing — no modal, no error, no navigation. On the
+ * surface whose entire job is turning interest into a booking, that reads as a broken site and
+ * loses the booking silently.
+ *
+ * A real implementation needs, roughly:
+ *   1. A modal collecting date + start/end time, pre-filled with a message the family can edit
+ *      (per the spec), validated against the same rules as the calendar booking flow.
+ *   2. A booking write that creates the request with status 'pending' and nannyId set — the
+ *      out-of-hours path, distinct from the auto-confirm path used when the slot is inside the
+ *      nanny's availability. That write lives in the booking hook another agent owns.
+ *   3. Notification on create: the nanny gets an accept/decline email, the family an
+ *      "awaiting reply" (CLAUDE.md §19). The accept/decline handling already exists on the
+ *      nanny Bookings page, so this only needs the request side.
+ *   4. Same-day guard: a same-day request routes to admin instead of the nanny (§11.5).
+ *
+ * Until that exists, families use "Book this nanny", which lands on the calendar with the nanny
+ * preselected and works today.
+ */
 export function NannyProfilePage() {
   const { id } = useParams()
   const { profile } = useAuth()
@@ -25,12 +48,9 @@ export function NannyProfilePage() {
         subtitle={nanny.yearsExperience ? `${nanny.yearsExperience} years of experience` : undefined}
         action={
           canBook ? (
-            <div className="flex gap-2">
-              <Link to={`/family/calendar?nanny=${nanny.uid}`}>
-                <Button>Book this nanny</Button>
-              </Link>
-              <Button variant="secondary">Request outside hours</Button>
-            </div>
+            <Link to={`/family/calendar?nanny=${nanny.uid}`}>
+              <Button>Book this nanny</Button>
+            </Link>
           ) : undefined
         }
       />

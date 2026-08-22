@@ -7,43 +7,78 @@ import { Badge, Select } from '../../components/ui'
 import { useBillingConfig, useBadgeCatalog, useCalendlyConfig, usePolicies } from '../../hooks/useAdmin'
 import type { Policies } from '../../lib/policies'
 
-/** Admin Settings — platform configuration (CLAUDE.md §10/Part 18). Editors for the config
- * collection. Values shown are the live defaults; persistence wires to config/{doc} (admin-only). */
+/**
+ * Admin Settings — platform configuration (CLAUDE.md §10/Part 18). Editors for the config
+ * collection. Every control on this page persists to config/{doc} (admin-only).
+ *
+ * Two tabs specced in CLAUDE.md are deliberately ABSENT rather than mocked up:
+ *
+ *  - **Account** (display name + password change). A password change is a Firebase Auth
+ *    operation, not a config write: it needs reauthenticateWithCredential before
+ *    updatePassword, because Firebase rejects a password change on a stale login with
+ *    auth/requires-recent-login. That belongs in src/lib/auth.ts alongside the other auth
+ *    operations — no page in this codebase imports firebase/auth directly. Until it is built
+ *    there, showing the form would be worse than showing nothing: admin types a new password,
+ *    clicks Save, and believes their account is now protected by a password that was never set.
+ *
+ *  - **Email templates**. Subjects and bodies are built by a hardcoded switch in
+ *    functions/src/email/templates.ts. Editing copy here could not change a single sent email
+ *    until the server reads a config doc, so the tab is replaced by an honest read-only note.
+ *
+ * Both were previously `defaultValue` inputs above a Save button with no onClick. Same
+ * reasoning as the removed "120+ families" claim: a control that looks like it works and does
+ * nothing is worse than no control, because it costs the user their trust as well as the edit.
+ */
 export function AdminSettingsPage() {
   return (
     <>
       <PageHeader title="Settings" subtitle="Configure how the platform behaves." />
       <PageBody>
-        <Tabs tabs={['Account', 'Email templates', 'Badges', 'Policies', 'Billing', 'Calendly']}>
+        <Tabs tabs={['Badges', 'Policies', 'Billing', 'Calendly', 'Emails']}>
           {(active) => {
-            if (active === 'Account')
-              return (
-                <Card className="max-w-lg space-y-4">
-                  <CardLabel>Account</CardLabel>
-                  <Input label="Display name" defaultValue="Admin" />
-                  <Input label="New password" type="password" autoComplete="new-password" />
-                  <Button>Save</Button>
-                </Card>
-              )
-            if (active === 'Email templates')
-              return (
-                <Card className="max-w-2xl space-y-3">
-                  <CardLabel>Automated emails</CardLabel>
-                  <p className="text-sm text-ll-warm-gray">Edit the copy for any automated email without a developer.</p>
-                  <Input label="Subject: Application approved" defaultValue="Welcome to Little Lamb, you’re approved!" />
-                  <Textarea label="Body" defaultValue="Hi {{name}}, your account is now live. Log in to finish your profile and start booking." />
-                  <Button>Save template</Button>
-                </Card>
-              )
             if (active === 'Badges') return <BadgeCatalogCard />
             if (active === 'Policies') return <PoliciesCard />
             if (active === 'Billing') return <BillingConfigCard />
+            if (active === 'Calendly') return <CalendlyCard />
 
-            return <CalendlyCard />
+            return <EmailCopyNote />
           }}
         </Tabs>
       </PageBody>
     </>
+  )
+}
+
+/**
+ * Read-only explanation of where automated email copy lives.
+ *
+ * This replaced an editable subject + body with a dead "Save template" button. Making it real
+ * is a SERVER change, not a client one: renderNotification() in functions/src/email/templates.ts
+ * builds every subject and body from a hardcoded switch, so anything saved from here would sit
+ * in Firestore unread while the emails went out unchanged — the most expensive kind of dead
+ * control, because admin would only discover it from a recipient.
+ *
+ * Deliberately contains no input and no button. The honest version of a capability you don't
+ * have is a sentence, not a disabled form.
+ */
+function EmailCopyNote() {
+  return (
+    <Card className="max-w-2xl space-y-3">
+      <CardLabel>Automated emails</CardLabel>
+      <p className="text-sm text-ll-ink">
+        Email copy is currently developer-managed — there’s nothing to edit here yet.
+      </p>
+      <p className="text-sm text-ll-warm-gray">
+        Approval and rejection notices, booking confirmations, application status updates and
+        quarterly invoices are all sent automatically. Their wording lives in the platform code
+        (<span className="font-mono text-mono-sm">functions/src/email/templates.ts</span>), so a
+        change to any of them is a quick developer task rather than something you can edit here.
+      </p>
+      <p className="text-sm text-ll-warm-gray">
+        The links these emails point to <em>are</em> yours to change: the interview booking link
+        lives on the Calendly tab, and the policy text they reference lives on the Policies tab.
+      </p>
+    </Card>
   )
 }
 
