@@ -102,3 +102,30 @@ several agents hit. Array hoisted to a stable const.
 3. ⚠️ The card path **cannot** be tested locally — `PaymentStep` falls back to a checkbox when Stripe
    is unconfigured, so `createSetupIntent`/`savePaymentMethod` have never run outside prod.
 4. Before billing ever goes live: `npm run backfill:billing -- --prod`.
+
+---
+
+## Follow-on (2026-08-23) — recurring is reachable, and the local E2E is clean
+
+**The recurring checkbox landed** (`eb978c9`), so `recurring: true` is finally settable and the
+whole subsystem — the hourly auto-cancel job, `findRecurringConflicts`, the template, the composite
+index — stops being dead code.
+
+The checkbox decides nothing itself: the live preview and the submit path both call the same
+`resolveRecurring()`, so a family can never lock a weekly slot a nanny never opened, and the page
+cannot drift from what the auto-cancel job believes "recurring" means. Refusals are explained
+*before* confirming (no nanny picked / outside their hours / booking still needs a reply) and always
+downgrade to a one-off rather than blocking. Verified by bypassing the gate — the availability and
+no-nanny tests fail immediately.
+
+**Local E2E verified end to end** against the full emulator stack:
+
+| Check | Result |
+|---|---|
+| Seed applies | ✅ 4 config docs + interview-stage nanny (the gaps that made local runs look broken) |
+| Billing dry-run | ✅ `invoiced: 1` — `totalCents: 2700`, `dryRun: true`, PDF rendered |
+| Mail pipeline | ✅ `status: sent`, both parents resolved |
+| Nothing left the machine | ✅ no-op transport engaged, **zero** Resend calls |
+
+**Green: 212 client / 95 functions / 23 rules = 330.**
+
