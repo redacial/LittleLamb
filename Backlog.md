@@ -1,5 +1,53 @@
 # Backlog.md — Resume Point
 
+## POST-MVP — family booking UX (found by David walking the app, 2026-08-23)
+
+Three findings from a real click-through of the family flow. **Deferred to post-MVP by David** —
+none of them block launch, but #1 is a correctness bug, not a polish item.
+
+### F1. Booking dates are not validated — a past date is accepted
+**Verified.** `resolveBookingStatus` (`src/lib/rates.ts:104`) only tests `date === today` to route
+same-day bookings; **nothing anywhere tests `date < today`.** `MonthGrid` uses `today` purely for
+styling (`:104`), so past days are clickable and bookable. David booked a date that had already
+passed and it went through.
+
+David's direction: **do not over-engineer it.** One rule module owning all booking-time rules —
+past-date rejection plus the 24h and 48h thresholds that are currently scattered or implicit:
+- the 48h recurring auto-cancel window (`functions/src/scheduled/recurringCore.ts`)
+- the same-day routing rule (`rates.ts:104`)
+- the 48h nanny self-cancel threshold, still an open item in CLAUDE.md
+
+Put them in one place with one set of tests so the client, the rules layer and the scheduled jobs
+can't drift. Block past dates at BOTH the calendar (don't let the day open) and `confirm()` —
+the UI guard is the courtesy, the submit guard is the correctness.
+
+### F2. Calendar should be week-first with a real day/hour grid
+Today it is month-only (`MonthGrid`), click-a-day, with no hour resolution — so a family cannot see
+how a day is actually laid out. Wanted: **weekly by default, expandable to monthly**, Google
+Calendar-style — the full day split by hour, with drag-and-drop to create and move events.
+
+Note CLAUDE.md §6.1 already specs Month/Week/Day/List toggles, so this is closing a spec gap rather
+than adding scope. The nanny calendar (§6.2) has the same requirement plus drag-to-set-availability,
+so build the grid as one shared component, not twice.
+
+### F3. No confirmation after booking — the family gets silence
+**Verified.** `confirm()` in `FamilyCalendarPage.tsx` closes the modal and clears state; there is no
+success message, and **no Toast component exists anywhere** in `src/components/ui/`. So a family
+clicks Confirm and just... watches the modal vanish.
+
+Needs to distinguish the outcomes, because they mean different things:
+- **confirmed** → "Booked — thank you!"
+- **pending** (outside the nanny's hours, or a rate mismatch) → "Sent to [nanny] to accept — we'll
+  email you either way."
+- **same-day/open** → "Posted for our nannies to pick up."
+
+`resolveBookingStatus` already returns exactly this distinction, so the copy can be driven off its
+result. A shared Toast in `components/ui/` is the reusable fix — several other flows (approve/reject,
+badge save, policy save) currently succeed just as silently.
+
+---
+
+
 ## ⚠️ HELD FOR DAVID'S REVIEW — two money-facing bugs (found 2026-08-18, NOT fixed)
 
 Both are verified and neither is fixed, at David's instruction. Both are display/consistency bugs
