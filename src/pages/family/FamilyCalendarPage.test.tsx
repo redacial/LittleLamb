@@ -14,7 +14,9 @@ import { FamilyCalendarPage } from './FamilyCalendarPage'
 // so it must never be created off a slot the nanny never opened, or off a request the nanny
 // has not yet accepted.
 
-const createBooking = vi.fn(() => Promise.resolve('new-booking-id'))
+// Typed with the one argument the page actually passes, so `calls[0][0]` is a real object
+// rather than `never` — the assertions below inspect the created booking's fields.
+const createBooking = vi.fn((_input: Record<string, unknown>) => Promise.resolve('new-booking-id'))
 
 // Monday 15:00–20:00 only. 2026-09-07 is a Monday; 2026-09-08 is a Tuesday.
 const MONDAY = '2026-09-07'
@@ -28,7 +30,7 @@ const nanny = {
 
 vi.mock('../../hooks/useBookings', () => ({
   useMyBookings: () => ({ bookings: [], loading: false }),
-  createBooking: (...args: unknown[]) => createBooking(...(args as [])),
+  createBooking: (input: Record<string, unknown>) => createBooking(input),
 }))
 
 vi.mock('../../hooks/useNannies', () => ({
@@ -99,10 +101,10 @@ describe('FamilyCalendarPage — "Make this recurring"', () => {
   it('creates the booking with recurring:true when the slot is inside the nanny’s weekly hours', async () => {
     // THE regression this whole feature exists for: before the checkbox, no code path in
     // src/ could ever produce recurring:true, so every downstream recurring feature was dead.
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     await openBookingModal(user, MONDAY)
 
-    await user.selectOptions(screen.getByLabelText(/nanny/i), 'n1')
+    await user.selectOptions(screen.getByLabelText('Nanny'), 'n1')
     await user.click(recurringBox())
     await user.click(screen.getByRole('button', { name: /confirm booking/i }))
 
@@ -118,14 +120,14 @@ describe('FamilyCalendarPage — "Make this recurring"', () => {
   it('does NOT set recurring when the day falls outside the nanny’s weekly availability', async () => {
     // Tuesday: the nanny opened Monday only. Silently creating a weekly Tuesday claim would
     // commit her to hours she never agreed to.
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     await openBookingModal(user, TUESDAY)
 
-    await user.selectOptions(screen.getByLabelText(/nanny/i), 'n1')
+    await user.selectOptions(screen.getByLabelText('Nanny'), 'n1')
     await user.click(recurringBox())
 
     // The family is told, in place, what will happen instead — not silently ignored.
-    expect(screen.getByText(/outside the weekly hours/i)).toBeInTheDocument()
+    expect(screen.getByText(/outside that nanny.s weekly hours/i)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /confirm booking/i }))
 
@@ -139,21 +141,21 @@ describe('FamilyCalendarPage — "Make this recurring"', () => {
 
   it('does NOT set recurring when no nanny was chosen', async () => {
     // An unmatched booking has nobody to recur WITH.
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     await openBookingModal(user, MONDAY)
 
     await user.click(recurringBox())
-    expect(screen.getByText(/need a specific nanny/i)).toBeInTheDocument()
+    expect(screen.getByText(/pick a specific nanny/i)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /confirm booking/i }))
     expect(createBooking.mock.calls[0][0]).toMatchObject({ recurring: false })
   })
 
   it('leaves recurring false when the box is never ticked', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     await openBookingModal(user, MONDAY)
 
-    await user.selectOptions(screen.getByLabelText(/nanny/i), 'n1')
+    await user.selectOptions(screen.getByLabelText('Nanny'), 'n1')
     await user.click(screen.getByRole('button', { name: /confirm booking/i }))
 
     expect(createBooking.mock.calls[0][0]).toMatchObject({ recurring: false })

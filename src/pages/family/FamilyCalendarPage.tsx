@@ -10,6 +10,7 @@ import { Modal, Button, Input, Textarea, Select, Avatar, StatusPill } from '../.
 import { formatDate, formatTimeRange } from '../../lib/format'
 import { cn } from '../../lib/cn'
 import { rangesOverlap, overlapWindow, formatRate, resolveBookingStatus } from '../../lib/rates'
+import { resolveRecurring } from '../../lib/recurring'
 import { RateDisclaimer } from '../../components/ui'
 import type { Booking } from '../../types'
 
@@ -31,11 +32,41 @@ export function FamilyCalendarPage() {
   const [end, setEnd] = useState('20:00')
   const [nannyId, setNannyId] = useState(params.get('nanny') ?? '')
   const [notes, setNotes] = useState('')
+  const [wantsRecurring, setWantsRecurring] = useState(false)
   const [busy, setBusy] = useState(false)
 
   // Live rate feedback for the nanny currently chosen in the booking modal.
   const selectedNanny = nannies.find((n) => n.uid === nannyId)
   const selectedRateOverlaps = rangesOverlap(family?.rateRange, selectedNanny?.rateRange)
+
+  // Preview the recurring decision live, through the SAME function confirm() calls, so the
+  // family is told a weekly slot won't be held BEFORE they commit rather than discovering it
+  // afterwards. Mirrors the status logic in confirm(); both come from one place on submit.
+  const previewWeekday = pickedDay ? new Date(pickedDay + 'T00:00').getDay() : -1
+  const previewBlock = selectedNanny?.availability?.find((a) => a.day === previewWeekday)
+  const previewWithinHours = !!previewBlock && start >= previewBlock.start && end <= previewBlock.end
+  const recurringPreview = pickedDay
+    ? resolveRecurring({
+        requested: wantsRecurring,
+        nannyId: selectedNanny?.uid ?? null,
+        availability: selectedNanny?.availability,
+        date: pickedDay,
+        startTime: start,
+        endTime: end,
+        status: resolveBookingStatus({
+          date: pickedDay,
+          today,
+          withinHours: previewWithinHours,
+          rateOverlaps: selectedRateOverlaps,
+        }),
+      })
+    : null
+
+  const RECURRING_REFUSAL: Record<string, string> = {
+    'no-nanny': 'Pick a specific nanny to hold a weekly slot — an open request has nobody to repeat with.',
+    'outside-availability': 'This time is outside that nanny\u2019s weekly hours, so we can\u2019t hold it every week. The booking will still be sent as a one-off request.',
+    'not-confirmed': 'We can only hold a weekly slot once a booking is confirmed. This one needs a reply first, so it will be booked as a one-off.',
+  }
 
   function changeMonth(delta: number) {
     const d = new Date(year, month + delta, 1)
@@ -53,6 +84,20 @@ export function FamilyCalendarPage() {
     // Rate check: do what this family will pay and what this nanny accepts overlap?
     const rateOverlaps = rangesOverlap(family?.rateRange, chosen?.rateRange)
     const status = resolveBookingStatus({ date: pickedDay, today, withinHours, rateOverlaps })
+
+    // A recurring booking is a standing weekly claim on this nanny's time, so the request is
+    // only granted when a named nanny's own availability covers the slot AND the booking
+    // resolved to confirmed. resolveRecurring owns that decision (and returns why it refused),
+    // so this page and the 48h auto-cancel job can never disagree about what "recurring" means.
+    const recurringDecision = resolveRecurring({
+      requested: wantsRecurring,
+      nannyId: chosen?.uid ?? null,
+      availability: chosen?.availability,
+      date: pickedDay,
+      startTime: start,
+      endTime: end,
+      status,
+    })
 
     // Snapshot the rate onto the booking so a later profile edit can't rewrite what was
     // agreed. When the ranges overlapped that window IS the agreement; when they didn't
@@ -74,6 +119,7 @@ export function FamilyCalendarPage() {
         address: family?.homeAddress ?? '',
         notes,
         status,
+        recurring: recurringDecision.recurring,
         ...(snapshot
           ? {
               rateMinCents: snapshot.minCents,
@@ -84,6 +130,7 @@ export function FamilyCalendarPage() {
       })
       setPickedDay(null)
       setNotes('')
+      setWantsRecurring(false)
     } finally {
       setBusy(false)
     }
@@ -163,6 +210,29 @@ export function FamilyCalendarPage() {
                 Same-day bookings are confirmed by our team. We will reach out shortly.
               </p>
             )}
+            <div className="space-y-2">
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={wantsRecurring}
+                  onChange={(e) => setWantsRecurring(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-ll-sage-deep"
+                />
+                <span className="text-sm text-ll-ink">
+                  Make this recurring
+                  <span className="block text-ll-warm-gray">
+                    Hold this same time every week with this nanny.
+                  </span>
+                </span>
+              </label>
+              {wantsRecurring && recurringPreview?.reason && (
+                // Say plainly that the weekly hold won't apply, and why. The booking still
+                // goes through as a one-off — this is a downgrade, never a block.
+                <p className="rounded-ll-input border-1.5 border-ll-terra-deep bg-ll-terra-light px-3 py-2 text-sm text-ll-ink">
+                  {RECURRING_REFUSAL[recurringPreview.reason]}
+                </p>
+              )}
+            </div>
             <Button className="w-full" onClick={confirm} loading={busy}>Confirm booking</Button>
           </div>
         </Modal>
