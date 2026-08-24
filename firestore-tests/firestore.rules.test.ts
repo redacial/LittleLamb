@@ -47,6 +47,17 @@ beforeEach(async () => {
   })
 })
 
+/**
+ * Dates relative to the machine clock. Hardcoded literals rot: a fixture written as
+ * '2026-09-01' silently becomes a PAST date once that day arrives, and would then be rejected
+ * by the very rule below — a test that passes today and fails next year for the wrong reason.
+ */
+function isoOffsetDays(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function as(uid: string | null) {
   return uid ? testEnv.authenticatedContext(uid).firestore() : testEnv.unauthenticatedContext().firestore()
 }
@@ -310,5 +321,61 @@ describe('mail createdBy attribution', () => {
     await assertFails(setDoc(doc(as(FAM), 'mail_quota', FAM), { day: '2026-08-11', count: 0 }))
     // Not even admin — this is server-only state, not an admin surface.
     await assertFails(getDoc(doc(as(ADMIN), 'mail_quota', FAM)))
+  })
+})
+
+// The rules layer is the only one a buggy or malicious client cannot bypass. The client
+// calendar refuses to open a past day and createBooking throws, but neither binds a direct
+// SDK write. A past-dated booking is not merely untidy: inside the nanny's hours it resolved
+// to 'confirmed' and emailed both parties a confirmation for childcare that never happened.
+describe('bookings — a past date cannot be written', () => {
+  it('rejects a booking dated yesterday', async () => {
+    await assertFails(
+      setDoc(doc(as(FAM), 'bookings', 'past1'), {
+        familyId: FAM,
+        date: isoOffsetDays(-1),
+        startTime: '15:00',
+        endTime: '19:00',
+      }),
+    )
+  })
+
+  it('rejects a booking dated well in the past', async () => {
+    await assertFails(
+      setDoc(doc(as(FAM), 'bookings', 'past2'), {
+        familyId: FAM,
+        date: '2020-01-01',
+        startTime: '15:00',
+        endTime: '19:00',
+      }),
+    )
+  })
+
+  it('allows today — same-day booking is supported, just routed to the job board', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(FAM), 'bookings', 'today1'), {
+        familyId: FAM,
+        date: isoOffsetDays(0),
+        startTime: '15:00',
+        endTime: '19:00',
+      }),
+    )
+  })
+
+  it('allows a future booking', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(FAM), 'bookings', 'future1'), {
+        familyId: FAM,
+        date: isoOffsetDays(7),
+        startTime: '15:00',
+        endTime: '19:00',
+      }),
+    )
+  })
+
+  it('rejects a booking with no date at all, rather than defaulting it open', async () => {
+    await assertFails(
+      setDoc(doc(as(FAM), 'bookings', 'nodate'), { familyId: FAM, startTime: '15:00' }),
+    )
   })
 })

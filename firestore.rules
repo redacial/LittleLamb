@@ -166,10 +166,40 @@ service cloud.firestore {
         || (hasRole('nanny') && existing().status in ['open', 'unmatched'])
       );
 
+      /**
+       * The booking must not be in the past. Mirrors isPastDate() in src/lib/bookingRules.ts —
+       * keep the two in step.
+       *
+       * This is the only layer a buggy or compromised client cannot bypass, and the failure it
+       * prevents is not cosmetic: a past date inside the nanny's hours used to resolve to
+       * 'confirmed' and email BOTH parties a confirmation for childcare that had already not
+       * happened.
+       *
+       * `date` is a "YYYY-MM-DD" string, so it is split into a timestamp and compared against
+       * request.time. The booking is accepted while request.time is before the END of that
+       * calendar day (+1d), which keeps today itself bookable — same-day is supported, just
+       * routed to the job board.
+       *
+       * request.time is UTC, so this is LENIENT by up to a day for a Pacific user and never
+       * rejects a legitimate booking. That looseness is deliberate: rules are the backstop
+       * against writes that bypass the client entirely, while the precise same-day routing
+       * decision belongs in application code, where the user's own timezone is known.
+       */
+      function bookingDateNotPast() {
+        return 'date' in incoming()
+          && incoming().date is string
+          && timestamp.value(request.time.toMillis()) < timestamp.date(
+               int(incoming().date.split('-')[0]),
+               int(incoming().date.split('-')[1]),
+               int(incoming().date.split('-')[2])
+             ) + duration.value(1, 'd');
+      }
+
       // Family creates its own booking request. Nanny/admin may not impersonate a family.
       allow create: if isSignedIn() && hasRole('family') && isApproved()
         && incoming().familyId == uid()
         && strMax('notes', 1000) && strMax('address', 300)
+        && bookingDateNotPast()
         && bookingRateOk();
 
       // The agreed rate is a SNAPSHOT of what both sides saw at booking time. Neither party
