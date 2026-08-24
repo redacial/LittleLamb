@@ -65,6 +65,17 @@ service cloud.firestore {
     // non-admin, non-approved pending account. They may update only safe self-service
     // fields — never role, approved, or status (those are admin-only transitions).
     match /users/{userId} {
+      // The original application answers captured at signup. Caps mirror LIMITS in
+      // src/lib/auth.ts — this is untrusted text from the public /apply form, so the
+      // server bounds it independently of whatever the client claims to have sanitized.
+      function applicationFieldsOk() {
+        return strMax('neighborhood', 120)
+          && strMax('children', 500)
+          && strMax('notes', 1000)
+          && strMax('yearsExperience', 60)
+          && strMax('personalStatement', 1000);
+      }
+
       allow get: if isSignedIn() && (uid() == userId || isAdmin());
       allow list: if isAdmin();
 
@@ -75,14 +86,17 @@ service cloud.firestore {
         && incoming().approved == false                // cannot self-approve
         && incoming().status == 'pending'
         && incoming().wizardComplete == false
-        && strMax('fullName', 80) && strMax('email', 254) && strMax('phone', 32);
+        && strMax('fullName', 80) && strMax('email', 254) && strMax('phone', 32)
+        && applicationFieldsOk();
 
       // Self updates: cannot touch role/approved/status (privilege fields).
       allow update: if isSignedIn() && uid() == userId
         && incoming().role == existing().role
         && incoming().approved == existing().approved
         && incoming().status == existing().status
-        && incoming().uid == existing().uid;
+        && incoming().uid == existing().uid
+        && strMax('fullName', 80) && strMax('email', 254) && strMax('phone', 32)
+        && applicationFieldsOk();
 
       // Admin updates: full control (approve/reject, advance nanny stage, etc.).
       allow update: if isAdmin();

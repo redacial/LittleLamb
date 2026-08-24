@@ -30,6 +30,26 @@ export interface UserDoc {
   referredBy?: string | null
   referralSource?: ReferralSource | null
   referralCode: string
+  /**
+   * The original application answers, captured at signup (CLAUDE.md §2.1 / §2.2) and kept
+   * verbatim so an admin can actually review the applicant before approving — the admin-only
+   * "original application fields" layer in the Admin flow doc §5/§6.
+   *
+   * These are a permanent snapshot of what the applicant submitted. The setup wizard writes
+   * its own richer, editable data to families/{uid} and nannies/{uid}; it never rewrites
+   * these. All are OPTIONAL — accounts created before this existed have none of them, and
+   * every reader must tolerate their absence.
+   */
+  /** Family applicants only. */
+  neighborhood?: string
+  /** Family applicants only — free text, e.g. "Two kids, ages 3 and 6". */
+  children?: string
+  /** Family applicants only — special needs or anything else they wanted us to know. */
+  notes?: string
+  /** Nanny applicants only — free text, not a number (people write "5+", "about 3"). */
+  yearsExperience?: string
+  /** Nanny applicants only. */
+  personalStatement?: string
   createdAt: Timestamp | null
   updatedAt: Timestamp | null
 }

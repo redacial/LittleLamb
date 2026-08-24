@@ -379,3 +379,102 @@ describe('bookings — a past date cannot be written', () => {
     )
   })
 })
+
+// ---- users: the application answers captured at signup -----------------------
+// The /apply form is PUBLIC and unauthenticated up to the moment the account is created,
+// so its free-text answers are untrusted. The client caps them (LIMITS in src/lib/auth.ts);
+// these tests pin that the server refuses oversized values independently, so a client that
+// skips sanitization cannot write unbounded text into the trust-critical users doc.
+describe('users — application fields', () => {
+  const NEW = 'applicant1'
+
+  /** A minimal valid self-created pending user doc, plus whatever the case is testing. */
+  function pendingUser(extra: Record<string, unknown>) {
+    return {
+      uid: NEW,
+      role: 'family',
+      email: 'a@example.com',
+      fullName: 'Dana Whitfield',
+      phone: '805-555-0142',
+      approved: false,
+      status: 'pending',
+      wizardComplete: false,
+      ...extra,
+    }
+  }
+
+  it('accepts a family application with neighborhood, children and notes', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(NEW), 'users', NEW), pendingUser({
+        neighborhood: 'The Mesa',
+        children: 'Two kids, ages 3 and 6',
+        notes: 'Peanut allergy.',
+      })),
+    )
+  })
+
+  it('accepts a nanny application with experience and a personal statement', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(NEW), 'users', NEW), pendingUser({
+        role: 'nanny',
+        yearsExperience: '5',
+        personalStatement: 'I have cared for toddlers for five years.',
+      })),
+    )
+  })
+
+  it('still accepts an account with no application fields at all', async () => {
+    // Google signups and every pre-existing account have none of these. Absence must stay legal.
+    await assertSucceeds(setDoc(doc(as(NEW), 'users', NEW), pendingUser({})))
+  })
+
+  it('rejects an over-long neighborhood', async () => {
+    await assertFails(
+      setDoc(doc(as(NEW), 'users', NEW), pendingUser({ neighborhood: 'N'.repeat(121) })),
+    )
+  })
+
+  it('rejects over-long children text', async () => {
+    await assertFails(
+      setDoc(doc(as(NEW), 'users', NEW), pendingUser({ children: 'C'.repeat(501) })),
+    )
+  })
+
+  it('rejects over-long notes', async () => {
+    await assertFails(
+      setDoc(doc(as(NEW), 'users', NEW), pendingUser({ notes: 'X'.repeat(1001) })),
+    )
+  })
+
+  it('rejects an over-long personal statement', async () => {
+    await assertFails(
+      setDoc(doc(as(NEW), 'users', NEW), pendingUser({
+        role: 'nanny',
+        personalStatement: 'S'.repeat(1001),
+      })),
+    )
+  })
+
+  it('rejects over-long yearsExperience', async () => {
+    await assertFails(
+      setDoc(doc(as(NEW), 'users', NEW), pendingUser({
+        role: 'nanny',
+        yearsExperience: '9'.repeat(61),
+      })),
+    )
+  })
+
+  it('rejects a self-update that grows an application field past the cap', async () => {
+    // The update rule guards these too — otherwise the cap is bypassed by writing a valid
+    // doc first and immediately editing it.
+    await assertFails(
+      setDoc(doc(as(FAM), 'users', FAM), {
+        uid: FAM,
+        role: 'family',
+        approved: true,
+        status: 'approved',
+        notes: 'X'.repeat(1001),
+      }),
+    )
+  })
+})

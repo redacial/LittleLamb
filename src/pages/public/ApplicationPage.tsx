@@ -10,7 +10,6 @@ import {
   isValidEmail,
   passwordError,
   cleanLine,
-  cleanText,
   cleanPhone,
 } from '../../lib/sanitize'
 import { useReferralCapture, clearCapturedReferral } from '../../hooks/useReferralCapture'
@@ -28,11 +27,12 @@ import { PublicShell } from './PublicShell'
  * account in the pending state via createAccount(), then the existing auth redirect carries
  * the user to their holding page.
  *
- * Important: createAccount() only persists name/email/phone/role/referral to users/{uid}.
- * The richer application fields (neighborhood, children, experience, statement, notes) are
- * collected here for UX completeness and re-collected by the setup wizard — they are NOT
- * persisted by createAccount, by design. We stash them in sessionStorage (best-effort) so a
- * future wizard can pre-fill, but nothing blocks on it.
+ * The application answers (neighborhood, children, notes / experience, statement) are passed
+ * to createAccount() and persisted onto users/{uid}. They used to be written to sessionStorage
+ * under 'll_application_draft', which NOTHING ever read — so the answers died with the tab and
+ * an admin approved applicants having seen only a name and an email. They are the substance of
+ * the application; they belong in the database. createAccount() sanitizes them at the write
+ * boundary (this form is public and unauthenticated).
  *
  * Theming note: this is a real form, so it stays clean and functional — straight borders on
  * inputs (wobble is marketing-only per DESIGN_SYSTEM.md). Warmth comes from the grain canvas,
@@ -44,8 +44,6 @@ const SOURCE_OPTIONS: { value: ReferralSource; label: string }[] = [
   { value: 'friend', label: 'A friend' },
   { value: 'other', label: 'Other' },
 ]
-
-const STASH_KEY = 'll_application_draft'
 
 export function ApplicationPage() {
   const { user, profile } = useAuth()
@@ -92,17 +90,16 @@ export function ApplicationPage() {
       ? null
       : source
 
-  /** Best-effort stash of the richer fields for the setup wizard to pre-fill later. */
-  function stashExtras() {
-    try {
-      const extras =
-        role === 'family'
-          ? { role, neighborhood: cleanLine(neighborhood, 120), children: cleanText(children, 500), notes: cleanText(notes, 1000) }
-          : { role, experience: cleanLine(experience, 60), statement: cleanText(statement, 1000) }
-      sessionStorage.setItem(STASH_KEY, JSON.stringify(extras))
-    } catch {
-      // Non-blocking — sessionStorage may be unavailable; the wizard re-collects anyway.
-    }
+  /**
+   * The application answers for the role currently selected. Only the active role's fields
+   * are returned: the two field sets share one form, so a user who types into the family
+   * fields and then switches to nanny must not have those stale answers filed against a
+   * nanny application. Sanitizing and length-capping happen in createAccount().
+   */
+  function applicationAnswers() {
+    return role === 'family'
+      ? { neighborhood, children, notes }
+      : { yearsExperience: experience, personalStatement: statement }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -118,7 +115,6 @@ export function ApplicationPage() {
 
     setBusy(true)
     try {
-      stashExtras()
       await createAccount({
         email: email.trim().toLowerCase(),
         password,
@@ -127,6 +123,7 @@ export function ApplicationPage() {
         role,
         referredBy: referralCode,
         referralSource,
+        ...applicationAnswers(),
       })
       clearCapturedReferral()
       // Redirect handled by the effect once the new profile snapshot arrives.
@@ -140,8 +137,11 @@ export function ApplicationPage() {
     setError(null)
     setBusy(true)
     try {
-      stashExtras()
-      await signInWithGoogle(role, { referredBy: referralCode, referralSource })
+      await signInWithGoogle(role, {
+        referredBy: referralCode,
+        referralSource,
+        ...applicationAnswers(),
+      })
       clearCapturedReferral()
     } catch (err) {
       setError(err instanceof FirebaseError ? friendlyAuthError(err.code) : 'Something went wrong.')
