@@ -8,6 +8,14 @@ export function homeRouteFor(profile: UserDoc | null): string {
 
   if (profile.role === 'admin') return '/admin'
 
+  // A decision that has already been made must never read as "still under review". `approved`
+  // alone cannot tell those apart — a rejected account is also `approved: false` — so branch on
+  // status FIRST. Getting this wrong strands the user on a page promising an email that, for a
+  // declined applicant, is never coming.
+  if (profile.status === 'rejected' || profile.status === 'inactive') {
+    return profile.role === 'nanny' ? '/nanny/declined' : '/family/declined'
+  }
+
   // Not yet approved by an admin -> role-specific holding page.
   if (!profile.approved) {
     return profile.role === 'nanny' ? '/nanny/pending' : '/family/pending'

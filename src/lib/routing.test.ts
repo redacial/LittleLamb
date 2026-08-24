@@ -61,3 +61,42 @@ describe('homeRouteFor', () => {
     )
   })
 })
+
+// homeRouteFor branched only on `approved`, never on `status` — so a REJECTED applicant was
+// routed to the same holding page as a pending one, which reads "We'll email you the moment
+// you're approved." Forever. And because platform email isn't live yet, the rejection email
+// that was supposed to tell them can't send either, so there was no other signal at all: a
+// family Lucy declined would keep checking back, and eventually call her to ask why.
+describe('homeRouteFor — a decision that has been made must not read as pending', () => {
+  it('routes a rejected family to its own page, not the review page', () => {
+    const route = homeRouteFor(makeUser({ role: 'family', approved: false, status: 'rejected' }))
+    expect(route).not.toBe('/family/pending')
+    expect(route).toBe('/family/declined')
+  })
+
+  it('routes a rejected nanny to its own page, not the review page', () => {
+    const route = homeRouteFor(makeUser({ role: 'nanny', approved: false, status: 'rejected' }))
+    expect(route).not.toBe('/nanny/pending')
+    expect(route).toBe('/nanny/declined')
+  })
+
+  // Deactivated is a different state from declined — the account was live and was turned off.
+  // It must not read as "still under review" either.
+  it('routes an inactive account away from the review page', () => {
+    const route = homeRouteFor(makeUser({ role: 'family', approved: false, status: 'inactive' }))
+    expect(route).not.toBe('/family/pending')
+  })
+
+  it('still routes a genuinely pending applicant to the review page', () => {
+    expect(homeRouteFor(makeUser({ role: 'family', approved: false, status: 'pending' }))).toBe(
+      '/family/pending',
+    )
+  })
+
+  // An admin re-instating someone must actually free them, so this is the recovery path.
+  it('lets a reinstated applicant back into the normal flow', () => {
+    expect(
+      homeRouteFor(makeUser({ role: 'family', approved: true, status: 'approved' })),
+    ).toBe('/family/setup')
+  })
+})

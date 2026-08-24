@@ -24,6 +24,43 @@ export function NannyHoldingPage() {
   const { config: calendly } = useCalendlyConfig()
   const calendlyUrl = calendly.url.trim()
 
+  // Live from AuthContext's onSnapshot — flips the moment an admin approves, with no refresh
+  // and no re-login. Without this the nanny keeps staring at a review tracker that has already
+  // finished, and platform email cannot tell her otherwise yet.
+  const approved = profile?.approved === true
+  const firstName = profile?.fullName?.split(' ')[0] ?? 'there'
+
+  if (approved) {
+    return (
+      <main className="min-h-screen bg-ll-cream">
+        <header className="flex items-center justify-between px-6 py-4">
+          <Logo />
+          <Button variant="ghost" size="sm" onClick={() => signOut()}>Log out</Button>
+        </header>
+        <div className="mx-auto max-w-xl px-6 py-12">
+          <p className="eyebrow font-mono text-ll-sage-deep">Application approved</p>
+          <h1 className="mt-2 text-display-md">You’re approved, {firstName} — welcome to the network</h1>
+          <p className="mt-3 text-ll-warm-gray">
+            Build your profile so Santa Barbara families can find you: a photo, a short bio, your
+            badges, and the hours you want to work.
+          </p>
+          <motion.div className="mt-8" {...springIn}>
+            <Card>
+              <h2 className="font-display text-display-sm">One more step</h2>
+              <p className="mt-1 text-sm text-ll-warm-gray">
+                Families see your profile before they book, so this is worth a few minutes. You
+                can stop and come back.
+              </p>
+              <Link to="/nanny/setup">
+                <Button className="mt-4">Continue to your profile</Button>
+              </Link>
+            </Card>
+          </motion.div>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="min-h-screen bg-ll-cream">
       <header className="flex items-center justify-between px-6 py-4">

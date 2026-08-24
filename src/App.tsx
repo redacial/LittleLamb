@@ -17,6 +17,7 @@ import { NannyInfoPage } from './pages/public/NannyInfoPage'
 import { ApplicationPage } from './pages/public/ApplicationPage'
 import { FamilyHoldingPage } from './pages/onboarding/FamilyHoldingPage'
 import { NannyHoldingPage } from './pages/onboarding/NannyHoldingPage'
+import { DeclinedPage } from './pages/onboarding/DeclinedPage'
 
 // Everything behind auth is code-split. Public routes above stay eager: they are the first
 // paint for real visitors, so pushing them into a lazy chunk would only add a round trip.
@@ -110,6 +111,7 @@ export function App() {
           {/* ---- Family ---- */}
           <Route element={<RequireRole roles={['family']} />}>
             <Route path="/family/pending" element={<FamilyHoldingPage />} />
+            <Route path="/family/declined" element={<DeclinedPage role="family" />} />
             <Route path="/family/setup" element={<FamilySetupWizard />} />
             <Route element={<RequireApprovedAndOnboarded />}>
               <Route element={<AppLayout />}>
@@ -128,6 +130,7 @@ export function App() {
           {/* ---- Nanny ---- */}
           <Route element={<RequireRole roles={['nanny']} />}>
             <Route path="/nanny/pending" element={<NannyHoldingPage />} />
+            <Route path="/nanny/declined" element={<DeclinedPage role="nanny" />} />
             <Route path="/nanny/setup" element={<NannySetupWizard />} />
             <Route element={<RequireApprovedAndOnboarded />}>
               <Route element={<AppLayout />}>

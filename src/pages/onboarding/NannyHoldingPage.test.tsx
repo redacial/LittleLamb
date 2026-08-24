@@ -1,95 +1,62 @@
+// Same bug as the family page: AuthContext's live snapshot flips `approved` the instant an
+// admin approves, but this page ignored it and kept showing the 4-step review tracker. With
+// platform email dark, an approved nanny had no way at all to learn the answer had arrived.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { NannyHoldingPage } from './NannyHoldingPage'
-import type { NannyStage } from '../../types'
 
-// The single most important moment in the nanny funnel: admin advances her to
-// "Interview scheduled" and her only call-to-action is the Calendly link. That URL was
-// HARDCODED to https://calendly.com/littlelamb/interview, which 404s — so the CTA was a
-// dead link in production, and a second hardcoded copy sat in AdminSettingsPage where the
-// two could silently drift.
-//
-// The behaviour these tests pin: with no URL configured the button is HIDDEN, not rendered
-// pointing at nothing. A broken CTA is worse than no CTA — the nanny clicks, hits a 404,
-// and concludes Little Lamb is broken. Same principle as the fabricated-social-proof fix.
-
-const calendly = { url: '' }
-
+const profile = {
+  current: {
+    fullName: 'Priya Raman',
+    role: 'nanny',
+    status: 'pending',
+    approved: false,
+    stage: 'under_review',
+  },
+}
+vi.mock('../../context/AuthContext', () => ({ useAuth: () => ({ profile: profile.current }) }))
+vi.mock('../../lib/auth', () => ({ signOut: vi.fn() }))
 vi.mock('../../hooks/useAdmin', () => ({
-  useCalendlyConfig: () => ({ config: { url: calendly.url }, loading: false, save: vi.fn() }),
+  useCalendlyConfig: () => ({ config: { url: '' }, loading: false }),
 }))
 
-const auth = { stage: 'interview_scheduled' as NannyStage }
-
-vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({
-    profile: { fullName: 'Maria Reyes', stage: auth.stage },
-    user: { uid: 'n1' },
-  }),
-}))
+const show = () => render(<MemoryRouter><NannyHoldingPage /></MemoryRouter>)
 
 beforeEach(() => {
-  calendly.url = ''
-  auth.stage = 'interview_scheduled'
+  profile.current = {
+    fullName: 'Priya Raman',
+    role: 'nanny',
+    status: 'pending',
+    approved: false,
+    stage: 'under_review',
+  }
 })
 
-function renderPage() {
-  return render(
-    <MemoryRouter>
-      <NannyHoldingPage />
-    </MemoryRouter>,
-  )
-}
+describe('NannyHoldingPage — while pending', () => {
+  it('shows where she is in the review', () => {
+    show()
+    expect(screen.getByText(/where you are in our review/i)).toBeInTheDocument()
+  })
+})
 
-const bookButton = () => screen.queryByRole('button', { name: /book your interview/i })
-
-describe('NannyHoldingPage — the Calendly CTA', () => {
-  it('hides the interview button entirely when no Calendly link is configured', () => {
-    calendly.url = ''
-
-    renderPage()
-
-    expect(bookButton()).not.toBeInTheDocument()
+describe('NannyHoldingPage — the moment approval lands', () => {
+  beforeEach(() => {
+    profile.current = { ...profile.current, status: 'approved', approved: true }
   })
 
-  it('never renders a link with an empty or placeholder href when unconfigured', () => {
-    // Belt and braces: the button could be hidden while an empty <a> wrapper survives,
-    // which is still a dead click target.
-    calendly.url = ''
-
-    const { container } = renderPage()
-
-    for (const a of container.querySelectorAll('a')) {
-      expect(a.getAttribute('href')).toBeTruthy()
-      expect(a.getAttribute('href')).not.toMatch(/calendly/i)
-    }
+  it('stops showing the review tracker', () => {
+    show()
+    expect(screen.queryByText(/where you are in our review/i)).not.toBeInTheDocument()
   })
 
-  it('treats a whitespace-only configured link as unconfigured', () => {
-    calendly.url = '   '
-
-    renderPage()
-
-    expect(bookButton()).not.toBeInTheDocument()
+  it('tells her she is approved, without a re-login', () => {
+    show()
+    expect(screen.getByRole('heading', { name: /you.re approved/i })).toBeInTheDocument()
   })
 
-  it('shows the button pointing at the configured link once admin sets one', () => {
-    calendly.url = 'https://calendly.com/lucy-littlelamb/30min'
-
-    renderPage()
-
-    const btn = bookButton()
-    expect(btn).toBeInTheDocument()
-    expect(btn?.closest('a')).toHaveAttribute('href', 'https://calendly.com/lucy-littlelamb/30min')
-  })
-
-  it('does not show the interview CTA before the interview stage, even when configured', () => {
-    calendly.url = 'https://calendly.com/lucy-littlelamb/30min'
-    auth.stage = 'under_review'
-
-    renderPage()
-
-    expect(bookButton()).not.toBeInTheDocument()
+  it('gives her the way forward', () => {
+    show()
+    expect(screen.getByRole('link', { name: /continue/i })).toBeInTheDocument()
   })
 })
