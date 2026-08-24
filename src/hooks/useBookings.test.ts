@@ -258,3 +258,33 @@ describe('createBooking — refuses a booking in the past', () => {
     expect(addDoc).toHaveBeenCalledTimes(1)
   })
 })
+
+// David's 24h minimum-lead-time rule. A booking starting inside MIN_LEAD_HOURS must not
+// auto-confirm against a nanny who may never open the app in time; it goes to the job board to
+// be claimed, exactly like same-day. Same destination, wider window — a threshold change to the
+// routing that already exists, not a new path.
+describe('createBooking — short-notice bookings go to the job board', () => {
+  /** A date/time exactly `hours` from now, as the booking fields. */
+  function inHours(hours: number) {
+    const d = new Date(Date.now() + hours * 3_600_000)
+    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const startTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    return { date, startTime }
+  }
+
+  it('reroutes a confirmed booking starting in 3 hours to `open`', async () => {
+    await createBooking({ ...newBooking, ...inHours(3), status: 'confirmed' })
+    expect(addDoc.mock.calls[0][1]).toMatchObject({ status: 'open', nannyId: null })
+  })
+
+  it('does not email a confirmation for a short-notice booking', async () => {
+    await createBooking({ ...newBooking, ...inHours(3), status: 'confirmed' })
+    // booking_auto_confirmed would tell a family a nanny is coming when nobody has accepted.
+    expect(notify).not.toHaveBeenCalled()
+  })
+
+  it('leaves a booking well outside the lead window confirmed', async () => {
+    await createBooking({ ...newBooking, ...inHours(72), status: 'confirmed' })
+    expect(addDoc.mock.calls[0][1]).toMatchObject({ status: 'confirmed' })
+  })
+})

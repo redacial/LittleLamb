@@ -135,8 +135,13 @@ export interface CreateBookingInput {
  * The nanny is also cleared: a same-day request must not sit reserved against one nanny who may
  * never open the app in time. Families do not pick a nanny for same-day — the board does.
  */
-function routeSameDay(input: CreateBookingInput): CreateBookingInput {
-  if (input.status !== 'same_day_review') return input
+function routeSameDay(input: CreateBookingInput, shortNotice: boolean): CreateBookingInput {
+  // Short notice is routed the same way, and for the same reason: inside MIN_LEAD_HOURS a
+  // booking must not auto-confirm against a nanny who may never open the app in time. Only a
+  // would-be `confirmed` booking is downgraded — `pending` already awaits a human, and an
+  // open/unmatched post is already on the board.
+  const needsBoard = input.status === 'same_day_review' || (shortNotice && input.status === 'confirmed')
+  if (!needsBoard) return input
   return { ...input, status: 'open', nannyId: null, nannyName: null }
 }
 
@@ -150,7 +155,7 @@ export async function createBooking(rawInput: CreateBookingInput): Promise<strin
     throw new Error(`Cannot book ${rawInput.date}: that date is in the past.`)
   }
 
-  const input = routeSameDay(rawInput)
+  const input = routeSameDay(rawInput, guard.shortNotice)
   const address = cleanLine(input.address, 300)
   const ref = await addDoc(collection(db, 'bookings'), {
     ...input,
