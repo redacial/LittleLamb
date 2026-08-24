@@ -14,6 +14,7 @@ import {
 import { db } from '../lib/firebase'
 import { cleanLine, cleanText } from '../lib/sanitize'
 import { notify, type NotificationEvent } from '../lib/notifications'
+import { canBook } from '../lib/bookingRules'
 import type { Booking, BookingStatus } from '../types'
 
 /** Minimal booking fields the email stubs reference. Optional so existing callers don't break. */
@@ -140,6 +141,15 @@ function routeSameDay(input: CreateBookingInput): CreateBookingInput {
 }
 
 export async function createBooking(rawInput: CreateBookingInput): Promise<string> {
+  // Defence in depth. The calendar already refuses to open a past day, but this is the only
+  // client path that writes a booking, so it validates independently — a UI regression, a
+  // stale tab, or an admin flow must not be able to create a booking in the past. Throwing
+  // (rather than silently returning) keeps callers honest: they must handle it.
+  const guard = canBook({ date: rawInput.date, startTime: rawInput.startTime })
+  if (!guard.ok) {
+    throw new Error(`Cannot book ${rawInput.date}: that date is in the past.`)
+  }
+
   const input = routeSameDay(rawInput)
   const address = cleanLine(input.address, 300)
   const ref = await addDoc(collection(db, 'bookings'), {

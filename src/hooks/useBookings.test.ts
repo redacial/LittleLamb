@@ -227,3 +227,34 @@ describe('createBooking — same-day bookings are job-board posts, not an admin 
     expect(soleEvent()).toMatchObject({ type: 'booking_auto_confirmed' })
   })
 })
+
+// The write path had ZERO date validation. It sanitized address and notes and routed same-day,
+// but never looked at `date` — so a past date reached Firestore and, if it fell inside the
+// nanny's hours, arrived as `confirmed` and emailed both parties a confirmation for childcare
+// that had already not happened. The grid guard is the courtesy; this is the correctness.
+describe('createBooking — refuses a booking in the past', () => {
+  const YESTERDAY = '2020-01-01' // safely past regardless of when the suite runs
+
+  it('throws rather than writing a past-dated booking', async () => {
+    await expect(createBooking({ ...newBooking, date: YESTERDAY, status: 'confirmed' })).rejects.toThrow(
+      /past/i,
+    )
+  })
+
+  it('writes nothing to Firestore when it refuses', async () => {
+    await createBooking({ ...newBooking, date: YESTERDAY, status: 'confirmed' }).catch(() => {})
+    expect(addDoc).not.toHaveBeenCalled()
+  })
+
+  it('sends no email when it refuses — the bug emailed BOTH parties', async () => {
+    await createBooking({ ...newBooking, date: YESTERDAY, status: 'confirmed' }).catch(() => {})
+    expect(notify).not.toHaveBeenCalled()
+  })
+
+  it('still accepts a future booking', async () => {
+    await expect(
+      createBooking({ ...newBooking, date: '2099-01-01', status: 'confirmed' }),
+    ).resolves.toBeTruthy()
+    expect(addDoc).toHaveBeenCalledTimes(1)
+  })
+})

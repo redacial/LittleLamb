@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { cn } from '../../lib/cn'
+import { isPastDate } from '../../lib/bookingRules'
 import type { Booking } from '../../types'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -102,6 +103,10 @@ export function MonthGrid({
           if (day === null) return <div key={i} className="min-h-20 border-b border-r border-ll-cream-dark bg-ll-cream" />
           const date = ymd(year, month, day)
           const isToday = date === today
+          // A day that has already passed cannot be booked (see src/lib/bookingRules.ts), so
+          // don't offer it. Disabling also kills the drag handlers, so a drag can neither
+          // start on nor sweep through a past day.
+          const isPast = isPastDate(date, today)
           const dayBookings = byDate.get(date) ?? []
           const selected = inRange(day)
           return (
@@ -109,7 +114,8 @@ export function MonthGrid({
               key={i}
               type="button"
               aria-pressed={selected}
-              onPointerDown={() => startDrag(day)}
+              disabled={isPast}
+              onPointerDown={() => !isPast && startDrag(day)}
               onPointerEnter={() => dragging && setHover(day)}
               onPointerUp={() => endDrag()}
               // Keyboard activation (Enter/Space) never starts a drag → single-day pick.
@@ -121,7 +127,13 @@ export function MonthGrid({
               }}
               className={cn(
                 'min-h-20 border-b border-r border-ll-cream-dark p-1.5 text-left transition-colors',
-                selected ? 'bg-ll-sage-light' : 'hover:bg-ll-sage-light/60',
+                // Muted and non-interactive rather than merely inert — a dead control that
+                // still looks live is the worse experience.
+                isPast
+                  ? 'cursor-not-allowed bg-ll-cream text-ll-warm-gray/60'
+                  : selected
+                    ? 'bg-ll-sage-light'
+                    : 'hover:bg-ll-sage-light/60',
               )}
             >
               <span className={cn('inline-grid h-6 w-6 place-items-center rounded-full text-sm', isToday && 'bg-ll-ink text-ll-cream font-bold')}>
