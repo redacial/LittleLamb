@@ -11,6 +11,7 @@ import { Grain, Sparkle } from '../../components/theme'
 import { useButtonHover } from '../../lib/motion'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import type { Booking } from '../../types'
+import { todayISO } from '../../lib/bookingRules'
 
 export function NannyDashboard() {
   const { profile, user } = useAuth()
@@ -22,7 +23,7 @@ export function NannyDashboard() {
   const btnHover = useButtonHover()
 
   const firstName = profile?.fullName?.split(' ')[0] ?? 'there'
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
   const upcoming = bookings
     .filter((b) => b.status === 'confirmed' && b.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))

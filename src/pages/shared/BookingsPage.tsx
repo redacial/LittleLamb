@@ -8,6 +8,7 @@ import { Card, Button, StatusPill, RateDisclaimer } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import { formatRate } from '../../lib/rates'
 import type { Booking, BookingStatus } from '../../types'
+import { todayISO } from '../../lib/bookingRules'
 
 /**
  * The booking fields every notification email needs to address and describe itself. Mirrors the
@@ -101,7 +102,7 @@ function BookingRow({
 }) {
   // Past = the session date has passed and it was confirmed or cancelled — reviewable at any time.
   const isPast =
-    b.date < new Date().toISOString().slice(0, 10) &&
+    b.date < todayISO() &&
     (b.status === 'confirmed' || b.status === 'cancelled')
   return (
     <Card className="flex flex-wrap items-center justify-between gap-3">

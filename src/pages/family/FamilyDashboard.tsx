@@ -11,9 +11,10 @@ import { Grain, Sparkle } from '../../components/theme'
 import { useButtonHover } from '../../lib/motion'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import type { Booking } from '../../types'
+import { todayISO } from '../../lib/bookingRules'
 
 function isUpcoming(b: Booking) {
-  return b.status !== 'cancelled' && b.date >= new Date().toISOString().slice(0, 10)
+  return b.status !== 'cancelled' && b.date >= todayISO()
 }
 
 export function FamilyDashboard() {
@@ -36,7 +37,7 @@ export function FamilyDashboard() {
   const next = upcoming[0]
   const thisQuarter = bookings.filter((b) => b.status === 'confirmed').length
   // Review prompts: confirmed bookings whose date has passed.
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
   const toReview = bookings
     .filter((b) => b.status === 'confirmed' && b.date < today && !skipped.has(b.id))
     .slice(0, 3)

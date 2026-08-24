@@ -13,6 +13,7 @@ import { rangesOverlap, overlapWindow, formatRate, resolveBookingStatus } from '
 import { resolveRecurring } from '../../lib/recurring'
 import { RateDisclaimer } from '../../components/ui'
 import type { Booking } from '../../types'
+import { todayISO, isWithinAvailability } from '../../lib/bookingRules'
 
 export function FamilyCalendarPage() {
   const { user, profile } = useAuth()
@@ -22,7 +23,7 @@ export function FamilyCalendarPage() {
   const { nannies } = useNannyDirectory()
 
   const now = new Date()
-  const today = now.toISOString().slice(0, 10)
+  const today = todayISO(now)
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
 
@@ -42,9 +43,9 @@ export function FamilyCalendarPage() {
   // Preview the recurring decision live, through the SAME function confirm() calls, so the
   // family is told a weekly slot won't be held BEFORE they commit rather than discovering it
   // afterwards. Mirrors the status logic in confirm(); both come from one place on submit.
-  const previewWeekday = pickedDay ? new Date(pickedDay + 'T00:00').getDay() : -1
-  const previewBlock = selectedNanny?.availability?.find((a) => a.day === previewWeekday)
-  const previewWithinHours = !!previewBlock && start >= previewBlock.start && end <= previewBlock.end
+  const previewWithinHours = pickedDay
+    ? isWithinAvailability(selectedNanny?.availability, pickedDay, start, end)
+    : false
   const recurringPreview = pickedDay
     ? resolveRecurring({
         requested: wantsRecurring,
@@ -78,9 +79,9 @@ export function FamilyCalendarPage() {
     if (!user || !profile || !pickedDay) return
     const chosen = nannies.find((n) => n.uid === nannyId)
     // Within-hours check: does the nanny have an availability block covering this weekday/time?
-    const weekday = new Date(pickedDay + 'T00:00').getDay()
-    const block = chosen?.availability?.find((a) => a.day === weekday)
-    const withinHours = !!block && start >= block.start && end <= block.end
+    // Same helper the preview above uses, so the two can never disagree about the very
+    // question the modal is previewing.
+    const withinHours = isWithinAvailability(chosen?.availability, pickedDay, start, end)
     // Rate check: do what this family will pay and what this nanny accepts overlap?
     const rateOverlaps = rangesOverlap(family?.rateRange, chosen?.rateRange)
     const status = resolveBookingStatus({ date: pickedDay, today, withinHours, rateOverlaps })

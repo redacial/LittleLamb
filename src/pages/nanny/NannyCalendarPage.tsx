@@ -9,6 +9,7 @@ import { Card, CardLabel, Button } from '../../components/ui'
 import { DAYS } from '../../components/onboarding/AvailabilityEditor'
 import { to12h } from '../../lib/format'
 import { cn } from '../../lib/cn'
+import { todayISO } from '../../lib/bookingRules'
 
 /** Nanny calendar — booked sessions in the month grid + a read-out of weekly availability. */
 export function NannyCalendarPage() {
@@ -17,7 +18,7 @@ export function NannyCalendarPage() {
   const { profile: nanny } = useNannyProfile(user?.uid)
 
   const now = new Date()
-  const today = now.toISOString().slice(0, 10)
+  const today = todayISO(now)
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
 
