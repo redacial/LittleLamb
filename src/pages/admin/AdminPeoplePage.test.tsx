@@ -26,6 +26,16 @@ const hookResult = {
 
 const saveVerifiedBadges = vi.fn(async () => {})
 
+// Shared across renders so the approve/reject/reinstate suites can assert on the exact
+// call. The previous inline `vi.fn()`s were unreachable from the tests, which is part of
+// why nothing ever pinned the destructive Reject click.
+const adminActions = {
+  approve: vi.fn(async () => {}),
+  reject: vi.fn(async () => {}),
+  reinstate: vi.fn(async () => {}),
+  advanceStage: vi.fn(async () => {}),
+}
+
 const reviewsResult = {
   items: [] as Review[],
   error: null as Error | null,
@@ -43,7 +53,7 @@ vi.mock('../../hooks/useReviews', () => ({
 
 vi.mock('../../hooks/useAdmin', () => ({
   useUsersByRole: () => hookResult,
-  useAdminActions: () => ({ approve: vi.fn(), reject: vi.fn(), advanceStage: vi.fn() }),
+  useAdminActions: () => adminActions,
   useNannyVerifiedBadges: () => ({
     verifiedBadges: nannyBadges.current,
     loading: false,
@@ -75,6 +85,7 @@ beforeEach(() => {
   reset()
   nannyBadges.current = []
   saveVerifiedBadges.mockClear()
+  for (const fn of Object.values(adminActions)) fn.mockClear()
   Object.assign(reviewsResult, {
     items: [],
     error: null,
@@ -334,5 +345,154 @@ describe('AdminPeoplePage — reading the reviews left about someone', () => {
     await openActiveTab()
 
     expect(screen.getByRole('button', { name: /reviews/i })).toBeInTheDocument()
+  })
+})
+
+
+// Rejection is the one irreversible click on this page. Approve and Reject were adjacent
+// `size="sm"` buttons with no confirmation anywhere in the app, and both disappeared the
+// instant Reject was clicked — the row moved to the `rejected` tab where nothing could undo
+// it. One misclick permanently killed a real family's account, and because platform email
+// is not live (Resend DNS), the wrongly-rejected family would never be told: they'd sit on
+// the holding page refreshing forever. These tests pin BOTH halves of the fix — the guard
+// in front of the destructive click, and the way back out of it.
+describe('AdminPeoplePage — confirming a rejection', () => {
+  function pendingFamily(over: Partial<UserDoc> = {}): UserDoc {
+    return {
+      uid: 'fam-9',
+      fullName: 'The Alvarez Family',
+      email: 'alvarez@example.com',
+      role: 'family',
+      approved: false,
+      status: 'pending',
+      ...over,
+    } as UserDoc
+  }
+
+  it('does NOT reject on the first click — it asks first', async () => {
+    const fam = pendingFamily()
+    reset({ users: [fam], items: [fam] })
+
+    render(<AdminPeoplePage role="family" />)
+    await userEvent.click(screen.getByRole('button', { name: /^reject$/i }))
+
+    // The whole point: the write must not have happened yet.
+    expect(adminActions.reject).not.toHaveBeenCalled()
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('names the person in the dialog — a confirm that omits WHO is useless against a misclick', async () => {
+    const fam = pendingFamily()
+    reset({ users: [fam], items: [fam] })
+
+    render(<AdminPeoplePage role="family" />)
+    await userEvent.click(screen.getByRole('button', { name: /^reject$/i }))
+
+    const dialog = await screen.findByRole('dialog')
+    // Named at least once (heading and body both carry it) — the requirement is that the
+    // admin cannot possibly confirm without seeing WHOSE application they are killing.
+    expect(within(dialog).getAllByText(/The Alvarez Family/).length).toBeGreaterThan(0)
+  })
+
+  it('warns that the applicant will NOT be told, because platform email is not live', async () => {
+    const fam = pendingFamily()
+    reset({ users: [fam], items: [fam] })
+
+    render(<AdminPeoplePage role="family" />)
+    await userEvent.click(screen.getByRole('button', { name: /^reject$/i }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/won’t be notified|will not be notified/i)).toBeInTheDocument()
+  })
+
+  it('rejects nobody when the dialog is dismissed', async () => {
+    const fam = pendingFamily()
+    reset({ users: [fam], items: [fam] })
+
+    render(<AdminPeoplePage role="family" />)
+    await userEvent.click(screen.getByRole('button', { name: /^reject$/i }))
+
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: /keep application|never mind|cancel/i }))
+
+    expect(adminActions.reject).not.toHaveBeenCalled()
+  })
+
+  it('rejects the right person once confirmed', async () => {
+    const fam = pendingFamily()
+    reset({ users: [fam], items: [fam] })
+
+    render(<AdminPeoplePage role="family" />)
+    await userEvent.click(screen.getByRole('button', { name: /^reject$/i }))
+
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: /reject application/i }))
+
+    expect(adminActions.reject).toHaveBeenCalledWith('fam-9', 'The Alvarez Family', 'family')
+  })
+
+  it('leaves Approve unguarded — only the destructive click earns friction', async () => {
+    // Deliberate asymmetry. Approving by mistake is recoverable in seconds; rejecting is not.
+    const fam = pendingFamily()
+    reset({ users: [fam], items: [fam] })
+
+    render(<AdminPeoplePage role="family" />)
+    await userEvent.click(screen.getByRole('button', { name: /^approve$/i }))
+
+    expect(adminActions.approve).toHaveBeenCalledWith('fam-9', 'The Alvarez Family', 'family')
+  })
+})
+
+
+describe('AdminPeoplePage — undoing a rejection', () => {
+  function rejectedFamily(over: Partial<UserDoc> = {}): UserDoc {
+    return {
+      uid: 'fam-9',
+      fullName: 'The Alvarez Family',
+      email: 'alvarez@example.com',
+      role: 'family',
+      approved: false,
+      status: 'rejected',
+      ...over,
+    } as UserDoc
+  }
+
+  async function openRejectedTab() {
+    await userEvent.click(screen.getByRole('tab', { name: /^rejected$/i }))
+  }
+
+  it('offers a way back for someone on the rejected tab', async () => {
+    const fam = rejectedFamily()
+    reset({ users: [fam], items: [fam] })
+
+    render(<AdminPeoplePage role="family" />)
+    await openRejectedTab()
+
+    expect(screen.getByRole('button', { name: /reinstate/i })).toBeInTheDocument()
+  })
+
+  it('moves them back to pending — NOT straight to approved', async () => {
+    // Reinstating must undo the mistake, not commit the opposite one. Back to pending is
+    // the exact state they were in a moment before the misclick; approving is a separate,
+    // deliberate click that fires a real "you're in" email.
+    const fam = rejectedFamily()
+    reset({ users: [fam], items: [fam] })
+
+    render(<AdminPeoplePage role="family" />)
+    await openRejectedTab()
+    await userEvent.click(screen.getByRole('button', { name: /reinstate/i }))
+
+    expect(adminActions.reinstate).toHaveBeenCalledWith('fam-9')
+    expect(adminActions.approve).not.toHaveBeenCalled()
+  })
+
+  it('does not offer Reinstate to people who were never rejected', async () => {
+    const active = approvedNanny()
+    reset({ users: [active], items: [active] })
+
+    render(<AdminPeoplePage role="nanny" />)
+    await openActiveTab()
+
+    expect(screen.queryByRole('button', { name: /reinstate/i })).not.toBeInTheDocument()
   })
 })

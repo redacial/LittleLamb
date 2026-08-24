@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useUsersByRole, useAdminActions } from '../../hooks/useAdmin'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
-import { Card, Button, Avatar, StatusPill, LoadErrorNotice, TruncatedNotice } from '../../components/ui'
+import { Card, Button, Avatar, StatusPill, LoadErrorNotice, TruncatedNotice, Modal } from '../../components/ui'
 import { VerifiedBadgesModal } from '../../components/admin/VerifiedBadgesModal'
 import { PersonReviewsModal } from '../../components/admin/PersonReviewsModal'
 import { cn } from '../../lib/cn'
@@ -24,7 +24,7 @@ const STAGE_LABEL: Record<NannyStage, string> = {
  */
 export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'family'> }) {
   const { users, loading, error, truncated, loadMore, loadingMore } = useUsersByRole(role)
-  const { approve, reject, advanceStage } = useAdminActions()
+  const { approve, reject, reinstate, advanceStage } = useAdminActions()
   const [tab, setTab] = useState<Tab>('pending')
 
   const filtered = users.filter((u) => {
@@ -98,6 +98,7 @@ export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'famil
                 role={role}
                 onApprove={() => approve(u.uid, u.fullName, role)}
                 onReject={() => reject(u.uid, u.fullName, role)}
+                onReinstate={() => reinstate(u.uid)}
                 onAdvance={(s) => advanceStage(u.uid, s, u.fullName)}
               />
             ))}
@@ -113,16 +114,19 @@ function PersonRow({
   role,
   onApprove,
   onReject,
+  onReinstate,
   onAdvance,
 }: {
   user: UserDoc
   role: 'nanny' | 'family'
   onApprove: () => void
   onReject: () => void
+  onReinstate: () => void
   onAdvance: (s: NannyStage) => void
 }) {
   const [badgesOpen, setBadgesOpen] = useState(false)
   const [reviewsOpen, setReviewsOpen] = useState(false)
+  const [confirmReject, setConfirmReject] = useState(false)
 
   const nextStage =
     role === 'nanny' && u.stage
@@ -165,8 +169,19 @@ function PersonRow({
               </Button>
             )}
             <Button size="sm" onClick={onApprove}>Approve</Button>
-            <Button size="sm" variant="secondary" onClick={onReject}>Reject</Button>
+            {/* Deliberately asymmetric: Approve fires straight away, Reject asks first.
+                Approving by mistake is undone in seconds; rejecting used to be permanent. */}
+            <Button size="sm" variant="secondary" onClick={() => setConfirmReject(true)}>
+              Reject
+            </Button>
           </>
+        )}
+        {/* The way back out of a misclick. Without this the rejected tab was a dead end —
+            the row landed here and no control on the page could move it again. */}
+        {u.status === 'rejected' && (
+          <Button size="sm" variant="secondary" onClick={onReinstate}>
+            Reinstate
+          </Button>
         )}
       </div>
       {role === 'nanny' && (
@@ -183,6 +198,42 @@ function PersonRow({
         open={reviewsOpen}
         onClose={() => setReviewsOpen(false)}
       />
+      <Modal
+        open={confirmReject}
+        onClose={() => setConfirmReject(false)}
+        title={`Reject ${u.fullName}?`}
+      >
+        <p className="text-sm text-ll-warm-gray">
+          <span className="font-semibold text-ll-ink">{u.fullName}</span> ({u.email}) will be
+          declined and moved to the rejected tab. Their account stays inactive and they can’t
+          use the platform.
+        </p>
+        {/* Naming the email gap is the point. Lucy would otherwise reasonably assume the
+            platform breaks the news for her, and the applicant is left refreshing a holding
+            page that says they'll hear back. */}
+        <p className="mt-3 text-sm text-ll-warm-gray">
+          They <span className="font-semibold text-ll-ink">won’t be notified</span> — platform
+          email isn’t live yet, so nothing is sent automatically. If they should know, contact
+          them yourself.
+        </p>
+        <p className="mt-3 text-sm text-ll-warm-gray">
+          You can undo this from the rejected tab.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <Button variant="ghost" onClick={() => setConfirmReject(false)}>
+            Keep application
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              setConfirmReject(false)
+              onReject()
+            }}
+          >
+            Reject application
+          </Button>
+        </div>
+      </Modal>
     </Card>
   )
 }

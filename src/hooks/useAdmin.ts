@@ -296,13 +296,40 @@ export function useAdminActions() {
     fireNotify({ type: 'application_rejected', to: role, userId: uid, fullName })
   }, [])
 
+  /**
+   * Undo a rejection: move a rejected applicant back to PENDING.
+   *
+   * Reject is the only irreversible click on the admin people page, and until now there was
+   * no way back — the row jumped to the `rejected` tab, which offered no action at all. One
+   * misclick permanently killed a real family's account.
+   *
+   * Back to `pending`, deliberately NOT straight to `approved`:
+   *  - pending is the exact state the person was in the instant before the misclick, so this
+   *    is a true undo rather than the opposite mistake. Reinstating must not be able to push
+   *    someone Lucy genuinely declined into the live directory on a single click.
+   *  - approving stays a separate, deliberate press of Approve, which fires the real
+   *    "your account is live" email.
+   *
+   * Fires NO notification, on purpose. There is no honest event to send: the applicant is
+   * merely back in the queue, so `application_approved` would be a flat lie, and no
+   * "reinstated" event exists. It is also moot in practice — the rejection email never
+   * reached them (platform email is not live), so from their side nothing ever happened.
+   */
+  const reinstate = useCallback(async (uid: string) => {
+    await updateDoc(doc(db, 'users', uid), {
+      approved: false,
+      status: 'pending',
+      updatedAt: serverTimestamp(),
+    })
+  }, [])
+
   const advanceStage = useCallback(async (uid: string, stage: NannyStage, fullName: string) => {
     await updateDoc(doc(db, 'users', uid), { stage, updatedAt: serverTimestamp() })
     // Only nannies have application stages.
     fireNotify({ type: 'application_status_updated', to: 'nanny', userId: uid, fullName, stage })
   }, [])
 
-  return { approve, reject, advanceStage }
+  return { approve, reject, reinstate, advanceStage }
 }
 
 /* ────────────────────────── Badges ──────────────────────────
