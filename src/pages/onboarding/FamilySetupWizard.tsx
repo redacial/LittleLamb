@@ -2,14 +2,20 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
-import { useFamilyProfile, completeWizard } from '../../hooks/useProfile'
+import {
+  useFamilyProfile,
+  completeWizard,
+  resumeStep,
+  childHasContent,
+  ratePatch,
+} from '../../hooks/useProfile'
 import { uploadProfilePhoto } from '../../lib/storage'
 import { cleanLine, cleanText } from '../../lib/sanitize'
 import { WizardShell } from '../../components/onboarding/WizardShell'
 import { PaymentStep } from '../../components/onboarding/PaymentStep'
 import { useSpring } from '../../lib/motion'
 import { Button, Input, Textarea, Avatar, RateRangeInput } from '../../components/ui'
-import { parseRateDollars, validateRatePair } from '../../lib/rates'
+import { validateRatePair } from '../../lib/rates'
 import type { Child, FamilyProfile } from '../../types'
 
 const STEPS = ['Family profile', 'Contact', 'Payment']
@@ -21,6 +27,10 @@ export function FamilySetupWizard() {
   const { profile: family, loading, save } = useFamilyProfile(uid)
 
   const [step, setStep] = useState(0)
+  // The saved step is adopted exactly ONCE, when the profile first arrives. `save()` updates
+  // the hook's local profile on every write, so re-running this on each change would fight
+  // the user's own navigation (clicking Back would be undone by the next save).
+  const [resumed, setResumed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
@@ -56,17 +66,35 @@ export function FamilySetupWizard() {
     if (family.rateRange) {
       setRateMin(String(family.rateRange.minCents / 100))
       setRateMax(String(family.rateRange.maxCents / 100))
+    } else if (family.rateDraft) {
+      // A budget she started typing but never completed — hand it back rather than
+      // making her remember what she'd entered.
+      setRateMin(family.rateDraft.min)
+      setRateMax(family.rateDraft.max)
     }
-  }, [family])
+    if (!resumed) {
+      setStep(resumeStep(family.wizardStep, STEPS.length))
+      setResumed(true)
+    }
+  }, [family, resumed])
 
-  async function persist(patch: Partial<FamilyProfile>) {
+  /**
+   * Save a patch. Returns whether it succeeded — it does NOT throw.
+   *
+   * It used to rethrow, but every caller did a bare `await persist(...)` with no catch, so
+   * the rethrow became an unhandled promise rejection: nothing was listening, and the
+   * caller advanced the step anyway. Reporting failure in the return value puts the
+   * decision where it belongs — a step must not advance over a save that didn't land.
+   */
+  async function persist(patch: Partial<FamilyProfile>): Promise<boolean> {
     setError(null)
     setBusy(true)
     try {
       await save(patch)
+      return true
     } catch {
       setError('We couldn’t save that. Please try again.')
-      throw new Error('save failed')
+      return false
     } finally {
       setBusy(false)
     }
@@ -87,48 +115,68 @@ export function FamilySetupWizard() {
     }
   }
 
+  /**
+   * Step back. Moves the UI immediately and records the new position in the background —
+   * navigation must never be blocked on a network write, and a failed write here costs at
+   * most a resume on the step ahead, which is the pre-existing behaviour anyway.
+   */
+  function goBack(to: number) {
+    setStep(to)
+    void persist({ wizardStep: to })
+  }
+
   function updateChild(i: number, patch: Partial<Child>) {
     setChildren((cs) => cs.map((c, idx) => (idx === i ? { ...c, ...patch } : c)))
   }
 
   async function nextFromStep0() {
+    // Keep every row the parent put ANYTHING into. This used to be `.filter(c => c.name)`,
+    // which silently destroyed a child whose age and interests were typed before the name —
+    // the parent got no warning and the row simply never came back.
     const cleanChildren = children
       .map((c) => ({
         name: cleanLine(c.name, 60),
         age: cleanLine(c.age, 20),
         interests: cleanLine(c.interests ?? '', 200),
       }))
-      .filter((c) => c.name)
+      .filter(childHasContent)
     if (!neighborhood.trim()) return setError('Please add your neighborhood.')
     if (!cleanChildren.length) return setError('Please add at least one child.')
     if (!homeAddress.trim()) return setError('Please add your home address.')
     const badRate = validateRatePair(rateMin, rateMax)
-    if (badRate) return setError(badRate)
+    if (badRate) {
+      // Can't advance on a half-filled budget — but keep what she typed so the correction
+      // starts from her numbers. Uses save() directly because persist() clears the error
+      // state we're about to set.
+      await save(ratePatch(rateMin, rateMax)).catch(() => {})
+      return setError(badRate)
+    }
     // The budget is OPTIONAL — leaving it blank matches the family with everyone
-    // (rangesOverlap treats a missing range permissively), so only write when set.
-    const lo = parseRateDollars(rateMin)
-    const hi = parseRateDollars(rateMax)
-    await persist({
+    // (rangesOverlap treats a missing range permissively). A COMPLETE pair becomes a real
+    // rateRange; a half-typed one is kept as a draft rather than discarded (see ratePatch).
+    const ok = await persist({
       neighborhood: cleanLine(neighborhood, 120),
       children: cleanChildren,
       pets: cleanLine(pets, 200),
       allergies: cleanText(allergies, 1000),
       houseRules: cleanText(houseRules, 2000),
       homeAddress: cleanLine(homeAddress, 300),
-      ...(lo !== null && hi !== null ? { rateRange: { minCents: lo, maxCents: hi } } : {}),
+      ...ratePatch(rateMin, rateMax),
+      wizardStep: 1,
     })
-    setStep(1)
+    if (ok) setStep(1)
   }
 
   async function nextFromStep1() {
     if (!phone.trim()) return setError('Please add a phone number.')
-    await persist({
+    const ok = await persist({
       phone: cleanLine(phone, 32),
       primaryEmail: profile?.email ?? '',
       coParentName: cleanLine(coParentName, 80),
       coParentEmail: cleanLine(coParentEmail, 254),
+      wizardStep: 2,
     })
-    setStep(2)
+    if (ok) setStep(2)
   }
 
   // Called by PaymentStep once a card is saved (server-side) or the pre-launch fallback
@@ -235,7 +283,7 @@ export function FamilySetupWizard() {
           <Input label="Spouse / co-parent email" hint="Optional" type="email" value={coParentEmail} onChange={(e) => setCoParentEmail(e.target.value)} />
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setStep(0)}>Back</Button>
+            <Button variant="secondary" onClick={() => goBack(0)}>Back</Button>
             <Button onClick={nextFromStep1} loading={busy}>Continue</Button>
           </div>
         </motion.div>
@@ -258,7 +306,7 @@ export function FamilySetupWizard() {
           <PaymentStep onComplete={finish} saving={busy} />
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setStep(1)}>Back</Button>
+            <Button variant="secondary" onClick={() => goBack(1)}>Back</Button>
           </div>
         </motion.div>
       )}

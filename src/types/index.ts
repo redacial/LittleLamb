@@ -81,6 +81,13 @@ export interface FamilyProfile {
   hasPaymentMethod: boolean
   /** Hourly rate this family is willing to pay. Optional — pre-existing families have none. */
   rateRange?: RateRange
+  /** Half-typed budget, preserved across an abandoned wizard. See RateDraft. Null clears it. */
+  rateDraft?: RateDraft | null
+  /**
+   * How far through the setup wizard this family got, 0-based. Optional: accounts created
+   * before this existed have none, and must resume at 0 rather than breaking.
+   */
+  wizardStep?: number
 }
 
 /**
@@ -95,6 +102,21 @@ export interface FamilyProfile {
 export interface RateRange {
   minCents: number
   maxCents: number
+}
+
+/**
+ * A rate range EXACTLY as the user typed it, before it is a usable RateRange.
+ *
+ * `rateRange` is integer cents and firestore.rules `rateRangeOk()` requires BOTH bounds
+ * present, in-band and ordered — so a half-filled pair ("20" typed, max still blank)
+ * cannot legally be stored there, and used to be dropped on the floor instead. This holds
+ * the raw strings so the wizard can hand the partial entry back on the next visit rather
+ * than making the user retype it. It is scratch state for the form, never a matching
+ * signal: `rangesOverlap` and every reader continue to use `rateRange` only.
+ */
+export interface RateDraft {
+  min: string
+  max: string
 }
 
 export type BadgeType = 'verified' | 'self'
@@ -127,6 +149,13 @@ export interface NannyProfile {
   availability: AvailabilityBlock[]
   /** Hourly rate this nanny accepts. Optional — pre-existing nannies have none. */
   rateRange?: RateRange
+  /** Half-typed rate, preserved across an abandoned wizard. See RateDraft. Null clears it. */
+  rateDraft?: RateDraft | null
+  /**
+   * How far through the setup wizard this nanny got, 0-based. Optional: accounts created
+   * before this existed have none, and must resume at 0 rather than breaking.
+   */
+  wizardStep?: number
 }
 
 export type BookingStatus =

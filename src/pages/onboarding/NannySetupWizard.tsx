@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
-import { useNannyProfile, completeWizard } from '../../hooks/useProfile'
+import { useNannyProfile, completeWizard, resumeStep, ratePatch } from '../../hooks/useProfile'
 import { uploadProfilePhoto, uploadIntroVideo } from '../../lib/storage'
 import { cleanText, cleanLine } from '../../lib/sanitize'
 import { SELF_BADGES } from '../../lib/badges'
@@ -10,7 +10,7 @@ import { WizardShell } from '../../components/onboarding/WizardShell'
 import { AvailabilityEditor } from '../../components/onboarding/AvailabilityEditor'
 import { useSpring, useChipHover } from '../../lib/motion'
 import { Button, Input, Textarea, Avatar, Badge, RateRangeInput } from '../../components/ui'
-import { parseRateDollars, validateRatePair } from '../../lib/rates'
+import { validateRatePair } from '../../lib/rates'
 import { cn } from '../../lib/cn'
 import type { AvailabilityBlock, NannyProfile } from '../../types'
 
@@ -26,6 +26,8 @@ export function NannySetupWizard() {
   const { profile: nanny, loading, save } = useNannyProfile(uid)
 
   const [step, setStep] = useState(0)
+  // Adopted exactly ONCE, on first hydration — see the matching note in FamilySetupWizard.
+  const [resumed, setResumed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
@@ -53,20 +55,41 @@ export function NannySetupWizard() {
     if (nanny.rateRange) {
       setRateMin(String(nanny.rateRange.minCents / 100))
       setRateMax(String(nanny.rateRange.maxCents / 100))
+    } else if (nanny.rateDraft) {
+      // A rate she started typing but never completed — hand it back rather than
+      // making her remember what she'd entered.
+      setRateMin(nanny.rateDraft.min)
+      setRateMax(nanny.rateDraft.max)
     }
-  }, [nanny])
+    if (!resumed) {
+      setStep(resumeStep(nanny.wizardStep, STEPS.length))
+      setResumed(true)
+    }
+  }, [nanny, resumed])
 
-  async function persist(patch: Partial<NannyProfile>) {
+  /**
+   * Save a patch. Returns whether it succeeded — it does NOT throw. The old rethrow landed
+   * in bare `await persist(...)` callers with no catch, becoming an unhandled rejection
+   * while the step advanced anyway. See the fuller note in FamilySetupWizard.
+   */
+  async function persist(patch: Partial<NannyProfile>): Promise<boolean> {
     setError(null)
     setBusy(true)
     try {
       await save(patch)
+      return true
     } catch {
       setError('We couldn’t save that. Please try again.')
-      throw new Error('save failed')
+      return false
     } finally {
       setBusy(false)
     }
+  }
+
+  /** Step back, recording the position in the background. See FamilySetupWizard.goBack. */
+  function goBack(to: number) {
+    setStep(to)
+    void persist({ wizardStep: to })
   }
 
   async function onPhoto(file: File) {
@@ -102,45 +125,62 @@ export function NannySetupWizard() {
   async function nextFromBio() {
     if (!photoURL) return setError('Please add a profile photo.')
     if (bio.trim().length < 20) return setError('Please write at least a short bio.')
-    await persist({
+    const ok = await persist({
       fullName: profile?.fullName ?? '',
       photoURL,
       bio: cleanText(bio, BIO_MAX),
       personalStatement: cleanText(bio, BIO_MAX),
       yearsExperience: cleanLine(yearsExperience, 40),
+      wizardStep: 1,
     })
-    setStep(1)
+    if (ok) setStep(1)
   }
 
   async function nextFromVideo() {
     if (!videoURL) return setError('Please upload a short intro video to continue.')
+    // The URL itself was already saved by onVideo; this records only the position.
+    void persist({ wizardStep: 2 })
     setStep(2)
   }
 
   async function nextFromBadges() {
-    await persist({ selfBadges })
-    setStep(3)
+    const ok = await persist({ selfBadges, wizardStep: 3 })
+    if (ok) setStep(3)
   }
 
   async function nextFromAvailability() {
     if (!availability.length) return setError('Please set availability for at least one day.')
-    await persist({ availability })
-    setStep(4)
+    const ok = await persist({ availability, wizardStep: 4 })
+    if (ok) setStep(4)
   }
 
   async function finish() {
     if (!uid) return
     const invalid = validateRatePair(rateMin, rateMax)
-    if (invalid) return setError(invalid)
-    // The range is OPTIONAL — skipping it leaves the nanny matchable with everyone
-    // (rangesOverlap treats a missing range permissively), so we only write when set.
-    const lo = parseRateDollars(rateMin)
-    const hi = parseRateDollars(rateMax)
-    if (lo !== null && hi !== null) {
-      await persist({ rateRange: { minCents: lo, maxCents: hi } })
+    if (invalid) {
+      // She can't FINISH on a half-filled range — but what she typed is still hers. Save the
+      // draft before refusing, so the correction starts from her numbers instead of blank
+      // fields. Without this the validation gate itself becomes the thing that loses the data.
+      // Saved via save() directly, not persist(), because persist() clears the error state
+      // we are about to set.
+      await save(ratePatch(rateMin, rateMax)).catch(() => {})
+      return setError(invalid)
     }
-    await completeWizard(uid)
-    setDone(true)
+    // The range is OPTIONAL — skipping it leaves the nanny matchable with everyone
+    // (rangesOverlap treats a missing range permissively). A COMPLETE pair is written as a
+    // real rateRange; a half-typed one is preserved as a draft instead of being dropped.
+    // This is the LAST step, so anything discarded here is never seen again.
+    const ok = await persist({ ...ratePatch(rateMin, rateMax), wizardStep: 4 })
+    if (!ok) return
+    setBusy(true)
+    try {
+      await completeWizard(uid)
+      setDone(true)
+    } catch {
+      setError('We couldn’t finish setup. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   function toggleBadge(id: string) {
@@ -226,7 +266,7 @@ export function NannySetupWizard() {
           </label>
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setStep(0)}>Back</Button>
+            <Button variant="secondary" onClick={() => goBack(0)}>Back</Button>
             <Button onClick={nextFromVideo} loading={busy}>Continue</Button>
           </div>
         </motion.div>
@@ -278,7 +318,7 @@ export function NannySetupWizard() {
           </div>
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setStep(1)}>Back</Button>
+            <Button variant="secondary" onClick={() => goBack(1)}>Back</Button>
             <Button onClick={nextFromBadges} loading={busy}>Continue</Button>
           </div>
         </motion.div>
@@ -301,7 +341,7 @@ export function NannySetupWizard() {
           <AvailabilityEditor value={availability} onChange={setAvailability} />
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setStep(2)}>Back</Button>
+            <Button variant="secondary" onClick={() => goBack(2)}>Back</Button>
             <Button onClick={nextFromAvailability} loading={busy}>Continue</Button>
           </div>
         </motion.div>
@@ -330,7 +370,7 @@ export function NannySetupWizard() {
           />
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setStep(3)}>Back</Button>
+            <Button variant="secondary" onClick={() => goBack(3)}>Back</Button>
             <Button onClick={finish} loading={busy}>Finish setup</Button>
           </div>
         </motion.div>
