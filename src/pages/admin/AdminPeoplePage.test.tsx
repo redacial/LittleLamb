@@ -496,3 +496,69 @@ describe('AdminPeoplePage — undoing a rejection', () => {
     expect(screen.queryByRole('button', { name: /reinstate/i })).not.toBeInTheDocument()
   })
 })
+
+// The application answers now persist (ba8976c), but the row still showed only a name, an
+// email and a stage — not even the phone, which was always stored. Lucy was approving families
+// with none of the content she is meant to be reviewing, which is what "we personally review
+// every family" is supposed to mean.
+//
+// Everything here is OPTIONAL: pre-existing accounts have none of it, and a RETURNING Google
+// user keeps their old doc, so the row must degrade rather than render "undefined".
+describe('AdminPeoplePage — the application is visible to the person approving it', () => {
+  function applicant(over: Partial<UserDoc> = {}): UserDoc {
+    return {
+      uid: 'fam-1',
+      fullName: 'The Ortegas',
+      email: 'ortega@example.com',
+      role: 'family',
+      approved: false,
+      status: 'pending',
+      ...over,
+    } as UserDoc
+  }
+
+  function showFamily(u: UserDoc) {
+    reset({ users: [u], items: [u] })
+    render(<AdminPeoplePage role="family" />)
+  }
+
+  it('shows a family\u2019s neighbourhood, children and notes', () => {
+    showFamily(
+      applicant({
+        phone: '805-555-0142',
+        neighborhood: 'The Mesa',
+        children: 'Olive (4), Theo (7)',
+        notes: 'Theo has a mild peanut allergy',
+      } as Partial<UserDoc>),
+    )
+    expect(screen.getByText(/The Mesa/)).toBeInTheDocument()
+    expect(screen.getByText(/Olive \(4\), Theo \(7\)/)).toBeInTheDocument()
+    expect(screen.getByText(/peanut allergy/)).toBeInTheDocument()
+  })
+
+  it('shows the phone number, which was persisted all along but never rendered', () => {
+    showFamily(applicant({ phone: '805-555-0142' }))
+    expect(screen.getByText(/805-555-0142/)).toBeInTheDocument()
+  })
+
+  it('shows a nanny\u2019s experience and personal statement', () => {
+    const n = applicant({
+      uid: 'nanny-9',
+      role: 'nanny',
+      fullName: 'Priya Raman',
+      yearsExperience: '5+',
+      personalStatement: 'I have cared for infants since 2019.',
+    } as Partial<UserDoc>)
+    reset({ users: [n], items: [n] })
+    render(<AdminPeoplePage role="nanny" />)
+    expect(screen.getByText(/5\+/)).toBeInTheDocument()
+    expect(screen.getByText(/infants since 2019/)).toBeInTheDocument()
+  })
+
+  // The degradation case. A returning Google user has none of these fields.
+  it('renders cleanly when the applicant has no application fields at all', () => {
+    showFamily(applicant())
+    expect(screen.getByText('The Ortegas')).toBeInTheDocument()
+    expect(screen.queryByText(/undefined|null/i)).not.toBeInTheDocument()
+  })
+})

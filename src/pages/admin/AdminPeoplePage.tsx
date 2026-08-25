@@ -109,6 +109,48 @@ export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'famil
   )
 }
 
+/**
+ * What the applicant actually wrote on /apply.
+ *
+ * Until this existed, Lucy approved families seeing a name, an email and nothing else — so
+ * "we personally review every family" was not backed by any data on screen. The answers were
+ * being collected and thrown away (they went to sessionStorage, which nothing read).
+ *
+ * Every field is optional by design: accounts created before this shipped have none of them,
+ * and a RETURNING Google user keeps their existing doc, so absence is normal and must render
+ * as nothing rather than as "undefined".
+ */
+function ApplicationSummary({ user: u, role }: { user: UserDoc; role: 'nanny' | 'family' }) {
+  const rows =
+    role === 'family'
+      ? [
+          { label: 'Neighbourhood', value: u.neighborhood },
+          { label: 'Children', value: u.children },
+          { label: 'Notes', value: u.notes },
+        ]
+      : [
+          { label: 'Experience', value: u.yearsExperience },
+          { label: 'About', value: u.personalStatement },
+        ]
+  const filled = rows.filter((r) => r.value?.trim())
+  if (!filled.length) return null
+
+  return (
+    <dl className="mt-2 space-y-1">
+      {filled.map((r) => (
+        <div key={r.label} className="flex gap-2 text-sm">
+          <dt className="shrink-0 font-mono text-mono-sm uppercase tracking-wide text-ll-warm-gray">
+            {r.label}
+          </dt>
+          {/* Free text the applicant typed — wrap it rather than truncating. An allergy note
+              cut off mid-sentence is worse than a taller row. */}
+          <dd className="min-w-0 whitespace-pre-wrap break-words text-ll-ink">{r.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 function PersonRow({
   user: u,
   role,
@@ -140,9 +182,11 @@ function PersonRow({
         <div className="min-w-0">
           <p className="font-semibold text-ll-ink">{u.fullName}</p>
           <p className="text-sm text-ll-warm-gray">{u.email}</p>
+          {u.phone && <p className="text-sm text-ll-warm-gray">{u.phone}</p>}
           {role === 'nanny' && u.stage && (
             <p className="mt-0.5 font-mono text-mono-sm text-ll-sage-deep">{STAGE_LABEL[u.stage]}</p>
           )}
+          <ApplicationSummary user={u} role={role} />
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
