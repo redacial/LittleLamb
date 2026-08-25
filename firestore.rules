@@ -194,10 +194,17 @@ service cloud.firestore {
        * calendar day (+1d), which keeps today itself bookable — same-day is supported, just
        * routed to the job board.
        *
-       * request.time is UTC, so this is LENIENT by up to a day for a Pacific user and never
-       * rejects a legitimate booking. That looseness is deliberate: rules are the backstop
+       * request.time is UTC while `date` is the user's LOCAL calendar day, so the two can be a
+       * day apart in either direction. The window is +2d rather than +1d to absorb that: at
+       * 7pm Pacific, UTC is already tomorrow, and a +1d window rejected the user's own
+       * *today* — the very same-day booking the platform supports. Verified by a rules test
+       * that failed exactly at that boundary.
+       *
+       * So this is deliberately LOOSE: it will accept a booking up to a day stale rather than
+       * ever reject a legitimate one. That is the right trade here — rules are the backstop
        * against writes that bypass the client entirely, while the precise same-day routing
-       * decision belongs in application code, where the user's own timezone is known.
+       * decision belongs in application code, where the user's own timezone is known and
+       * where canBook() enforces the exact boundary.
        */
       function bookingDateNotPast() {
         return 'date' in incoming()
@@ -206,7 +213,7 @@ service cloud.firestore {
                int(incoming().date.split('-')[0]),
                int(incoming().date.split('-')[1]),
                int(incoming().date.split('-')[2])
-             ) + duration.value(1, 'd');
+             ) + duration.value(2, 'd');
       }
 
       // Family creates its own booking request. Nanny/admin may not impersonate a family.
