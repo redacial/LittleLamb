@@ -36,10 +36,30 @@ vi.mock('firebase/firestore', () => ({
   orderBy: vi.fn(() => ({})),
   onSnapshot: vi.fn(() => () => {}),
   addDoc: (ref: unknown, data: Record<string, unknown>) => addDoc(ref, data),
-  doc: vi.fn(() => ({})),
+  doc: vi.fn((_db: unknown, _col: string, id?: string) => ({ id })),
   updateDoc: (...a: unknown[]) => updateDoc(...(a as [])),
   serverTimestamp: vi.fn(() => 'ts'),
+  runTransaction: (_db: unknown, fn: (tx: unknown) => Promise<unknown>) => runTransaction(fn),
 }))
+
+/**
+ * A fake Firestore transaction over `store`. `runTransaction` re-runs its callback on conflict in
+ * real life; here one pass is enough because the tests drive the interleaving explicitly.
+ */
+const store = new Map<string, Record<string, unknown>>()
+const runTransaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+  const tx = {
+    get: async (ref: { id?: string }) => {
+      const data = store.get(ref?.id ?? 'bk1')
+      return { exists: () => data !== undefined, data: () => data }
+    },
+    update: (ref: { id?: string }, patch: Record<string, unknown>) => {
+      const id = ref?.id ?? 'bk1'
+      store.set(id, { ...(store.get(id) ?? {}), ...patch })
+    },
+  }
+  return fn(tx)
+})
 
 vi.mock('../lib/firebase', () => ({ db: {}, auth: { currentUser: { uid: 'u1' } } }))
 
@@ -138,6 +158,14 @@ describe('useBookingActions().assignNanny — the family must be told a nanny is
   // booking flipped to `confirmed` and the family heard nothing at all. On this path the
   // family never chose a nanny, so this email is the ONLY signal anyone is showing up.
 
+  // assignNanny is now transactional (it must be — see the job-board race below), so the
+  // booking has to actually exist for a claim to succeed. These cases predate that and only
+  // asserted the write, so they seed an open post first.
+  beforeEach(() => {
+    store.clear()
+    store.set('b9', { status: 'open', nannyId: null, nannyName: null, familyId: 'f1' })
+  })
+
   it('enqueues open_booking_picked_up to the family, stamped with the claiming nanny', async () => {
     const { result } = renderHook(() => useBookingActions())
 
@@ -163,7 +191,9 @@ describe('useBookingActions().assignNanny — the family must be told a nanny is
 
     await result.current.assignNanny('b9', 'n2', 'Marisol')
 
-    expect(updateDoc).toHaveBeenCalled()
+    // The write now goes through the claim transaction rather than a bare updateDoc, so assert
+    // the outcome rather than the mechanism.
+    expect(store.get('b9')).toMatchObject({ status: 'confirmed', nannyId: 'n2' })
     expect(notify).not.toHaveBeenCalled()
   })
 })
@@ -286,5 +316,63 @@ describe('createBooking — short-notice bookings go to the job board', () => {
   it('leaves a booking well outside the lead window confirmed', async () => {
     await createBooking({ ...newBooking, ...inHours(72), status: 'confirmed' })
     expect(addDoc.mock.calls[0][1]).toMatchObject({ status: 'confirmed' })
+  })
+})
+
+// THE JOB-BOARD RACE. assignNanny was a blind updateDoc with no guard: two nannies opening the
+// dashboard both see the same open post, both tap Accept, and BOTH writes succeed. Last write
+// wins, so the first nanny is silently unassigned from a job she believes she has — she'd show
+// up, or the family gets a different person, or nobody.
+//
+// A claim must be atomic: read the booking and only take it if it is still unclaimed.
+describe('assignNanny — an open booking can only be claimed once', () => {
+  // doc() is mocked to return {}, so give it an id the fake transaction can key on.
+  beforeEach(() => {
+    store.clear()
+    store.set('bk1', { status: 'open', nannyId: null, nannyName: null, familyId: 'f1' })
+    runTransaction.mockClear()
+  })
+
+  function claim(nannyId: string, nannyName: string) {
+    const { result } = renderHook(() => useBookingActions())
+    return result.current.assignNanny('bk1', nannyId, nannyName, meta)
+  }
+
+  it('lets the first nanny claim an open booking', async () => {
+    await claim('n1', 'Priya')
+    expect(store.get('bk1')).toMatchObject({ status: 'confirmed', nannyId: 'n1' })
+  })
+
+  it('REFUSES a second nanny once the booking is claimed', async () => {
+    await claim('n1', 'Priya')
+    await expect(claim('n2', 'Dana')).rejects.toThrow(/already|another|taken|claimed/i)
+  })
+
+  it('leaves the first nanny assigned after a losing claim', async () => {
+    await claim('n1', 'Priya')
+    await claim('n2', 'Dana').catch(() => {})
+    // The bug: 'n2' overwrote 'n1' and n1 was never told.
+    expect(store.get('bk1')).toMatchObject({ nannyId: 'n1', nannyName: 'Priya' })
+  })
+
+  it('does not email the family twice when a claim is refused', async () => {
+    await claim('n1', 'Priya')
+    notify.mockClear()
+    await claim('n2', 'Dana').catch(() => {})
+    expect(notify).not.toHaveBeenCalled()
+  })
+
+  // Isolates the STATUS guard specifically: a booking can leave `open` without ever gaining a
+  // nannyId — e.g. the family cancelled it while she was looking at the board. Without this the
+  // nannyId check alone would let her "claim" a cancelled job.
+  it('refuses a booking that left the board without being assigned', async () => {
+    store.set('bk1', { status: 'cancelled', nannyId: null, nannyName: null, familyId: 'f1' })
+    await expect(claim('n1', 'Priya')).rejects.toThrow(/another|already|taken|claimed|available/i)
+    expect(store.get('bk1')).toMatchObject({ status: 'cancelled', nannyId: null })
+  })
+
+  it('refuses to claim a booking that no longer exists', async () => {
+    store.clear()
+    await expect(claim('n1', 'Priya')).rejects.toThrow()
   })
 })

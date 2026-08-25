@@ -9,6 +9,7 @@ import {
   addDoc,
   doc,
   updateDoc,
+  runTransaction,
   serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
@@ -221,9 +222,38 @@ export function useBookingActions() {
     },
     [],
   )
+  /**
+   * A nanny claims an open job-board post.
+   *
+   * TRANSACTIONAL BY NECESSITY. This was a blind updateDoc: two nannies looking at the same open
+   * post both tapped Accept, both writes succeeded, and last-write-wins silently unassigned the
+   * first nanny from a job she believed she had. She would show up, or the family would get a
+   * different person, or nobody. The claim has to be atomic — read the booking and only take it
+   * if it is still unclaimed — which is the same claim-then-act shape the Stripe webhook uses.
+   *
+   * It THROWS on a lost race rather than resolving quietly, so the caller is forced to tell her.
+   */
   const assignNanny = useCallback(
     async (id: string, nannyId: string, nannyName: string, meta?: BookingMeta) => {
-      await updateDoc(doc(db, 'bookings', id), { nannyId, nannyName, status: 'confirmed' })
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, 'bookings', id)
+        const snap = await tx.get(ref)
+        if (!snap.exists()) {
+          throw new Error('That booking is no longer available.')
+        }
+        const current = snap.data() as { status?: string; nannyId?: string | null }
+        // Only an unclaimed post is claimable. Anything else — already confirmed, cancelled, or
+        // assigned to someone else — means we lost, and the UI must say so.
+        if (current.status !== 'open' && current.status !== 'unmatched') {
+          throw new Error('Another nanny just claimed this booking.')
+        }
+        if (current.nannyId && current.nannyId !== nannyId) {
+          throw new Error('Another nanny just claimed this booking.')
+        }
+        tx.update(ref, { nannyId, nannyName, status: 'confirmed' })
+      })
+
+      // Only reached when the claim actually landed, so the family is never told twice.
       if (!meta) return
       // Open/unmatched booking picked up by a nanny → confirm the family (CLAUDE.md §11.3).
       fireNotify({
