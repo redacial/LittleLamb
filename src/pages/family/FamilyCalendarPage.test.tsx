@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { FamilyCalendarPage } from './FamilyCalendarPage'
@@ -159,5 +159,59 @@ describe('FamilyCalendarPage — "Make this recurring"', () => {
     await user.click(screen.getByRole('button', { name: /confirm booking/i }))
 
     expect(createBooking.mock.calls[0][0]).toMatchObject({ recurring: false })
+  })
+})
+
+// The most-used action in the product failed silently. confirm() was try/finally with NO catch
+// and no error state anywhere in the component: on rejection the resets never ran, the spinner
+// just stopped, and the modal sat there with the notes still in it — indistinguishable from
+// "nothing happened". So the parent clicks Confirm again.
+//
+// This became reachable the moment the past-date guard landed: createBooking now genuinely
+// throws, and firestore.rules can deny the write too.
+describe('FamilyCalendarPage — a booking that fails says so', () => {
+  it('shows an error instead of closing the modal when the booking is rejected', async () => {
+    createBooking.mockRejectedValueOnce(new Error('Cannot book 2020-01-01: that date is in the past.'))
+    const user = userEvent.setup()
+    await openBookingModal(user, MONDAY)
+    await user.selectOptions(screen.getByLabelText('Nanny'), 'n1')
+    await user.click(screen.getByRole('button', { name: /confirm booking/i }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+  })
+
+  it('keeps the modal open so the family does not lose what they typed', async () => {
+    createBooking.mockRejectedValueOnce(new Error('nope'))
+    const user = userEvent.setup()
+    await openBookingModal(user, MONDAY)
+    await user.selectOptions(screen.getByLabelText('Nanny'), 'n1')
+    await user.click(screen.getByRole('button', { name: /confirm booking/i }))
+
+    await screen.findByRole('alert')
+    // Still on the booking form, not silently dismissed.
+    expect(screen.getByRole('button', { name: /confirm booking/i })).toBeInTheDocument()
+  })
+
+  it('lets them try again — the button is not left spinning', async () => {
+    createBooking.mockRejectedValueOnce(new Error('nope'))
+    const user = userEvent.setup()
+    await openBookingModal(user, MONDAY)
+    await user.selectOptions(screen.getByLabelText('Nanny'), 'n1')
+    await user.click(screen.getByRole('button', { name: /confirm booking/i }))
+
+    await screen.findByRole('alert')
+    expect(screen.getByRole('button', { name: /confirm booking/i })).not.toBeDisabled()
+  })
+
+  it('clears a previous error when the next attempt succeeds', async () => {
+    createBooking.mockRejectedValueOnce(new Error('nope'))
+    const user = userEvent.setup()
+    await openBookingModal(user, MONDAY)
+    await user.selectOptions(screen.getByLabelText('Nanny'), 'n1')
+    await user.click(screen.getByRole('button', { name: /confirm booking/i }))
+    await screen.findByRole('alert')
+
+    await user.click(screen.getByRole('button', { name: /confirm booking/i }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
 })

@@ -35,6 +35,7 @@ export function FamilyCalendarPage() {
   const [notes, setNotes] = useState('')
   const [wantsRecurring, setWantsRecurring] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Live rate feedback for the nanny currently chosen in the booking modal.
   const selectedNanny = nannies.find((n) => n.uid === nannyId)
@@ -67,6 +68,11 @@ export function FamilyCalendarPage() {
     'no-nanny': 'Pick a specific nanny to hold a weekly slot — an open request has nobody to repeat with.',
     'outside-availability': 'This time is outside that nanny\u2019s weekly hours, so we can\u2019t hold it every week. The booking will still be sent as a one-off request.',
     'not-confirmed': 'We can only hold a weekly slot once a booking is confirmed. This one needs a reply first, so it will be booked as a one-off.',
+  }
+
+  function closeBookingModal() {
+    setPickedDay(null)
+    setError(null)
   }
 
   function changeMonth(delta: number) {
@@ -108,6 +114,7 @@ export function FamilyCalendarPage() {
     const snapshot = agreed ?? chosen?.rateRange ?? null
 
     setBusy(true)
+    setError(null)
     try {
       await createBooking({
         familyId: user.uid,
@@ -132,6 +139,15 @@ export function FamilyCalendarPage() {
       setPickedDay(null)
       setNotes('')
       setWantsRecurring(false)
+    } catch (e) {
+      // Without this the modal simply sat there with the notes still in it and the spinner
+      // stopped — identical to nothing having happened — so the family clicked Confirm again.
+      // Keep the form open and everything they typed; say what went wrong.
+      setError(
+        e instanceof Error && e.message
+          ? e.message
+          : 'We couldn’t save that booking. Please try again.',
+      )
     } finally {
       setBusy(false)
     }
@@ -174,7 +190,7 @@ export function FamilyCalendarPage() {
         </div>
 
         {/* New booking modal */}
-        <Modal open={!!pickedDay} onClose={() => setPickedDay(null)} title={pickedDay ? `Book for ${formatDate(pickedDay)}` : ''}>
+        <Modal open={!!pickedDay} onClose={closeBookingModal} title={pickedDay ? `Book for ${formatDate(pickedDay)}` : ''}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <Input label="Start" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
@@ -234,6 +250,14 @@ export function FamilyCalendarPage() {
                 </p>
               )}
             </div>
+            {error && (
+              <p
+                role="alert"
+                className="rounded-ll-input border-1.5 border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
+              >
+                {error}
+              </p>
+            )}
             <Button className="w-full" onClick={confirm} loading={busy}>Confirm booking</Button>
           </div>
         </Modal>
