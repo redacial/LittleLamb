@@ -10,6 +10,30 @@ function ymd(y: number, m: number, d: number) {
 }
 
 /**
+ * Non-colour status signal. Booking status used to be carried by BACKGROUND COLOUR ALONE
+ * (sage = confirmed, terra = pending), which fails WCAG 2.2 SC 1.4.1 Use of Color — a
+ * red-green colourblind parent could not tell a confirmed sitter from an unconfirmed request.
+ * On this platform that distinction is "childcare is handled" vs "nobody is coming", so it
+ * cannot rest on hue.
+ *
+ * Each entry now carries a GLYPH (visible — helps colourblind sighted users, who are not
+ * running a screen reader) plus a spelled-out status in the accessible name (helps AT users).
+ * Colour is retained as a redundant third cue for everyone else.
+ */
+const STATUS_MARK: Record<string, { glyph: string; label: string }> = {
+  confirmed: { glyph: '✓', label: 'Confirmed' },
+  pending: { glyph: '◷', label: 'Pending' },
+  open: { glyph: '◇', label: 'Open' },
+  unmatched: { glyph: '◇', label: 'Unmatched' },
+  same_day_review: { glyph: '!', label: 'Same-day review' },
+  cancelled: { glyph: '✕', label: 'Cancelled' },
+}
+
+function statusMark(status: string) {
+  return STATUS_MARK[status] ?? { glyph: '•', label: status }
+}
+
+/**
  * Month grid. Bookings are color-coded (green confirmed / amber pending). Interactions:
  *  - Click (or keyboard-activate) a day → onPickDay (single-day booking flow).
  *  - Press-and-drag across days → onPickRange(start, end) once supplied (multi-day select).
@@ -140,40 +164,63 @@ export function MonthGrid({
                 {day}
               </span>
               <div className="mt-1 space-y-0.5">
-                {dayBookings.slice(0, 2).map((b) => (
-                  <span
-                    key={b.id}
-                    role="button"
-                    tabIndex={0}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); onPickBooking?.(b) }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onPickBooking?.(b) }
-                    }}
-                    className={cn(
-                      'block truncate rounded-ll-tag px-1 py-0.5 text-[0.7rem] font-semibold',
-                      b.status === 'confirmed' ? 'bg-ll-sage-light text-ll-sage-deep' : 'bg-ll-terra-soft text-ll-ink',
-                    )}
-                  >
-                    {b.nannyName ?? b.familyName ?? 'Booking'}
-                  </span>
-                ))}
+                {dayBookings.slice(0, 2).map((b) => {
+                  const mark = statusMark(b.status)
+                  const who = b.nannyName ?? b.familyName ?? 'Booking'
+                  return (
+                    <span
+                      key={b.id}
+                      role="button"
+                      tabIndex={0}
+                      // Spelled-out status for assistive tech — the glyph alone is ambiguous
+                      // read aloud, and the visible label is truncated at this size.
+                      aria-label={`${mark.label}: ${who}`}
+                      title={`${mark.label} — ${who}`}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); onPickBooking?.(b) }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onPickBooking?.(b) }
+                      }}
+                      className={cn(
+                        'flex items-center gap-0.5 truncate rounded-ll-tag px-1 py-0.5 text-[0.7rem] font-semibold',
+                        b.status === 'confirmed' ? 'bg-ll-sage-light text-ll-sage-deep' : 'bg-ll-terra-soft text-ll-ink',
+                      )}
+                    >
+                      {/* Visible glyph: the non-colour cue a sighted colourblind user relies on. */}
+                      <span aria-hidden="true" className="shrink-0 font-mono leading-none">{mark.glyph}</span>
+                      <span className="truncate">{who}</span>
+                    </span>
+                  )
+                })}
                 {dayBookings.length > 2 && <span className="px-1 text-[0.7rem] text-ll-warm-gray">+{dayBookings.length - 2}</span>}
               </div>
             </button>
           )
         })}
       </div>
-      {/* Color-coding legend: confirmed = sage, pending = terra-amber, booked = periwinkle */}
+      {/*
+        Legend. Each entry pairs its colour swatch with the SAME glyph used on the entries
+        above, so the legend teaches the non-colour cue rather than being colour-only itself
+        (it was three identical dots distinguished purely by hue).
+      */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-ll-cream-dark bg-ll-cream px-3 py-2 font-mono text-mono-sm text-ll-warm-gray">
         <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full bg-confirmed" /> Confirmed
+          <span aria-hidden="true" className="grid h-3.5 w-3.5 place-items-center rounded-full bg-confirmed text-[0.6rem] leading-none text-ll-ink">
+            {STATUS_MARK.confirmed.glyph}
+          </span>
+          Confirmed
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full bg-pending" /> Pending
+          <span aria-hidden="true" className="grid h-3.5 w-3.5 place-items-center rounded-full bg-pending text-[0.6rem] leading-none text-ll-ink">
+            {STATUS_MARK.pending.glyph}
+          </span>
+          Pending
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full bg-booked" /> Booked
+          <span aria-hidden="true" className="grid h-3.5 w-3.5 place-items-center rounded-full bg-booked text-[0.6rem] leading-none text-ll-ink">
+            ●
+          </span>
+          Booked
         </span>
         {onPickRange && <span className="ml-auto">Tip: drag across days to select a range</span>}
       </div>
