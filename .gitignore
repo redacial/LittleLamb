@@ -19,3 +19,6 @@ scripts.zip
 
 # Firebase emulator state (--import/--export-on-exit)
 .emulator-data/
+
+# Session scratch dir (temp files, never committed)
+scratchpad/

@@ -10,22 +10,63 @@ service firebase.storage {
     function isImage() {
       return request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)');
     }
+    // Deliberately ANY video/* subtype. The client (src/lib/storage.ts) gates on
+    // `file.type.startsWith('video/')`, and a narrower allowlist here meant an Android
+    // capture (video/3gpp) or a Matroska file passed every client check, uploaded, and then
+    // died on a rules rejection surfaced as an opaque Firebase error with nothing actionable
+    // in it. The size cap below is what actually bounds abuse on this path; the subtype
+    // allowlist only bought us mismatched failure modes. Keep this in step with the client.
     function isVideo() {
-      return request.resource.contentType.matches('video/(mp4|quicktime|webm)');
+      return request.resource.contentType.matches('video/.*');
     }
     function underMB(n) { return request.resource.size < n * 1024 * 1024; }
 
-    // Profile photos (families + nannies). Public-readable (they appear on profiles to
-    // approved members), owner-writable, image-only, max 8 MB.
+    /**
+     * Reads are OWNER **OR** APPROVED MEMBER.
+     *
+     * Storage rules cannot see Firestore without an explicit firestore.get(), so this is a new
+     * cross-service dependency and costs ONE billed Firestore read per file access. That is
+     * accepted (D-storage-privacy). Exactly one lookup, always the same document:
+     *
+     *     /databases/(default)/documents/users/$(request.auth.uid)
+     *
+     * mirroring isApprovedMember() in firestore.rules — approved non-admin members, plus admin.
+     * The lookup is guarded by isSignedIn() so an anonymous request short-circuits and never
+     * pays for a read.
+     */
+    function callerUser() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+    // NOTE: callerUser() is referenced twice below, but the rules engine evaluates and caches
+    // an identical document lookup once per request, so this stays at ONE billed read. Written
+    // as a single `in` test anyway to keep that guarantee obvious rather than implicit.
+    function isApprovedMember() {
+      return isSignedIn()
+        && (callerUser().get('approved', false) == true
+            || callerUser().get('role', '') == 'admin');
+    }
+
+    // Profile photos (families + nannies).
+    //
+    // Readable by the OWNER or any approved member — NOT by every signed-in account. These
+    // were `isSignedIn()`, which meant a rejected applicant or a bot that had just signed up
+    // could pull down every family's photo by URL. Firestore already scoped the surrounding
+    // profile data to approved members; this closes the same door on the file side.
+    //
+    // The owner half is REQUIRED, not a convenience: the setup wizard is reachable from the
+    // pending holding page, so an applicant uploads a photo and needs its preview back BEFORE
+    // Lucy approves them. An approved-only rule would break onboarding for every applicant.
     match /profile-photos/{userId}/{fileName} {
-      allow read: if isSignedIn();
+      allow read: if isOwner(userId) || isApprovedMember();
       allow write: if isOwner(userId) && isImage() && underMB(8);
       allow delete: if isOwner(userId);
     }
 
-    // Nanny intro videos. Owner-writable, video-only, max 60 MB (≈1 min clip).
+    // Nanny intro videos. Same owner-or-approved read posture as photos, and for the same
+    // onboarding reason — the video step is part of the pre-approval wizard.
+    // Owner-writable, video-only, max 60 MB (≈1 min clip).
     match /intro-videos/{userId}/{fileName} {
-      allow read: if isSignedIn();
+      allow read: if isOwner(userId) || isApprovedMember();
       allow write: if isOwner(userId) && isVideo() && underMB(60);
       allow delete: if isOwner(userId);
     }
