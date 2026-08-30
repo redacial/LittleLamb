@@ -57,11 +57,28 @@ export function FamilyProfilePage() {
     setSaved(false)
   }
 
+  /*
+   * No try/catch at all before this: a rejected upload (file over the size cap, a
+   * storage-rules refusal, a dropped connection) threw into the void, the avatar never
+   * changed, and the page said nothing — so the parent re-picked the same file repeatedly.
+   * The wizard's version of this exact function already handled it; only the
+   * post-onboarding editor did not.
+   */
   async function onPhoto(file: File) {
     if (!uid) return
-    const url = await uploadProfilePhoto(uid, file)
-    setForm((f) => ({ ...f, photoURL: url }))
-    await save({ photoURL: url })
+    setBusy(true)
+    setError(null)
+    try {
+      const url = await uploadProfilePhoto(uid, file)
+      setForm((f) => ({ ...f, photoURL: url }))
+      await save({ photoURL: url })
+    } catch (e) {
+      // The storage layer's own message ("Image must be under 5MB") is the useful one —
+      // it says what to do next, where a generic "upload failed" does not.
+      setError(e instanceof Error ? e.message : 'We couldn’t upload that photo. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function onSave() {
@@ -87,6 +104,12 @@ export function FamilyProfilePage() {
           .filter((c) => c.name),
       })
       setSaved(true)
+    } catch {
+      // Previously try/finally with no catch: a failed write showed neither "Saved" nor an
+      // error, so the click produced no feedback at all and the family assumed their new
+      // address or allergy note was live. setSaved stays false so the two signals can
+      // never both be absent.
+      setError('We couldn’t save your changes. Please check your connection and try again.')
     } finally {
       setBusy(false)
     }
@@ -125,7 +148,6 @@ export function FamilyProfilePage() {
               onMinChange={(v) => set('rateMin', v)}
               onMaxChange={(v) => set('rateMax', v)}
             />
-            {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
             <Input label="Pets" value={form.pets} onChange={(e) => set('pets', e.target.value)} />
             <Textarea label="Allergies & special needs" value={form.allergies} onChange={(e) => set('allergies', e.target.value)} />
             <Textarea label="House rules & notes" value={form.houseRules} onChange={(e) => set('houseRules', e.target.value)} />
@@ -150,6 +172,12 @@ export function FamilyProfilePage() {
             <Input label="Spouse / co-parent name" value={form.coParentName} onChange={(e) => set('coParentName', e.target.value)} />
             <Input label="Spouse / co-parent email" value={form.coParentEmail} onChange={(e) => set('coParentEmail', e.target.value)} />
           </Card>
+
+          {/* One error surface for the whole page, next to the Save button rather than buried
+              mid-form: it now carries upload failures and save failures as well as the rate
+              validator's message, and an error about a photo upload pinned under the rate
+              fields would point at the wrong control. */}
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
 
           <div className="flex items-center gap-3">
             <Button onClick={onSave} loading={busy}>Save changes</Button>

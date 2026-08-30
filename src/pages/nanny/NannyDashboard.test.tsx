@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { NannyDashboard } from './NannyDashboard'
@@ -184,5 +184,75 @@ describe('NannyDashboard — claiming an open post must be able to send mail', (
       // Same meta as any other post — including TODAY's date, the whole point of same-day.
       expect.objectContaining({ ...openAddressable, date: today }),
     )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Silent-failure class: an async action that can reject with no catch, no busy
+// state and no error surface. The nanny cannot tell a failure from a no-op, so
+// she taps again — and on an open post, "again" is a second write against a row
+// somebody else may already own.
+//
+// The race is the sharp edge. useBookings now makes assignNanny REJECT when the
+// booking has already been claimed, so the losing nanny MUST be told she lost.
+// Swallowing that rejection is the exact bug: the card stays on screen, nothing
+// changes, and she believes the app is broken rather than that the job is gone.
+// ---------------------------------------------------------------------------
+describe('NannyDashboard — a failed action must never look like a no-op', () => {
+  it('shows an error when ACCEPT fails instead of leaving the card silent', async () => {
+    setStatus.mockRejectedValueOnce(new Error('permission-denied'))
+    renderDash()
+
+    await userEvent.click(screen.getByRole('button', { name: /^accept$/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn’t|could not|try again/i)
+  })
+
+  it('shows an error when DECLINE fails', async () => {
+    setStatus.mockRejectedValueOnce(new Error('permission-denied'))
+    renderDash()
+
+    await userEvent.click(screen.getByRole('button', { name: /decline/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn’t|could not|try again/i)
+  })
+
+  it('tells the nanny she LOST THE RACE when the open post was already claimed', async () => {
+    // The message has to say what actually happened. "Something went wrong" would send
+    // her back to tap the same dead card; "another nanny took it" tells her to move on.
+    openBookings = [openBooking]
+    assignNanny.mockRejectedValueOnce(new Error('already-claimed'))
+    renderDash()
+
+    await userEvent.click(screen.getByRole('button', { name: /accept this booking/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/another nanny/i)
+  })
+
+  it('clears a previous error when the next action succeeds', async () => {
+    // A stale "you lost that one" pinned under a booking she just won is its own lie.
+    setStatus.mockRejectedValueOnce(new Error('offline'))
+    renderDash()
+
+    await userEvent.click(screen.getByRole('button', { name: /^accept$/i }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /^accept$/i }))
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  })
+
+  it('disables the accept button while the write is in flight', async () => {
+    // Without this she taps Accept three times on a slow connection and races herself.
+    let release: () => void = () => {}
+    setStatus.mockImplementationOnce(() => new Promise<void>((res) => { release = () => res() }))
+    renderDash()
+
+    const accept = screen.getByRole('button', { name: /^accept$/i })
+    await userEvent.click(accept)
+
+    await waitFor(() => expect(accept).toBeDisabled())
+    release()
+    await waitFor(() => expect(accept).not.toBeDisabled())
   })
 })

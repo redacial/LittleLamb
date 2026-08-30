@@ -161,14 +161,45 @@ function PersonRow({
 }: {
   user: UserDoc
   role: 'nanny' | 'family'
-  onApprove: () => void
-  onReject: () => void
-  onReinstate: () => void
-  onAdvance: (s: NannyStage) => void
+  // Promise-returning by contract, not `() => void`: `run` below awaits these to catch a
+  // failed write, and a void-typed callback would silently discard the rejection — which
+  // is precisely the bug this row is being fixed for.
+  onApprove: () => Promise<unknown>
+  onReject: () => Promise<unknown>
+  onReinstate: () => Promise<unknown>
+  onAdvance: (s: NannyStage) => Promise<unknown>
 }) {
   const [badgesOpen, setBadgesOpen] = useState(false)
   const [reviewsOpen, setReviewsOpen] = useState(false)
   const [confirmReject, setConfirmReject] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  /**
+   * Approve / reject / reinstate / advance were fire-and-forget — the promise was created
+   * and dropped. A permission-denied or an offline write produced nothing on screen, and
+   * because these rows are driven by a Firestore snapshot that never changed, the row
+   * simply stayed put. Lucy reads a row that didn't move as "the list hasn't refreshed",
+   * not as "that write failed".
+   *
+   * The rejection case is the expensive one: she confirms, sees no error, and moves on
+   * believing the applicant is declined — while the account is still pending and still
+   * approvable. That is how an unvetted family gets in the door.
+   *
+   * The error is scoped to the ROW, not the page: the message has to say which person is
+   * still sitting in the wrong state, and a page-level banner over a long list wouldn't.
+   */
+  async function run(action: () => Promise<unknown>, verb: string) {
+    setBusy(true)
+    setError(null)
+    try {
+      await action()
+    } catch {
+      setError(`We couldn’t ${verb} ${u.fullName}. Nothing was changed — please try again.`)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const nextStage =
     role === 'nanny' && u.stage
@@ -207,15 +238,27 @@ function PersonRow({
         {!u.approved && u.status === 'pending' && (
           <>
             {role === 'nanny' && nextStage && u.stage !== 'decision_made' && (
-              <Button size="sm" variant="ghost" onClick={() => onAdvance(nextStage)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => run(() => onAdvance(nextStage), 'advance')}
+              >
                 Advance
                 <ArrowRight />
               </Button>
             )}
-            <Button size="sm" onClick={onApprove}>Approve</Button>
+            <Button size="sm" disabled={busy} onClick={() => run(onApprove, 'approve')}>
+              Approve
+            </Button>
             {/* Deliberately asymmetric: Approve fires straight away, Reject asks first.
                 Approving by mistake is undone in seconds; rejecting used to be permanent. */}
-            <Button size="sm" variant="secondary" onClick={() => setConfirmReject(true)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => setConfirmReject(true)}
+            >
               Reject
             </Button>
           </>
@@ -223,11 +266,19 @@ function PersonRow({
         {/* The way back out of a misclick. Without this the rejected tab was a dead end —
             the row landed here and no control on the page could move it again. */}
         {u.status === 'rejected' && (
-          <Button size="sm" variant="secondary" onClick={onReinstate}>
+          <Button size="sm" variant="secondary" disabled={busy} onClick={() => run(onReinstate, 'reinstate')}>
             Reinstate
           </Button>
         )}
       </div>
+      {error && (
+        <p
+          role="alert"
+          className="w-full rounded-ll-input border-1.5 border-red-400 bg-white px-3 py-2 text-sm font-semibold text-red-600"
+        >
+          {error}
+        </p>
+      )}
       {role === 'nanny' && (
         <VerifiedBadgesModal
           uid={u.uid}
@@ -271,7 +322,7 @@ function PersonRow({
             variant="danger"
             onClick={() => {
               setConfirmReject(false)
-              onReject()
+              void run(onReject, 'reject')
             }}
           >
             Reject application

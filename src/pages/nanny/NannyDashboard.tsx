@@ -21,6 +21,31 @@ export function NannyDashboard() {
   const [reviewing, setReviewing] = useState<Booking | null>(null)
   const [skipped, setSkipped] = useState<Set<string>>(new Set())
   const btnHover = useButtonHover()
+  // One busy id + one error for the whole card list. Per-card rather than global because
+  // the nanny acts on one row at a time and needs to know WHICH row is mid-flight; a single
+  // shared `busy` would grey out every card and read as a page-wide hang.
+  const [pendingId, setPendingId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  /**
+   * Every async action on this page goes through here.
+   *
+   * All three call sites (accept, decline, claim) previously created a promise and dropped
+   * it: no await, no catch, no busy state. A rejected write left the card exactly where it
+   * was, which is indistinguishable from a click that never registered — so the nanny taps
+   * again, and on an open post that second tap races a row somebody else may already own.
+   */
+  async function run(id: string, action: () => Promise<unknown>, failure: string) {
+    setPendingId(id)
+    setActionError(null)
+    try {
+      await action()
+    } catch {
+      setActionError(failure)
+    } finally {
+      setPendingId(null)
+    }
+  }
 
   const firstName = profile?.fullName?.split(' ')[0] ?? 'there'
   const today = todayISO()
@@ -102,13 +127,30 @@ export function NannyDashboard() {
                     Without meta setStatus writes the status and emails nobody; without the
                     actor a decline would notify the nanny instead of the family.
                   */}
-                  <Button size="sm" onClick={() => setStatus(b.id, 'confirmed', b, 'nanny')}>
+                  <Button
+                    size="sm"
+                    disabled={pendingId === b.id}
+                    onClick={() =>
+                      run(
+                        b.id,
+                        () => setStatus(b.id, 'confirmed', b, 'nanny'),
+                        `We couldn’t accept ${b.familyName}’s request just now. Please check your connection and try again.`,
+                      )
+                    }
+                  >
                     Accept
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => setStatus(b.id, 'cancelled', b, 'nanny')}
+                    disabled={pendingId === b.id}
+                    onClick={() =>
+                      run(
+                        b.id,
+                        () => setStatus(b.id, 'cancelled', b, 'nanny'),
+                        `We couldn’t decline ${b.familyName}’s request just now. Please check your connection and try again.`,
+                      )
+                    }
                   >
                     Decline
                   </Button>
@@ -145,9 +187,26 @@ export function NannyDashboard() {
                   already chose the nanny, but an open post has no nanny attached, so
                   open_booking_picked_up is the only thing telling them anyone is coming.
                 */}
+                {/*
+                  The race. assignNanny REJECTS when the post has already been claimed, and
+                  that rejection is the single most important message on this page: the card
+                  is still on screen (her snapshot hasn't caught up yet), so without a
+                  message she taps a dead job over and over. The copy names what happened —
+                  "another nanny got there first" — because a generic "something went wrong"
+                  would send her straight back to the same card.
+                */}
                 <Button
                   size="sm"
-                  onClick={() => user && profile && assignNanny(b.id, user.uid, profile.fullName, b)}
+                  disabled={pendingId === b.id || !user || !profile}
+                  onClick={() =>
+                    user &&
+                    profile &&
+                    run(
+                      b.id,
+                      () => assignNanny(b.id, user.uid, profile.fullName, b),
+                      `Another nanny got to ${b.familyName}’s booking first — it’s no longer available. Have a look at the other open bookings.`,
+                    )
+                  }
                 >
                   Accept this booking
                 </Button>
@@ -190,6 +249,17 @@ export function NannyDashboard() {
           </div>
         )}
 
+        {/* Live region, page-level: the nanny may have scrolled past the card she acted on,
+            and an error pinned inside a card that a snapshot update then removes would
+            vanish with it. */}
+        {actionError && (
+          <p
+            role="alert"
+            className="mt-6 rounded-ll-input border-1.5 border-red-400 bg-white px-4 py-3 text-sm font-semibold text-red-600"
+          >
+            {actionError}
+          </p>
+        )}
       </PageBody>
 
       <ReviewModal

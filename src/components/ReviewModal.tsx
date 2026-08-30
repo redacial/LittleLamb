@@ -23,10 +23,24 @@ export function ReviewModal({
   const [comment, setComment] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
+  /**
+   * The write can genuinely be refused: firestore.rules only lets an APPROVED member write
+   * to `reviews`, so a deactivated or still-pending account hits permission-denied here.
+   *
+   * This used to be try/finally with no catch — on a rejection the modal simply sat there
+   * with no "Thank you" and no error, and the review the user had just written was gone the
+   * moment they closed it. Reviews are the only ground-level signal Lucy and David get on
+   * match quality, so losing one silently is the entire cost.
+   *
+   * Note what is deliberately NOT reset: `comment` and `rating` survive the failure, so a
+   * retry doesn't cost the user their words a second time.
+   */
   async function save() {
     if (!booking) return
     setBusy(true)
+    setError(null)
     try {
       await submit({
         bookingId: booking.id,
@@ -37,6 +51,8 @@ export function ReviewModal({
         comment,
       })
       setDone(true)
+    } catch {
+      setError('We couldn’t send your review just now. Your words are still here — please try again.')
     } finally {
       setBusy(false)
     }
@@ -75,6 +91,7 @@ export function ReviewModal({
             ))}
           </div>
           <Textarea label="Anything you'd like to share?" value={comment} onChange={(e) => setComment(e.target.value)} />
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <Button onClick={save} loading={busy}>Submit review</Button>
         </div>
       )}

@@ -58,17 +58,45 @@ export function NannyOwnProfilePage() {
   ]
   const complete = checks.filter((c) => c.done).length
 
+  /*
+   * Uploads had NO try/catch at all. uploadProfilePhoto rejects for ordinary reasons — a
+   * file over the size cap, a storage-rules refusal, a dropped connection — and the
+   * rejection went nowhere: the avatar never changed and the page said nothing, so the
+   * nanny re-picked the same oversized file over and over.
+   *
+   * The WIZARD versions of these exact two functions already handled this correctly; only
+   * the post-onboarding editor did not. This is that same handling, including surfacing
+   * the storage layer's own message ("Image must be under 5MB") rather than a generic
+   * failure — the specific message is the one that tells her what to do next.
+   */
   async function onPhoto(file: File) {
     if (!uid) return
-    const url = await uploadProfilePhoto(uid, file)
-    setPhotoURL(url)
-    await save({ photoURL: url })
+    setBusy(true)
+    setError(null)
+    try {
+      const url = await uploadProfilePhoto(uid, file)
+      setPhotoURL(url)
+      await save({ photoURL: url })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'We couldn’t upload that photo. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
+
   async function onVideo(file: File) {
     if (!uid) return
-    const url = await uploadIntroVideo(uid, file)
-    setVideoURL(url)
-    await save({ introVideoURL: url })
+    setBusy(true)
+    setError(null)
+    try {
+      const url = await uploadIntroVideo(uid, file)
+      setVideoURL(url)
+      await save({ introVideoURL: url })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'We couldn’t upload that video. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function onSave() {
@@ -88,6 +116,12 @@ export function NannyOwnProfilePage() {
         ...(lo !== null && hi !== null ? { rateRange: { minCents: lo, maxCents: hi } } : {}),
       })
       setSaved(true)
+    } catch {
+      // Previously try/finally with no catch: a failed write showed neither "Saved" nor
+      // an error, so the click produced no feedback of any kind and she assumed her edits
+      // were live. setSaved is deliberately left false so the two signals can never both
+      // be absent.
+      setError('We couldn’t save your changes. Please check your connection and try again.')
     } finally {
       setBusy(false)
     }

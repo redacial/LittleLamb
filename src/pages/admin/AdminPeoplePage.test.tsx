@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AdminPeoplePage } from './AdminPeoplePage'
 import { SELF_BADGES, VERIFIED_BADGES } from '../../lib/badges'
@@ -560,5 +560,112 @@ describe('AdminPeoplePage — the application is visible to the person approving
     showFamily(applicant())
     expect(screen.getByText('The Ortegas')).toBeInTheDocument()
     expect(screen.queryByText(/undefined|null/i)).not.toBeInTheDocument()
+  })
+})
+
+
+// ---------------------------------------------------------------------------
+// Silent-failure class. approve / reject / reinstate were fire-and-forget: the
+// promise was created and dropped, so a permission-denied or an offline write
+// produced NOTHING on screen. The row does not move (it is driven by the
+// snapshot, which never changed), and Lucy reads a row that stayed put as "the
+// list just hasn't refreshed" rather than "that write failed".
+//
+// The rejection case is the expensive one: Lucy confirms a rejection, sees no
+// error, and moves on believing the applicant is declined. The account is still
+// pending and approvable — which is how an unvetted family gets in the door.
+// ---------------------------------------------------------------------------
+describe('AdminPeoplePage — a failed admin action must never pass for success', () => {
+  function pendingNanny(over: Partial<UserDoc> = {}): UserDoc {
+    return {
+      uid: 'nanny-7',
+      fullName: 'Dana Whitfield',
+      email: 'dana@example.com',
+      role: 'nanny',
+      approved: false,
+      status: 'pending',
+      stage: 'under_review',
+      ...over,
+    } as UserDoc
+  }
+
+  it('shows an error when a REJECTION fails, rather than letting it look done', async () => {
+    adminActions.reject.mockRejectedValueOnce(new Error('permission-denied'))
+    const n = pendingNanny()
+    reset({ users: [n], items: [n] })
+
+    render(<AdminPeoplePage role="nanny" />)
+    await userEvent.click(screen.getByRole('button', { name: /^reject$/i }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: /reject application/i }))
+
+    const alert = await screen.findByRole('alert')
+    // Naming the person matters: the page lists many rows and the error has to say
+    // which one is still sitting unrejected.
+    expect(alert).toHaveTextContent(/Dana Whitfield/)
+    expect(alert).toHaveTextContent(/reject/i)
+  })
+
+  it('shows an error when an APPROVAL fails', async () => {
+    adminActions.approve.mockRejectedValueOnce(new Error('permission-denied'))
+    const n = pendingNanny()
+    reset({ users: [n], items: [n] })
+
+    render(<AdminPeoplePage role="nanny" />)
+    await userEvent.click(screen.getByRole('button', { name: /^approve$/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Dana Whitfield/)
+  })
+
+  it('shows an error when a REINSTATE fails', async () => {
+    adminActions.reinstate.mockRejectedValueOnce(new Error('offline'))
+    const n = pendingNanny({ status: 'rejected' })
+    reset({ users: [n], items: [n] })
+
+    render(<AdminPeoplePage role="nanny" />)
+    await userEvent.click(screen.getByRole('tab', { name: /^rejected$/i }))
+    await userEvent.click(screen.getByRole('button', { name: /reinstate/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Dana Whitfield/)
+  })
+
+  it('shows an error when ADVANCING the application stage fails', async () => {
+    adminActions.advanceStage.mockRejectedValueOnce(new Error('offline'))
+    const n = pendingNanny()
+    reset({ users: [n], items: [n] })
+
+    render(<AdminPeoplePage role="nanny" />)
+    await userEvent.click(screen.getByRole('button', { name: /advance/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Dana Whitfield/)
+  })
+
+  it('says nothing when the action SUCCEEDS — no error on the happy path', async () => {
+    // Guards the fix against the lazy version that renders the notice unconditionally.
+    const n = pendingNanny()
+    reset({ users: [n], items: [n] })
+
+    render(<AdminPeoplePage role="nanny" />)
+    await userEvent.click(screen.getByRole('button', { name: /^approve$/i }))
+
+    await waitFor(() => expect(adminActions.approve).toHaveBeenCalled())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('disables the row’s buttons while a write is in flight', async () => {
+    let release: () => void = () => {}
+    adminActions.approve.mockImplementationOnce(
+      () => new Promise<void>((res) => { release = () => res() }),
+    )
+    const n = pendingNanny()
+    reset({ users: [n], items: [n] })
+
+    render(<AdminPeoplePage role="nanny" />)
+    const approve = screen.getByRole('button', { name: /^approve$/i })
+    await userEvent.click(approve)
+
+    await waitFor(() => expect(approve).toBeDisabled())
+    release()
+    await waitFor(() => expect(approve).not.toBeDisabled())
   })
 })
