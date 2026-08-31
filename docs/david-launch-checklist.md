@@ -92,15 +92,29 @@ The key is already live and the app is minting tokens. Before enforcing:
 
 _Unblocks: bot/abuse protection on the paid callables and uploads._
 
-### 5. Stripe business verification → live payments — the go-live gate
-- [ ] **Start Stripe business verification now** (dashboard → complete/activate your account). It
-      can take **days** and is the most likely thing to delay launch — don't leave it for last.
-- [ ] When we're ready to go live (test passed + Lucy's content in), I'll swap to live keys and
-      register a live webhook. **You then flip billing ON** from the admin Settings page.
-- [ ] ⚠️ **Until that final flip, checkout looks like it works but charges nobody.** This is
-      intentional and safe — we keep it off until the very end.
+### 5. Stripe live payments — 🚫 BLOCKED UNTIL POST-LAUNCH (no EIN yet)
 
-_Unblocks: real charges. This is the last thing that happens._
+**Decision (2026-08-30):** Little Lamb has **no EIN yet**, so Stripe business verification cannot
+be completed and live payments are **deferred to after launch.** This does **not** block launch.
+
+The platform launches with **billing OFF** (`config/billing.enabled = false`, its normal, safe
+state today). Everything else works fully: families apply, get approved, onboard, browse nannies,
+book, and get matched; nannies manage availability and accept jobs; email and calendar invites
+fire. The **only** thing missing is the automated quarterly card charge — which is fine, because:
+- The per-booking + subscription total is small ($25/qtr + $1/booking) and can be reconciled
+  manually or invoiced by hand for the first families.
+- Card **capture** during onboarding still needs deciding — see the plan. Options: keep the card
+  step but store the card off a real charge, or make the card step optional/skippable until
+  billing goes live. Confirm which you want.
+
+**Post-launch, once the EIN is in hand:**
+- [ ] Get the EIN, then complete Stripe business verification (dashboard → activate account). Days.
+- [ ] Tell me — I swap to live keys, register a live webhook, run the money-path test.
+- [ ] Run `npm run backfill:billing -- --prod --apply` so existing families get a `nextChargeDate`
+      (they're invisible to billing without it — see D67).
+- [ ] **You flip billing ON** from admin Settings. Only then are cards charged.
+
+_Unblocks: real charges. Explicitly NOT on the launch critical path anymore._
 
 ### 6. Lucy's content — hand it over whenever ready
 - [ ] Badge list (self-reported + admin-verified), policies text, founder bios, real nanny
@@ -111,13 +125,16 @@ _Blocks: showing the site to real families — not deploying._
 
 ---
 
-## The launch sequence, at a glance
+## The launch sequence, at a glance (billing OFF at launch — no EIN yet)
 1. Resend DNS → email on
-2. Stripe webhook → payment confirmations on
+2. Stripe **test-mode** webhook + secret → the money path is testable (not live charges)
 3. First admin → end-to-end test can run _(then I run the full three-role test)_
 4. App Check verified → enforce after 24–48h
-5. Lucy's content in + Stripe business verified
-6. Swap to live keys → **you flip billing ON** → point the public domain at the app → **live** 🎉
+5. Lucy's content in
+6. Point the public domain at the app → **live with billing OFF** 🎉
 
-**Nothing here is blocked on engineering.** The realistic gate is Stripe business verification and
-Lucy's content — roughly **1–2 weeks**.
+**Later, post-launch (needs the EIN):** Stripe business verification → live keys → backfill
+`nextChargeDate` → **you flip billing ON**.
+
+**Nothing here is blocked on engineering.** With Stripe off the critical path, the realistic gate
+is now **Resend DNS + Lucy's content** — roughly **a few days to a week** once you do steps 1–2.

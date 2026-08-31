@@ -110,7 +110,10 @@ with the right recipients, and **the decline must be addressed to the family** (
      `firebase functions:secrets:set STRIPE_WEBHOOK_SECRET`. Redeploy after.
    - **First admin** — `node scripts/make-admin.mjs <email> "<name>"` with a service-account key
      (delete the key after).
-   - **Start Stripe business verification NOW** — days-long, and it gates go-live.
+   - ~~Start Stripe business verification NOW~~ — **🚫 BLOCKED: no EIN yet (2026-08-30).** Live
+     payments are deferred to **post-launch**; the platform launches with **billing OFF** (its
+     current safe state). This is off the critical path now. Stripe **test-mode** webhook (above)
+     is still worth doing — it makes the money path testable without live charges.
 6. Repeat the three-role pass on `littlelamb-sb-app.web.app` — real App Check enforcement, real
    email, billing still dry-run.
 
