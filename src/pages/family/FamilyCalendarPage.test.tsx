@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { ToastProvider } from '../../components/ui/Toast'
 import { FamilyCalendarPage } from './FamilyCalendarPage'
 
 // Recurring bookings were unreachable dead code: `recurring: true` appeared NOWHERE in src/,
@@ -58,7 +59,9 @@ vi.mock('../../context/AuthContext', () => ({
 async function openBookingModal(user: ReturnType<typeof userEvent.setup>, isoDate: string) {
   render(
     <MemoryRouter>
-      <FamilyCalendarPage />
+      <ToastProvider>
+        <FamilyCalendarPage />
+      </ToastProvider>
     </MemoryRouter>,
   )
 
@@ -213,5 +216,35 @@ describe('FamilyCalendarPage — a booking that fails says so', () => {
 
     await user.click(screen.getByRole('button', { name: /confirm booking/i }))
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  })
+})
+
+// F3: confirming a booking used to close the modal and go silent. The three outcomes mean
+// different things to a parent, so the toast must name which one happened — not a flat "done".
+describe('FamilyCalendarPage — the confirmation toast (F3)', () => {
+  beforeEach(() => {
+    createBooking.mockClear()
+  })
+
+  it('says "all set" when the booking auto-confirms inside the nanny’s hours', async () => {
+    const user = userEvent.setup()
+    await openBookingModal(user, MONDAY) // inside Priya's Monday hours → confirmed
+    await user.selectOptions(screen.getByLabelText('Nanny'), 'n1')
+    await user.click(screen.getByRole('button', { name: /confirm booking/i }))
+
+    // Names the nanny and the confirmed outcome, and it's announced via the status region.
+    const toast = await screen.findByText(/booked with priya .* all set/i)
+    expect(toast.closest('[role="status"]')).toBeTruthy()
+  })
+
+  it('says the request was SENT when the slot is outside the nanny’s hours', async () => {
+    const user = userEvent.setup()
+    await openBookingModal(user, TUESDAY) // Priya opened Monday only → pending
+    await user.selectOptions(screen.getByLabelText('Nanny'), 'n1')
+    await user.click(screen.getByRole('button', { name: /confirm booking/i }))
+
+    // Pending must NOT read as confirmed — that's the distinction the whole toast exists for.
+    expect(await screen.findByText(/sent to priya to accept/i)).toBeInTheDocument()
+    expect(screen.queryByText(/all set/i)).toBeNull()
   })
 })

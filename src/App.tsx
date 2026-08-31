@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { ToastProvider } from './components/ui/Toast'
 import {
   RequireAuth,
   RequireRole,
@@ -95,6 +96,8 @@ export function App() {
     // component every route depends on is the only one that can still white-screen.
     <ErrorBoundary boundaryName="app">
     <AuthProvider>
+      {/* Toast viewport lives above the routes so any screen can acknowledge a success. */}
+      <ToastProvider>
       {/* One boundary around the whole tree: only the lazy (post-auth) routes can suspend,
           and they already show a full-screen shell while the guards resolve auth. */}
       <Suspense fallback={<FullScreenLoader />}>
@@ -162,6 +165,7 @@ export function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
+      </ToastProvider>
     </AuthProvider>
     </ErrorBoundary>
   )

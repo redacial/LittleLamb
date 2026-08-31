@@ -6,7 +6,7 @@ import { useFamilyProfile } from '../../hooks/useProfile'
 import { useNannyDirectory } from '../../hooks/useNannies'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { MonthGrid } from '../../components/calendar/MonthGrid'
-import { Modal, Button, Input, Textarea, Select, Avatar, StatusPill } from '../../components/ui'
+import { Modal, Button, Input, Textarea, Select, Avatar, StatusPill, useToast } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import { cn } from '../../lib/cn'
 import { rangesOverlap, overlapWindow, formatRate, resolveBookingStatus } from '../../lib/rates'
@@ -21,6 +21,7 @@ export function FamilyCalendarPage() {
   const { bookings } = useMyBookings(user?.uid, 'family')
   const { profile: family } = useFamilyProfile(user?.uid)
   const { nannies } = useNannyDirectory()
+  const toast = useToast()
 
   const now = new Date()
   const today = todayISO(now)
@@ -139,6 +140,17 @@ export function FamilyCalendarPage() {
       setPickedDay(null)
       setNotes('')
       setWantsRecurring(false)
+      // F3: the confirm used to close the modal and go silent — no signal the booking landed,
+      // let alone what state it landed in. The three outcomes mean genuinely different things to
+      // a parent, so the acknowledgement names which one happened rather than a flat "done".
+      const nannyLabel = chosen?.fullName?.split(' ')[0] ?? 'your nanny'
+      toast.show(
+        status === 'confirmed'
+          ? `Booked with ${nannyLabel} — you're all set!`
+          : status === 'same_day_review'
+            ? "Posted for our nannies — we'll be in touch shortly about today."
+            : `Sent to ${nannyLabel} to accept — we'll email you either way.`,
+      )
     } catch (e) {
       // Without this the modal simply sat there with the notes still in it and the spinner
       // stopped — identical to nothing having happened — so the family clicked Confirm again.
