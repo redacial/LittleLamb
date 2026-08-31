@@ -576,3 +576,32 @@ Calling the extracted `runQuarterlyCharge(deps)` directly is strictly better: `n
 (so cycle boundaries are testable — the pubsub path hardcodes `new Date()`), `enabled` is explicit
 rather than depending on a Firestore doc, and it returns `{invoiced, skipped}` instead of requiring
 log scraping. That is what the extraction in D-billing was for. `scripts/run-billing.mjs`.
+
+### D70. Launch with billing OFF; the wizard's "add a card later" fallback is the launch posture
+**Why this matters:** Little Lamb has no EIN yet, so Stripe business verification can't complete and
+live payments are impossible before launch. Rather than block launch on money, we ship with
+`config/billing.enabled = false` (its current, safe state) and turn it on post-EIN.
+
+**Decision (David, 2026-08-30):** the family setup wizard's PaymentStep already has a graceful
+fallback for "Stripe not configured" — a "secure card capture activates at launch, you won't be
+charged today" acknowledgement that lets onboarding complete without a card. **That fallback is the
+launch posture**, not test-mode Elements. So at launch the card step must resolve to the fallback,
+not to a live/test card field. Concretely: `stripeEnabled` (publishable key present) must be *false*
+in the launch build, or the step must otherwise route to the fallback. Card capture returns when
+billing is turned on. Everything else in onboarding/booking/matching works fully with billing off;
+the only missing capability is the automated quarterly charge, reconciled by hand for early families.
+
+### D71. The week/hour calendar (F2) is in scope for v1
+**Why this matters:** it was deferred to post-MVP when found (Backlog F2), but it's the biggest gap
+between the shipped month-only click-a-day calendar and CLAUDE.md §6.1/§6.2 (Month/Week/Day/List +
+drag). **Decision (David, 2026-08-30): build it for v1.** One shared week/hour grid component serving
+both the family calendar and the nanny availability editor (nanny adds drag-to-set-availability on
+top), so they can't drift. It is sequenced *after* the launch-gating work — the app is deployable
+and testable without it, so it must not block the first deploy or the three-role pass.
+
+### D72. Ship the live-billing-rates fix (M1) now, even though billing is off
+**Why this matters:** three UIs hardcode `SUBSCRIPTION = 25` / `PER_BOOKING = 1` while the server
+reads `config/billing`; `useBillingConfig()` already exists. It was held for David's review because
+it touches money *display*. **Decision (David, 2026-08-30): ship it now.** With billing off nothing
+is charged, so this is the *safest possible* window to correct the display — no risk of a
+charge/estimate mismatch during the change, and it's done before billing is ever turned on.
