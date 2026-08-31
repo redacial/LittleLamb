@@ -1,16 +1,28 @@
-# Next session — finish the local pass, then Gate 2 (first deploy)
+# Next session — push + CI, then Gate 2 (first deploy)
 
 **Start by reading:** `CLAUDE.md` (esp. § Testing — test-first is a hard rule), `DECISIONS.md`
-D66–D69, `session-log/2026-08-18-three-bugs-and-a-safe-lab.md`, then `git log --oneline -12`.
+D66–D69, `session-log/2026-08-30-error-handling-and-a11y.md` (most recent), then
+`git log --oneline -12`.
 
-**Branch:** `landing-page-prelaunch`. **19 commits unpushed.** Tree clean apart from `scratchpad/`.
+**Branch:** `landing-page-prelaunch`. **7 commits ahead of its upstream** (4 landed 2026-08-30),
+90 ahead of `main`. Tree clean; `scratchpad/` is now gitignored.
+
+> ⚠️ **First thing next session: PUSH and confirm CI green.** The unpushed count is large and has
+> never run on a real runner. Everything below assumes that's done.
 
 ---
 
 ## State
 
-**Green: 132 client / 88 functions / 23 rules = 243.** tsc clean, lint 0, both builds OK.
+**Green: ~355 client / 95 functions / 49 rules.** tsc clean, lint 0, both builds OK.
 **Nothing is deployed. Nothing is public.** The apex still serves the pre-launch landing page.
+
+**2026-08-30 landed (all committed, all green):** silent-failure sweep across every fire-and-forget
+async action; Modal focus trap + visible ✕; MonthGrid colour-independent status (WCAG 1.4.1);
+**storage reads scoped owner-or-approved** (were `isSignedIn()` — a privacy hole); and the **rules
+past-date backstop re-anchored to Pacific** (`+1d+8h`) after the suite caught it accepting
+yesterday late in the UTC day. The rules + storage changes are what `deploy:rules:prod` will
+actually ship — read that diff line-by-line at Gate 2.
 
 Verified against real infrastructure:
 

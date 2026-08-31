@@ -91,3 +91,23 @@ was built, and what's left. This is the human-readable memory of the project's e
   protects the card, not the inbox** — `enqueueMail` is outside the `if (enabled)` block. D66–D69.
   Green: 92 + 64 + 23 = **179**. Nothing deployed, nothing public. ⚠️ **Apex SPF record is GONE** —
   David's DNS step is an ADD, not a merge.
+- `2026-08-24-human-dead-ends.md` — **Four human-facing dead ends that a real applicant would
+  hit, each made worse by email being dark.** (1) A declined family was routed to the "we'll email
+  you when approved" holding page forever (`homeRouteFor` branched only on `approved`, and rejected
+  is also `approved:false`) → real declined page. (2) Approval was invisible: `AuthContext`'s live
+  snapshot flipped `approved` but neither holding page consumed it → both now switch to an approved
+  state without a re-login. (3) Reject was one irreversible click → confirm-that-names-the-person +
+  `reinstate()` back to *pending* not approved. (4) `/apply` answers were written to a
+  `sessionStorage` key nothing read → persisted to `users/{uid}`, sanitized at the write boundary,
+  rendered in the admin row. Plus a rules past-date clock bug (`+1d`→`+2d`) and a users-update
+  length-guard hole closed. Green: 287 + 95 + 37 = **419**.
+- `2026-08-30-error-handling-and-a11y.md` — **The silent-failure sweep** (picked up as uncommitted
+  work from the prior session and landed clean, plus a red suite fixed). Every fire-and-forget
+  async action (NannyDashboard accept/decline/claim, AdminPeople approve/reject/reinstate/advance,
+  profile uploads+save, ReviewModal.save) now catches and surfaces failures instead of leaving the
+  UI unmoved — the retries were racing claims and hiding failed rejections. Modal got a real focus
+  trap + restoration + visible ✕ (was `aria-modal` in name only); MonthGrid stopped carrying status
+  by colour alone (WCAG 1.4.1). **Storage reads scoped owner-or-approved** (were `isSignedIn()` —
+  anyone could read every photo/video by URL). And the **rules past-date backstop**, red on arrival,
+  re-anchored to Pacific (`+1d+8h`) so it rejects a genuine yesterday yet never rejects a Pacific
+  today, robust across the whole day. Green: ~355 + 95 + 49. Nothing deployed.
