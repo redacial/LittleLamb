@@ -2,10 +2,18 @@
 
 ## POST-MVP — family booking UX (found by David walking the app, 2026-08-23)
 
-Three findings from a real click-through of the family flow. **Deferred to post-MVP by David** —
-none of them block launch, but #1 is a correctness bug, not a polish item.
+Three findings from a real click-through of the family flow.
 
-### F1. Booking dates are not validated — a past date is accepted
+**Status (2026-08-30):**
+- **F1 — DONE.** The `bookingRules.ts` module + the rules-layer past-date backstop shipped
+  (the backstop was re-anchored to Pacific on 2026-08-30 after the suite caught it accepting
+  yesterday). Past days can't be opened or written.
+- **F3 — DONE (2026-08-30).** Shared `Toast` component + outcome-aware confirmation on the family
+  booking confirm. `resolveBookingStatus` drives the copy so confirmed / pending / same-day each
+  read differently.
+- **F2 — IN SCOPE FOR v1 (D71), NOT yet built.** Details below.
+
+### F1. Booking dates are not validated — a past date is accepted ✅ DONE
 **Verified.** `resolveBookingStatus` (`src/lib/rates.ts:104`) only tests `date === today` to route
 same-day bookings; **nothing anywhere tests `date < today`.** `MonthGrid` uses `today` purely for
 styling (`:104`), so past days are clickable and bookable. David booked a date that had already
@@ -54,7 +62,14 @@ Both are verified and neither is fixed, at David's instruction. Both are display
 rather than mischarges — **no card is charged incorrectly today** — but both mislead people about
 money, and one is a trap for whoever touches it next.
 
-### M1. Billing rates are hardcoded in three UIs while `config/billing` is authoritative
+### M1. Billing rates hardcoded in three UIs ✅ DONE (verified 2026-08-30, shipped earlier)
+All three files now read `useBillingConfig()`: `FamilyBillingPage` uses the hook directly,
+`AdminBillingPage` derives `SUBSCRIPTION`/`PER_BOOKING` from `billingConfig.subscriptionCents/100`,
+`AdminAnalyticsPage` uses the hook. Tests exist (`FamilyBillingPage.test.tsx`,
+`AdminBillingPage.rates.test.tsx`, `AdminAnalyticsPage.test.tsx`). D72 confirmed shipping it now
+(billing-off is the safest window). The original description is kept below for history.
+
+### M1 (original). Billing rates are hardcoded in three UIs while `config/billing` is authoritative
 `src/pages/family/FamilyBillingPage.tsx:9-10`, `src/pages/admin/AdminBillingPage.tsx:9-10`,
 `src/pages/admin/AdminAnalyticsPage.tsx:7-8` each declare `const SUBSCRIPTION = 25` /
 `const PER_BOOKING = 1`.
