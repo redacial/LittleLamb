@@ -7,7 +7,7 @@ import {
   assertSucceeds,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 
 // Focused coverage of the rules ADDED/CHANGED this session: mail, families billing
 // immutability, invoices, billing_alerts. (The pre-existing rules were audited in Phase 5.)
@@ -226,7 +226,7 @@ describe('rate ranges', () => {
     await assertSucceeds(
       setDoc(doc(as(FAM), 'bookings', 'bk1'), {
         familyId: FAM,
-        date: '2026-09-01',
+        date: isoOffsetDays(7),
         rateMinCents: 2000,
         rateMaxCents: 2500,
         rateAgreed: true,
@@ -235,7 +235,7 @@ describe('rate ranges', () => {
     await assertFails(
       setDoc(doc(as(FAM), 'bookings', 'bk2'), {
         familyId: FAM,
-        date: '2026-09-01',
+        date: isoOffsetDays(7),
         rateMinCents: 3000,
         rateMaxCents: 1000, // inverted
       }),
@@ -243,28 +243,32 @@ describe('rate ranges', () => {
   })
 
   it('neither party may rewrite the agreed rate after the fact; admin may', async () => {
+    // Seed an OPEN job-board post (with a snapshotted asking rate). A nanny CLAIMS it — the only
+    // legitimate nanny write now that pending/accept-decline is gone.
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'bookings', 'bk3'), {
         familyId: FAM,
-        nannyId: NANNY,
-        status: 'pending',
+        nannyId: null,
+        status: 'open',
         rateMinCents: 2000,
         rateMaxCents: 2500,
         rateAgreed: true,
       })
     })
-    // The nanny accepting is fine — as long as the rate snapshot is untouched.
+    // Claiming is fine — as long as the rate snapshot is untouched.
     await assertSucceeds(
       setDoc(
         doc(as(NANNY), 'bookings', 'bk3'),
-        { status: 'confirmed', rateMinCents: 2000, rateMaxCents: 2500, rateAgreed: true },
+        { status: 'confirmed', nannyId: NANNY, nannyName: 'Nanny', rateMinCents: 2000, rateMaxCents: 2500, rateAgreed: true },
         { merge: true },
       ),
     )
-    // Raising the rate on an existing booking must fail for both sides.
+    // Now that it's confirmed and hers, the nanny can no longer write it at all (not open) — and in
+    // particular cannot raise the rate.
     await assertFails(
       setDoc(doc(as(NANNY), 'bookings', 'bk3'), { rateMaxCents: 9000 }, { merge: true }),
     )
+    // The family may still update its own booking, but not to rewrite the agreed rate.
     await assertFails(
       setDoc(doc(as(FAM), 'bookings', 'bk3'), { rateMinCents: 100 }, { merge: true }),
     )
@@ -377,6 +381,50 @@ describe('bookings — a past date cannot be written', () => {
     await assertFails(
       setDoc(doc(as(FAM), 'bookings', 'nodate'), { familyId: FAM, startTime: '15:00' }),
     )
+  })
+})
+
+// A nanny can NEVER cancel a booking in-app (partner meeting 2026-09) — her only cancel path is to
+// email/text Little Lamb, and admin actions it. The rules are the layer a buggy or hand-crafted
+// client can't bypass, so the ban lives here, not only in the (removed) UI. A nanny's ONLY
+// legitimate write to a booking that isn't hers is claiming an open job-board post.
+describe('bookings — a nanny cannot cancel, only claim', () => {
+  async function seedBooking(fields: Record<string, unknown>) {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'bookings', 'bk'), {
+        familyId: FAM,
+        date: isoOffsetDays(7),
+        startTime: '15:00',
+        endTime: '19:00',
+        ...fields,
+      })
+    })
+  }
+
+  it('forbids the assigned nanny from cancelling her own confirmed booking', async () => {
+    await seedBooking({ status: 'confirmed', nannyId: NANNY, nannyName: 'Nanny' })
+    await assertFails(updateDoc(doc(as(NANNY), 'bookings', 'bk'), { status: 'cancelled' }))
+  })
+
+  it('lets a nanny CLAIM an open post (status → confirmed, taking it)', async () => {
+    await seedBooking({ status: 'open', nannyId: null, nannyName: null })
+    await assertSucceeds(
+      updateDoc(doc(as(NANNY), 'bookings', 'bk'), {
+        status: 'confirmed',
+        nannyId: NANNY,
+        nannyName: 'Nanny',
+      }),
+    )
+  })
+
+  it('still lets the family cancel its own booking', async () => {
+    await seedBooking({ status: 'confirmed', nannyId: NANNY, nannyName: 'Nanny' })
+    await assertSucceeds(updateDoc(doc(as(FAM), 'bookings', 'bk'), { status: 'cancelled' }))
+  })
+
+  it('still lets an admin cancel any booking', async () => {
+    await seedBooking({ status: 'confirmed', nannyId: NANNY, nannyName: 'Nanny' })
+    await assertSucceeds(updateDoc(doc(as(ADMIN), 'bookings', 'bk'), { status: 'cancelled' }))
   })
 })
 

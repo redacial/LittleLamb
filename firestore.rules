@@ -239,10 +239,14 @@ service cloud.firestore {
              == (('rateAgreed' in existing()) ? existing().rateAgreed : false);
       }
 
-      // Family can update/cancel its own booking; assigned nanny can accept/decline; admin all.
+      // Family can update/cancel its OWN booking. A nanny's ONLY legitimate write is CLAIMING an
+      // open job-board post — she may not otherwise write a booking assigned to her, and in
+      // particular can NEVER cancel (partner meeting 2026-09: a nanny cancels only by contacting
+      // Little Lamb, and admin actions it). So the nanny branch is gated on the EXISTING status
+      // being an unclaimed board post; once claimed it's `confirmed` and she can't touch it again.
+      // The removed `existing().nannyId == uid()` branch was what let an assigned nanny cancel.
       allow update: if isSignedIn() && rateSnapshotUnchanged() && (
         existing().familyId == uid()
-        || existing().nannyId == uid()
         || (hasRole('nanny') && existing().status in ['open', 'unmatched'])
       );
       allow update: if isAdmin();

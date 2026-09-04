@@ -74,14 +74,12 @@ export async function runRecurringAutoCancel(deps: RecurringJobDeps): Promise<Re
     // Only a CONFIRMED booking represents a slot the nanny actually agreed to, and so is
     // the only kind that can be broken by the nanny later withdrawing that availability.
     //
-    // A `pending` booking is pending PRECISELY BECAUSE it sits outside the nanny's hours
-    // (see resolveBookingStatus in src/lib/rates.ts), so isCovered is false for it by
-    // construction — every outstanding recurring request would be auto-cancelled the
-    // moment it entered the 48h window, and both parties emailed that the nanny's
-    // "availability changed" when nothing changed at all. `same_day_review` is likewise
-    // still with a human. This also subsumes the old `cancelled` guard: a booking already
-    // cancelled (by the family, or by a previous overlapping run of this job) is not
-    // confirmed, so it can never be cancelled or emailed twice.
+    // An `open` booking sits on the job board with no committed nanny (out-of-hours, rate
+    // mismatch, same-day, or short-notice — see resolveBookingStatus in src/lib/rates.ts), so
+    // it represents no availability the nanny agreed to and must not be auto-cancelled. This
+    // also subsumes the old `cancelled` guard: a booking already cancelled (by the family, or
+    // by a previous overlapping run of this job) is not confirmed, so it can never be cancelled
+    // or emailed twice. (The removed `pending` status used to be the main case here.)
     //
     // Unreachable until recurring became settable from the family calendar — exactly the
     // class of latent bug this project has shipped before.

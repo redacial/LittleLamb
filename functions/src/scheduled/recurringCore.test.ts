@@ -135,12 +135,12 @@ describe('runRecurringAutoCancel — reachability guards (recurring is now setta
     expect(res.cancelled).toBe(0)
   })
 
-  it('does not auto-cancel a PENDING recurring request the nanny has not answered', async () => {
-    // A pending booking is pending precisely BECAUSE it sits outside the nanny's hours.
-    // Treating that as an "availability conflict" would auto-cancel every outstanding
-    // request 48h out and email the family that the nanny "changed their availability" —
-    // which never happened. Only confirmed bookings represent a slot the nanny agreed to.
-    const h = harness([booking({ id: 'unanswered', status: 'pending' })], { n1: [] })
+  it('does not auto-cancel an OPEN job-board post with no committed nanny', async () => {
+    // An open post sits on the job board (out-of-hours, rate mismatch, same-day, short-notice)
+    // with no nanny who agreed to the slot. Treating that as an "availability conflict" would
+    // wrongly cancel it and email the family that the nanny "changed their availability" — which
+    // never happened. Only confirmed bookings represent a slot the nanny agreed to.
+    const h = harness([booking({ id: 'unclaimed', status: 'open' })], { n1: [] })
     const res = await runRecurringAutoCancel(h.deps)
     expect(h.cancelled).toEqual([])
     expect(h.mailed).toEqual([])

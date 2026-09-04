@@ -42,7 +42,9 @@ export const recurringAutoCancel = onSchedule(
           .get()
         return snap.docs
           .map((d) => ({ id: d.id, ...(d.data() as Omit<RecurringJobBooking, 'id'>) }))
-          .filter((b) => b.status === 'confirmed' || b.status === 'pending')
+          // Only confirmed bookings can be recurring (resolveRecurring requires 'confirmed'), and
+          // the pending status was removed entirely (partner meeting 2026-09).
+          .filter((b) => b.status === 'confirmed')
       },
 
       async getAvailability(nannyId): Promise<AvailabilityByNanny[string]> {
