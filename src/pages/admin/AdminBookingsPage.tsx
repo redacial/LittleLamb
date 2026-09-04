@@ -14,15 +14,18 @@ import {
   LoadErrorNotice,
   TruncatedNotice,
 } from '../../components/ui'
-import { formatDate, formatTimeRange } from '../../lib/format'
+import { formatDate, formatTimeRange, money } from '../../lib/format'
 import type { BookingStatus } from '../../types'
 
-const STATUSES: BookingStatus[] = ['confirmed', 'pending', 'cancelled', 'open', 'unmatched', 'same_day_review']
+// Statuses a booking can actually have now (partner meeting 2026-09): auto-confirm, job-board
+// post, or cancelled. `pending`/`same_day_review` are legacy union members no booking is created
+// with anymore, so they're not offered as filters.
+const STATUSES: BookingStatus[] = ['confirmed', 'open', 'unmatched', 'cancelled']
 
 /** Platform-wide bookings with filters, admin override actions (cancel), and manual create. */
 export function AdminBookingsPage() {
   const { items: bookings, error: bookingsError, truncated, loadMore, loadingMore } = useAllBookings()
-  const { setStatus } = useBookingActions()
+  const { setStatus, setLateCancelWaived } = useBookingActions()
   const { users: families } = useUsersByRole('family')
   const { nannies } = useNannyDirectory()
   const [status, setStatusFilter] = useState<string>('')
@@ -80,15 +83,36 @@ export function AdminBookingsPage() {
                     <StatusPill status={b.status} tone={b.status === 'confirmed' ? 'confirmed' : b.status === 'cancelled' ? 'cancelled' : 'pending'} />
                   </div>
                   <p className="text-sm text-ll-warm-gray">{formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)} · {b.address}</p>
+                  {/* Late-cancel full pay owed to the nanny. Recorded when a family cancels inside
+                      the 24h window; the platform doesn't charge it, so admin settles or waives it
+                      off-platform. */}
+                  {b.lateCancel && typeof b.lateCancelFeeCents === 'number' && (
+                    <p className="mt-1 text-sm font-semibold text-ll-ink">
+                      Late cancel · {money(b.lateCancelFeeCents / 100)} full pay due to{' '}
+                      {b.nannyName ?? 'the nanny'}
+                      {b.lateCancelWaived && <span className="ml-1 font-normal text-ll-warm-gray">(waived)</span>}
+                    </p>
+                  )}
                 </div>
-                {/*
-                  Cancel passes the booking as `meta` (without it no cancellation email is
-                  enqueued at all) and 'admin' as the actor, so the nanny holding this slot gets
-                  the cancellation notice + CANCEL calendar invite.
-                */}
-                {b.status !== 'cancelled' && (
-                  <Button size="sm" variant="danger" onClick={() => setStatus(b.id, 'cancelled', b, 'admin')}>Cancel</Button>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {b.lateCancel && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setLateCancelWaived(b.id, !b.lateCancelWaived)}
+                    >
+                      {b.lateCancelWaived ? 'Un-waive fee' : 'Waive late fee'}
+                    </Button>
+                  )}
+                  {/*
+                    Cancel passes the booking as `meta` (without it no cancellation email is
+                    enqueued at all) and 'admin' as the actor, so the nanny holding this slot gets
+                    the cancellation notice + CANCEL calendar invite.
+                  */}
+                  {b.status !== 'cancelled' && (
+                    <Button size="sm" variant="danger" onClick={() => setStatus(b.id, 'cancelled', b, 'admin')}>Cancel</Button>
+                  )}
+                </div>
               </Card>
             ))}
           </div>

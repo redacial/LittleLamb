@@ -65,6 +65,9 @@ const NannyOwnProfilePage = lazy(() =>
 const NannyCalendarPage = lazy(() =>
   import('./pages/nanny/NannyCalendarPage').then((m) => ({ default: m.NannyCalendarPage })),
 )
+const NannyJobBoardPage = lazy(() =>
+  import('./pages/nanny/NannyJobBoardPage').then((m) => ({ default: m.NannyJobBoardPage })),
+)
 const AdminPeoplePage = lazy(() =>
   import('./pages/admin/AdminPeoplePage').then((m) => ({ default: m.AdminPeoplePage })),
 )
@@ -140,6 +143,7 @@ export function App() {
                 <Route path="/nanny" element={<NannyDashboard />} />
                 <Route path="/nanny/calendar" element={<NannyCalendarPage />} />
                 <Route path="/nanny/bookings" element={<BookingsPage role="nanny" />} />
+                <Route path="/nanny/job-board" element={<NannyJobBoardPage />} />
                 <Route path="/nanny/nannies" element={<NanniesDirectory />} />
                 <Route path="/nanny/nannies/:id" element={<NannyProfilePage />} />
                 <Route path="/nanny/profile" element={<NannyOwnProfilePage />} />

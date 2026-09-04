@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
-import { useMyBookings, useOpenBookings, useBookingActions } from '../../hooks/useBookings'
+import { useMyBookings, useOpenBookings } from '../../hooks/useBookings'
 import { PageBody } from '../../components/layout/AppLayout'
 import { SummaryCard } from '../../components/SummaryCard'
 import { ReviewModal } from '../../components/ReviewModal'
@@ -16,36 +16,11 @@ import { todayISO } from '../../lib/bookingRules'
 export function NannyDashboard() {
   const { profile, user } = useAuth()
   const { bookings } = useMyBookings(user?.uid, 'nanny')
+  // Count only — claiming open posts now happens on the Job Board tab (NannyJobBoardPage).
   const open = useOpenBookings()
-  const { setStatus, assignNanny } = useBookingActions()
   const [reviewing, setReviewing] = useState<Booking | null>(null)
   const [skipped, setSkipped] = useState<Set<string>>(new Set())
   const btnHover = useButtonHover()
-  // One busy id + one error for the whole card list. Per-card rather than global because
-  // the nanny acts on one row at a time and needs to know WHICH row is mid-flight; a single
-  // shared `busy` would grey out every card and read as a page-wide hang.
-  const [pendingId, setPendingId] = useState<string | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
-
-  /**
-   * Every async action on this page goes through here.
-   *
-   * All three call sites (accept, decline, claim) previously created a promise and dropped
-   * it: no await, no catch, no busy state. A rejected write left the card exactly where it
-   * was, which is indistinguishable from a click that never registered — so the nanny taps
-   * again, and on an open post that second tap races a row somebody else may already own.
-   */
-  async function run(id: string, action: () => Promise<unknown>, failure: string) {
-    setPendingId(id)
-    setActionError(null)
-    try {
-      await action()
-    } catch {
-      setActionError(failure)
-    } finally {
-      setPendingId(null)
-    }
-  }
 
   const firstName = profile?.fullName?.split(' ')[0] ?? 'there'
   const today = todayISO()
@@ -53,7 +28,6 @@ export function NannyDashboard() {
     .filter((b) => b.status === 'confirmed' && b.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))
   const next = upcoming[0]
-  const pending = bookings.filter((b) => b.status === 'pending')
   // Review prompts: confirmed bookings whose date has passed.
   const toReview = bookings
     .filter((b) => b.status === 'confirmed' && b.date < today && !skipped.has(b.id))
@@ -97,123 +71,12 @@ export function NannyDashboard() {
             }
             accent
           />
-          <SummaryCard label="Pending requests" value={pending.length} hint="Awaiting your reply" />
-          <SummaryCard label="Open bookings" value={open.length} hint="Requests you can pick up" />
+          {/* Open bookings now live on the Job Board tab; this card is a count that links there. */}
+          <Link to="/nanny/job-board" className="block">
+            <SummaryCard label="Job Board" value={open.length} hint="Open bookings to claim" />
+          </Link>
           <SummaryCard label="Confirmed" value={upcoming.length} hint="Upcoming this period" />
         </div>
-
-        {pending.length > 0 && (
-          <div className="mt-7 space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkle className="h-4 w-4 text-ll-terra" />
-              <h2 className="font-display text-display-sm text-ll-ink">Requests awaiting your reply</h2>
-            </div>
-            {pending.map((b) => (
-              <Card
-                key={b.id}
-                tone="peri"
-                interactive
-                className="flex flex-wrap items-center justify-between gap-3"
-              >
-                <div className="min-w-0">
-                  <p className="font-display text-display-sm leading-none text-ll-ink">{b.familyName}</p>
-                  <p className="mt-1 font-mono text-mono-sm text-ll-warm-gray">
-                    {formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  {/*
-                    Both actions pass the booking itself as `meta` and 'nanny' as the actor.
-                    Without meta setStatus writes the status and emails nobody; without the
-                    actor a decline would notify the nanny instead of the family.
-                  */}
-                  <Button
-                    size="sm"
-                    disabled={pendingId === b.id}
-                    onClick={() =>
-                      run(
-                        b.id,
-                        () => setStatus(b.id, 'confirmed', b, 'nanny'),
-                        `We couldn’t accept ${b.familyName}’s request just now. Please check your connection and try again.`,
-                      )
-                    }
-                  >
-                    Accept
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={pendingId === b.id}
-                    onClick={() =>
-                      run(
-                        b.id,
-                        () => setStatus(b.id, 'cancelled', b, 'nanny'),
-                        `We couldn’t decline ${b.familyName}’s request just now. Please check your connection and try again.`,
-                      )
-                    }
-                  >
-                    Decline
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {open.length > 0 && (
-          <div className="mt-7 space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkle className="h-4 w-4 text-ll-sage-deep" />
-              <h2 className="font-display text-display-sm text-ll-ink">Open bookings you can pick up</h2>
-            </div>
-            {open.map((b) => (
-              <Card
-                key={b.id}
-                tone="sage"
-                interactive
-                className="flex flex-wrap items-center justify-between gap-3"
-              >
-                <div className="min-w-0">
-                  <p className="font-display text-display-sm leading-none text-ll-ink">{b.familyName}</p>
-                  <p className="mt-1 font-mono text-mono-sm text-ll-warm-gray">
-                    {formatDate(b.date)} · {formatTimeRange(b.startTime, b.endTime)} · {b.address}
-                  </p>
-                </div>
-                {/*
-                  `b` is passed as meta for the same reason as the accept/decline handlers
-                  above: assignNanny's email branch is guarded on receiving it, so without it
-                  the booking flipped to confirmed and the family was emailed NOTHING. This
-                  was the worst of the five dead call sites — on every other path the family
-                  already chose the nanny, but an open post has no nanny attached, so
-                  open_booking_picked_up is the only thing telling them anyone is coming.
-                */}
-                {/*
-                  The race. assignNanny REJECTS when the post has already been claimed, and
-                  that rejection is the single most important message on this page: the card
-                  is still on screen (her snapshot hasn't caught up yet), so without a
-                  message she taps a dead job over and over. The copy names what happened —
-                  "another nanny got there first" — because a generic "something went wrong"
-                  would send her straight back to the same card.
-                */}
-                <Button
-                  size="sm"
-                  disabled={pendingId === b.id || !user || !profile}
-                  onClick={() =>
-                    user &&
-                    profile &&
-                    run(
-                      b.id,
-                      () => assignNanny(b.id, user.uid, profile.fullName, b),
-                      `Another nanny got to ${b.familyName}’s booking first — it’s no longer available. Have a look at the other open bookings.`,
-                    )
-                  }
-                >
-                  Accept this booking
-                </Button>
-              </Card>
-            ))}
-          </div>
-        )}
 
         {toReview.length > 0 && (
           <div className="mt-7 space-y-3">
@@ -249,17 +112,6 @@ export function NannyDashboard() {
           </div>
         )}
 
-        {/* Live region, page-level: the nanny may have scrolled past the card she acted on,
-            and an error pinned inside a card that a snapshot update then removes would
-            vanish with it. */}
-        {actionError && (
-          <p
-            role="alert"
-            className="mt-6 rounded-ll-input border-1.5 border-red-400 bg-white px-4 py-3 text-sm font-semibold text-red-600"
-          >
-            {actionError}
-          </p>
-        )}
       </PageBody>
 
       <ReviewModal

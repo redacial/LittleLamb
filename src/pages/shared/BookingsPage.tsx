@@ -1,24 +1,14 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { useMyBookings, useBookingActions, type BookingActor } from '../../hooks/useBookings'
+import { useMyBookings, useBookingActions } from '../../hooks/useBookings'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { ReviewModal } from '../../components/ReviewModal'
-import { Card, Button, StatusPill, RateDisclaimer } from '../../components/ui'
-import { formatDate, formatTimeRange } from '../../lib/format'
+import { Card, Button, StatusPill, RateDisclaimer, Modal } from '../../components/ui'
+import { formatDate, formatTimeRange, money } from '../../lib/format'
 import { formatRate } from '../../lib/rates'
 import type { Booking, BookingStatus } from '../../types'
-import { todayISO } from '../../lib/bookingRules'
-
-/**
- * The booking fields every notification email needs to address and describe itself. Mirrors the
- * hook-private BookingMeta in useBookings.ts — same Pick over Booking, so a Booking satisfies it
- * structurally and callers pass the booking straight through.
- */
-type BookingMeta = Pick<
-  Booking,
-  'familyId' | 'familyName' | 'nannyId' | 'nannyName' | 'date' | 'startTime' | 'endTime' | 'address'
->
+import { todayISO, lateCancelFeeCents } from '../../lib/bookingRules'
 
 function tone(s: BookingStatus): 'confirmed' | 'pending' | 'cancelled' | 'open' | 'neutral' {
   if (s === 'confirmed') return 'confirmed'
@@ -28,12 +18,58 @@ function tone(s: BookingStatus): 'confirmed' | 'pending' | 'cancelled' | 'open' 
   return 'neutral'
 }
 
-/** Bookings list, shared by family + nanny. Family can cancel; nanny can accept/decline pending. */
+/** Is this booking upcoming — its date is today or later and it isn't cancelled? */
+function isUpcoming(b: Booking, today: string): boolean {
+  return b.date >= today && b.status !== 'cancelled'
+}
+
+/** Bookings list, shared by family + nanny. Split into Upcoming / Past. Only families cancel. */
 export function BookingsPage({ role }: { role: 'family' | 'nanny' }) {
   const { user } = useAuth()
   const { bookings, loading } = useMyBookings(user?.uid, role)
-  const { setStatus } = useBookingActions()
+  const { cancelBooking } = useBookingActions()
   const [reviewing, setReviewing] = useState<Booking | null>(null)
+  // The booking a family is about to cancel — drives the confirm dialog, which warns about a
+  // late-cancel fee when the cancel falls inside the free window.
+  const [cancelling, setCancelling] = useState<Booking | null>(null)
+  const [cancelBusy, setCancelBusy] = useState(false)
+
+  const today = todayISO()
+  const upcoming = bookings.filter((b) => isUpcoming(b, today))
+  const past = bookings.filter((b) => !isUpcoming(b, today))
+
+  const fee = cancelling ? lateCancelFeeCents(cancelling, cancelling.rateMinCents) : 0
+
+  async function doCancel() {
+    if (!cancelling) return
+    setCancelBusy(true)
+    try {
+      await cancelBooking(cancelling.id, cancelling, fee)
+      setCancelling(null)
+    } finally {
+      setCancelBusy(false)
+    }
+  }
+
+  function Section({ title, items }: { title: string; items: Booking[] }) {
+    if (items.length === 0) return null
+    return (
+      <div className="space-y-3">
+        <h2 className="font-display text-display-sm text-ll-ink">{title}</h2>
+        {items.some((b) => typeof b.rateMinCents === 'number') && <RateDisclaimer className="mb-1" />}
+        {items.map((b) => (
+          <BookingRow
+            key={b.id}
+            booking={b}
+            role={role}
+            onCancel={() => setCancelling(b)}
+            onReview={() => setReviewing(b)}
+            otherName={role === 'family' ? b.nannyName : b.familyName}
+          />
+        ))}
+      </div>
+    )
+  }
 
   return (
     <>
@@ -56,23 +92,44 @@ export function BookingsPage({ role }: { role: 'family' | 'nanny' }) {
             )}
           </Card>
         ) : (
-          <div className="space-y-3">
-            {bookings.some((b) => typeof b.rateMinCents === 'number') && (
-              <RateDisclaimer className="mb-1" />
-            )}
-            {bookings.map((b) => (
-              <BookingRow
-                key={b.id}
-                booking={b}
-                role={role}
-                onAction={setStatus}
-                onReview={() => setReviewing(b)}
-                otherName={role === 'family' ? b.nannyName : b.familyName}
-              />
-            ))}
+          <div className="space-y-8">
+            <Section title="Upcoming" items={upcoming} />
+            <Section title="Past" items={past} />
           </div>
         )}
       </PageBody>
+
+      {/* Family cancel confirmation. A cancel inside the free window (< FREE_CANCEL_HOURS) is a
+          LATE cancel — full pay is due to the nanny — so the family is told the amount before they
+          commit, not after. Little Lamb waives it for extenuating circumstances off-platform. */}
+      <Modal open={!!cancelling} onClose={() => setCancelling(null)} title="Cancel this booking?">
+        {cancelling && (
+          <div className="space-y-4">
+            <p className="text-sm text-ll-warm-gray">
+              {formatDate(cancelling.date)} · {formatTimeRange(cancelling.startTime, cancelling.endTime)}
+              {cancelling.nannyName ? ` with ${cancelling.nannyName}` : ''}.
+            </p>
+            {fee > 0 ? (
+              <p className="rounded-ll-input border-1.5 border-ll-terra bg-ll-terra-soft px-3 py-2 text-sm text-ll-ink">
+                This is a <strong>late cancellation</strong> (less than 24 hours before it starts), so
+                full pay of <strong>{money(fee / 100)}</strong> is due to
+                {cancelling.nannyName ? ` ${cancelling.nannyName.split(' ')[0]}` : ' your nanny'}.
+                If something came up — a sick child, an emergency — reach out and we’ll sort it out.
+              </p>
+            ) : (
+              <p className="text-sm text-ll-warm-gray">
+                You’re cancelling with more than 24 hours’ notice, so there’s no charge.
+              </p>
+            )}
+            <div className="flex gap-3">
+              <Button variant="danger" onClick={doCancel} loading={cancelBusy}>
+                {fee > 0 ? 'Cancel anyway' : 'Cancel booking'}
+              </Button>
+              <Button variant="ghost" onClick={() => setCancelling(null)}>Keep it</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <ReviewModal
         open={!!reviewing}
@@ -88,15 +145,13 @@ export function BookingsPage({ role }: { role: 'family' | 'nanny' }) {
 function BookingRow({
   booking: b,
   role,
-  onAction,
+  onCancel,
   onReview,
   otherName,
 }: {
   booking: Booking
   role: 'family' | 'nanny'
-  // Must mirror useBookingActions().setStatus. A narrower 2-param type here erased meta/actor
-  // at the type level, which is what kept these three buttons silently emailing nobody.
-  onAction: (id: string, s: BookingStatus, meta?: BookingMeta, actor?: BookingActor) => void
+  onCancel: (b: Booking) => void
   onReview: () => void
   otherName: string | null
 }) {
@@ -130,17 +185,12 @@ function BookingRow({
         {b.notes && <p className="mt-1 text-sm text-ll-warm-gray">“{b.notes}”</p>}
       </div>
       <div className="flex gap-2">
-        {role === 'nanny' && b.status === 'pending' && (
-          <>
-            {/* Both guarded by role === 'nanny' above, so the actor is known statically here. */}
-            <Button size="sm" onClick={() => onAction(b.id, 'confirmed', b, 'nanny')}>Accept</Button>
-            {/* 'nanny' routes this to booking_request_declined → the FAMILY, who has to rebook.
-                Letting it default to 'family' emails the nanny about her own decline. */}
-            <Button size="sm" variant="secondary" onClick={() => onAction(b.id, 'cancelled', b, 'nanny')}>Decline</Button>
-          </>
-        )}
-        {role === 'family' && (b.status === 'confirmed' || b.status === 'pending') && (
-          <Button size="sm" variant="secondary" onClick={() => onAction(b.id, 'cancelled', b, 'family')}>Cancel</Button>
+        {/* Nannies have NO booking actions here (partner meeting 2026-09): the pending
+            accept/decline flow is gone, and a nanny cannot cancel in-app at all — her only
+            cancel path is to email/text Little Lamb. Claiming open posts happens on the Job
+            Board tab, not here (this page only lists a nanny's own assigned bookings). */}
+        {role === 'family' && b.status === 'confirmed' && (
+          <Button size="sm" variant="secondary" onClick={() => onCancel(b)}>Cancel</Button>
         )}
         {isPast && (
           <Button size="sm" variant="ghost" onClick={onReview}>Leave a review</Button>

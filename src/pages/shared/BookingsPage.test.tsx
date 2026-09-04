@@ -1,57 +1,50 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { BookingsPage } from './BookingsPage'
 
-// BUG 2, fourth and last call site. BookingRow declared its onAction prop as
-// (id, s) => void, which erased meta/actor at the TYPE level — so the three buttons on this
-// shared page (nanny Accept, nanny Decline, family Cancel) each wrote the status and emailed
-// nobody, and no amount of adding arguments at the call sites would compile until the prop
-// type was widened to match setStatus.
-//
-// Asserting on the ARGUMENTS setStatus receives (not on notify) is deliberate: the hook's own
-// spec covers which event fires, and this spec covers the thing the page is responsible for —
-// handing the hook enough to address the mail, and saying who acted.
+// After the partner-meeting redesign: nannies have NO booking actions here (pending accept/decline
+// is gone, and a nanny cannot cancel in-app). Only a FAMILY can cancel, through a confirmation
+// dialog that warns about the late-cancel full-pay fee when the cancel is inside the free window.
+// The list is also split into Upcoming / Past.
 
-const setStatus = vi.fn(() => Promise.resolve())
+const cancelBooking = vi.fn(() => Promise.resolve())
 
-const pendingBooking = {
+// A far-future confirmed booking → Upcoming, and (being days out) NOT a late cancel.
+const upcoming = {
   id: 'b1',
-  status: 'pending',
+  status: 'confirmed',
   familyId: 'f1',
   familyName: 'The Ortegas',
   nannyId: 'n1',
-  nannyName: 'Priya',
-  date: '2026-09-04',
+  nannyName: 'Priya Raman',
+  date: '2099-09-04',
   startTime: '15:00',
   endTime: '19:00',
   address: '5 Cliff Dr, Santa Barbara, CA',
+  rateMinCents: 2500,
+  rateMaxCents: 50000,
 }
 
+// A past confirmed booking → Past section, reviewable.
+const past = {
+  ...upcoming,
+  id: 'b2',
+  familyName: 'The Ortegas',
+  date: '2020-01-01',
+}
+
+let bookings: unknown[] = [upcoming]
+
 vi.mock('../../hooks/useBookings', () => ({
-  useMyBookings: () => ({ bookings: [pendingBooking], loading: false }),
-  useBookingActions: () => ({ setStatus, assignNanny: vi.fn() }),
+  useMyBookings: () => ({ bookings, loading: false }),
+  useBookingActions: () => ({ setStatus: vi.fn(), assignNanny: vi.fn(), cancelBooking }),
 }))
 
 vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({
-    profile: { fullName: 'Priya Raman' },
-    user: { uid: 'n1' },
-  }),
+  useAuth: () => ({ profile: { fullName: 'Priya Raman' }, user: { uid: 'f1' } }),
 }))
-
-/** The booking fields every booking email needs to address and describe itself. */
-const addressable = {
-  familyId: 'f1',
-  familyName: 'The Ortegas',
-  nannyId: 'n1',
-  nannyName: 'Priya',
-  date: '2026-09-04',
-  startTime: '15:00',
-  endTime: '19:00',
-  address: '5 Cliff Dr, Santa Barbara, CA',
-}
 
 function renderPage(role: 'family' | 'nanny') {
   return render(
@@ -62,49 +55,67 @@ function renderPage(role: 'family' | 'nanny') {
 }
 
 beforeEach(() => {
-  setStatus.mockClear()
+  cancelBooking.mockClear()
+  bookings = [upcoming]
 })
 
-describe('BookingsPage — accept/decline/cancel must be able to send mail', () => {
-  it('nanny ACCEPT passes the booking meta and marks the nanny as the actor', async () => {
-    renderPage('nanny')
-
-    await userEvent.click(screen.getByRole('button', { name: /accept/i }))
-
-    expect(setStatus).toHaveBeenCalledWith(
-      'b1',
-      'confirmed',
-      expect.objectContaining(addressable),
-      'nanny',
-    )
-  })
-
-  it('nanny DECLINE passes the booking meta and marks the nanny as the actor', async () => {
-    // The actor argument is what routes this to booking_request_declined → FAMILY. Defaulting
-    // to 'family' here would email the nanny about her own decline and leave the family — the
-    // side that has to go rebook — unaware, which is exactly the bug 950012d fixed elsewhere.
-    renderPage('nanny')
-
-    await userEvent.click(screen.getByRole('button', { name: /decline/i }))
-
-    expect(setStatus).toHaveBeenCalledWith(
-      'b1',
-      'cancelled',
-      expect.objectContaining(addressable),
-      'nanny',
-    )
-  })
-
-  it('family CANCEL passes the booking meta and marks the family as the actor', async () => {
+describe('BookingsPage — upcoming / past split', () => {
+  it('groups a future booking under Upcoming and a past one under Past', () => {
+    bookings = [upcoming, past]
     renderPage('family')
+    expect(screen.getByRole('heading', { name: /upcoming/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /past/i })).toBeInTheDocument()
+  })
+})
 
+describe('BookingsPage — only the family can cancel', () => {
+  it('shows a Cancel button to a family', () => {
+    renderPage('family')
+    expect(screen.getByRole('button', { name: /^cancel$/i })).toBeInTheDocument()
+  })
+
+  it('shows NO cancel/accept/decline to a nanny', () => {
+    renderPage('nanny')
+    expect(screen.queryByRole('button', { name: /cancel/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /accept/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /decline/i })).toBeNull()
+  })
+
+  it('a >24h cancel is free — no fee is shown, and it cancels with fee 0', async () => {
+    renderPage('family')
     await userEvent.click(screen.getByRole('button', { name: /^cancel$/i }))
 
-    expect(setStatus).toHaveBeenCalledWith(
-      'b1',
-      'cancelled',
-      expect.objectContaining(addressable),
-      'family',
+    // The confirm dialog says there's no charge.
+    expect(await screen.findByText(/no charge/i)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /cancel booking/i }))
+
+    await waitFor(() =>
+      expect(cancelBooking).toHaveBeenCalledWith('b1', expect.objectContaining({ id: 'b1' }), 0),
+    )
+  })
+})
+
+describe('BookingsPage — the late-cancel fee', () => {
+  it('warns about full pay and passes the computed fee when the cancel is < 24h out', async () => {
+    // A booking starting ~2h from now: 4h session × $25 floor = $100.00 = 10000 cents.
+    const soon = new Date(Date.now() + 2 * 3_600_000)
+    const date = `${soon.getFullYear()}-${String(soon.getMonth() + 1).padStart(2, '0')}-${String(soon.getDate()).padStart(2, '0')}`
+    const start = `${String(soon.getHours()).padStart(2, '0')}:${String(soon.getMinutes()).padStart(2, '0')}`
+    const endD = new Date(soon.getTime() + 4 * 3_600_000)
+    const end = `${String(endD.getHours()).padStart(2, '0')}:${String(endD.getMinutes()).padStart(2, '0')}`
+    // Keep it same-day so the session-hours math is a clean 4h (avoid a midnight wrap).
+    if (endD.getDate() !== soon.getDate()) return
+    bookings = [{ ...upcoming, date, startTime: start, endTime: end }]
+
+    renderPage('family')
+    await userEvent.click(screen.getByRole('button', { name: /^cancel$/i }))
+
+    expect(await screen.findByText(/late cancellation/i)).toBeInTheDocument()
+    expect(screen.getByText(/\$100\.00/)).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /cancel anyway/i }))
+    await waitFor(() =>
+      expect(cancelBooking).toHaveBeenCalledWith(expect.any(String), expect.any(Object), 10000),
     )
   })
 })

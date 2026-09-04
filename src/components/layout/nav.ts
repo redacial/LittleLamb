@@ -13,6 +13,7 @@ export type IconKey =
   | 'home'
   | 'calendar'
   | 'bookings'
+  | 'board'
   | 'nannies'
   | 'profile'
   | 'billing'
@@ -35,6 +36,8 @@ export const NANNY_NAV: NavItem[] = [
   { to: '/nanny', label: 'Dashboard', icon: 'home', end: true },
   { to: '/nanny/calendar', label: 'Calendar', icon: 'calendar' },
   { to: '/nanny/bookings', label: 'Bookings', icon: 'bookings' },
+  // Last-minute (<25h) and out-of-hours family requests land here for any nanny to claim.
+  { to: '/nanny/job-board', label: 'Job Board', icon: 'board' },
   { to: '/nanny/nannies', label: 'Our Nannies', icon: 'nannies' },
   { to: '/nanny/profile', label: 'My Profile', icon: 'profile' },
   { to: '/nanny/policies', label: 'Policies', icon: 'policies' },

@@ -185,13 +185,24 @@ export interface Booking {
    * The rate range agreed at booking time, SNAPSHOTTED so a later profile edit can't
    * retroactively rewrite what was agreed. When the two sides overlapped this is the
    * overlap window and `rateAgreed` is true; when they didn't it's the nanny's range
-   * and `rateAgreed` is false (the booking goes out as `pending` for them to accept).
+   * and `rateAgreed` is false (the booking goes to the job board as `open`).
    * Absent on bookings made before rate ranges existed, and on admin-created bookings.
    */
   rateMinCents?: number
   rateMaxCents?: number
   rateAgreed?: boolean
   createdAt: Timestamp | null
+  /** When the booking was cancelled (any actor). Absent until cancelled. */
+  cancelledAt?: Timestamp | null
+  /**
+   * A family cancel inside the free-cancel window (< FREE_CANCEL_HOURS). `lateCancelFeeCents` is
+   * the full pay then due to the nanny (session hours × the nanny's floor) — RECORDED and shown,
+   * never charged by the platform. `lateCancelWaived` is set by admin for extenuating
+   * circumstances (sick child, emergency), settled off-platform.
+   */
+  lateCancel?: boolean
+  lateCancelFeeCents?: number
+  lateCancelWaived?: boolean
 }
 
 /** A single priced row on an invoice. Mirrors `InvoiceLineItem` in functions/src/billing/types.ts. */

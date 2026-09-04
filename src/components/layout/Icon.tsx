@@ -4,6 +4,8 @@ const PATHS: Record<IconKey, string> = {
   home: 'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10',
   calendar: 'M4 6h16v15H4zM4 9h16M8 3v4M16 3v4',
   bookings: 'M5 4h14v17l-7-4-7 4zM8 8h8M8 12h5',
+  // Briefcase — the job board of claimable posts.
+  board: 'M3 8h18v12H3zM8 8V5a2 2 0 012-2h4a2 2 0 012 2v3M3 13h18',
   nannies: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0',
   profile: 'M12 12a4 4 0 100-8 4 4 0 000 8zM5 21a7 7 0 0114 0',
   billing: 'M3 7h18v12H3zM3 11h18M7 15h4',
