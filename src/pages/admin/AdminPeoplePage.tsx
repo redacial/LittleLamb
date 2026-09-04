@@ -124,7 +124,6 @@ function ApplicationSummary({ user: u, role }: { user: UserDoc; role: 'nanny' | 
   const rows =
     role === 'family'
       ? [
-          { label: 'Neighbourhood', value: u.neighborhood },
           { label: 'Children', value: u.children },
           { label: 'Notes', value: u.notes },
         ]

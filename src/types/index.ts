@@ -40,8 +40,6 @@ export interface UserDoc {
    * these. All are OPTIONAL — accounts created before this existed have none of them, and
    * every reader must tolerate their absence.
    */
-  /** Family applicants only. */
-  neighborhood?: string
   /** Family applicants only — free text, e.g. "Two kids, ages 3 and 6". */
   children?: string
   /** Family applicants only — special needs or anything else they wanted us to know. */
@@ -58,7 +56,9 @@ export type ReferralSource = 'google' | 'instagram' | 'friend' | 'other' | 'refe
 
 export interface Child {
   name: string
-  age: string
+  /** "YYYY-MM-DD". Age is computed live from this (see ageFromBirthday) — never stored. */
+  birthday: string
+  /** Optional "additional info" — the only kid field beyond name + birthday. */
   interests?: string
 }
 
@@ -66,16 +66,22 @@ export interface Child {
 export interface FamilyProfile {
   uid: string
   photoURL?: string | null
-  neighborhood: string
+  // neighborhood removed 2026-09: the home address already covers it.
   children: Child[]
-  pets?: string
+  /** Pets as a Y/N with optional detail (was a free-text `pets` string). */
+  hasPets?: boolean
+  petsNote?: string
   allergies?: string
   houseRules?: string
   homeAddress: string
   primaryEmail: string
   phone: string
+  /** Co-parent / spouse — optional secondary contact. */
   coParentName?: string
   coParentEmail?: string
+  /** Emergency contact — for guardians, adoptive parents, or anyone the primary can't reach for. */
+  emergencyContactName?: string
+  emergencyContactPhone?: string
   /** Application snapshot (admin-only fields live alongside in the same doc, gated by rules). */
   specialNotes?: string
   hasPaymentMethod: boolean

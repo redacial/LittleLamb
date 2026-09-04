@@ -98,7 +98,7 @@ export function resumeStep(stored: number | undefined, stepCount: number): numbe
  * three fields has content; only a row left completely untouched is dropped.
  */
 export function childHasContent(c: Child): boolean {
-  return Boolean(c.name.trim() || c.age.trim() || (c.interests ?? '').trim())
+  return Boolean(c.name.trim() || (c.birthday ?? '').trim() || (c.interests ?? '').trim())
 }
 
 /**

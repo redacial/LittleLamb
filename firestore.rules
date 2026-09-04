@@ -69,8 +69,7 @@ service cloud.firestore {
       // src/lib/auth.ts — this is untrusted text from the public /apply form, so the
       // server bounds it independently of whatever the client claims to have sanitized.
       function applicationFieldsOk() {
-        return strMax('neighborhood', 120)
-          && strMax('children', 500)
+        return strMax('children', 500)
           && strMax('notes', 1000)
           && strMax('yearsExperience', 60)
           && strMax('personalStatement', 1000);
@@ -124,17 +123,23 @@ service cloud.firestore {
              == (('stripeCustomerId' in existing()) ? existing().stripeCustomerId : null);
       }
 
+      // Field caps mirror the client (cleanLine/cleanText in FamilySetupWizard + FamilyProfilePage)
+      // — if the client allowed more than the rules, the whole setDoc is rejected. neighborhood
+      // was removed 2026-09; petsNote + emergency contact are the new bounded fields.
+      function familyFieldsOk() {
+        return strMax('homeAddress', 300)
+          && strMax('petsNote', 200)
+          && strMax('houseRules', 2000) && strMax('allergies', 1000)
+          && strMax('emergencyContactName', 80) && strMax('emergencyContactPhone', 32)
+          && rateRangeOk();
+      }
       allow create: if isSignedIn() && uid() == familyId && hasRole('family')
         && incoming().uid == familyId
-        && strMax('homeAddress', 300) && strMax('neighborhood', 120)
-        && rateRangeOk()
-        && strMax('houseRules', 2000) && strMax('allergies', 1000)
+        && familyFieldsOk()
         && billingFieldsUntouchedOnCreate();
       allow update: if isSignedIn() && uid() == familyId && hasRole('family')
         && incoming().uid == familyId
-        && strMax('homeAddress', 300) && strMax('neighborhood', 120)
-        && rateRangeOk()
-        && strMax('houseRules', 2000) && strMax('allergies', 1000)
+        && familyFieldsOk()
         && billingFieldsUnchangedOnUpdate();
       allow update, delete: if isAdmin();
     }

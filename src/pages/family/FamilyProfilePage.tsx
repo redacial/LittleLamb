@@ -4,8 +4,9 @@ import { useFamilyProfile } from '../../hooks/useProfile'
 import { uploadProfilePhoto } from '../../lib/storage'
 import { cleanLine, cleanText } from '../../lib/sanitize'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
-import { Card, CardLabel, Input, Textarea, Button, Avatar, RateRangeInput } from '../../components/ui'
+import { Card, CardLabel, Input, Textarea, Button, Avatar, RateRangeInput, YesNo } from '../../components/ui'
 import { parseRateDollars, validateRatePair } from '../../lib/rates'
+import { formatAge } from '../../lib/format'
 import { ReferralCard } from '../../components/ReferralCard'
 import type { Child } from '../../types'
 
@@ -17,14 +18,16 @@ export function FamilyProfilePage() {
 
   const [form, setForm] = useState({
     photoURL: null as string | null,
-    neighborhood: '',
-    pets: '',
+    hasPets: false,
+    petsNote: '',
     allergies: '',
     houseRules: '',
     homeAddress: '',
     phone: '',
     coParentName: '',
     coParentEmail: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
     // Raw dollar strings while typing; parsed to cents on save (see RateRangeInput).
     rateMin: '',
     rateMax: '',
@@ -38,14 +41,16 @@ export function FamilyProfilePage() {
     if (!family) return
     setForm({
       photoURL: family.photoURL ?? null,
-      neighborhood: family.neighborhood ?? '',
-      pets: family.pets ?? '',
+      hasPets: family.hasPets ?? false,
+      petsNote: family.petsNote ?? '',
       allergies: family.allergies ?? '',
       houseRules: family.houseRules ?? '',
       homeAddress: family.homeAddress ?? '',
       phone: family.phone ?? '',
       coParentName: family.coParentName ?? '',
       coParentEmail: family.coParentEmail ?? '',
+      emergencyContactName: family.emergencyContactName ?? '',
+      emergencyContactPhone: family.emergencyContactPhone ?? '',
       rateMin: family.rateRange ? String(family.rateRange.minCents / 100) : '',
       rateMax: family.rateRange ? String(family.rateRange.maxCents / 100) : '',
     })
@@ -91,16 +96,20 @@ export function FamilyProfilePage() {
     try {
       await save({
         ...(lo !== null && hi !== null ? { rateRange: { minCents: lo, maxCents: hi } } : {}),
-        neighborhood: cleanLine(form.neighborhood, 120),
-        pets: cleanLine(form.pets, 200),
+        hasPets: form.hasPets,
+        // Only keep a pets note when they have pets; clear it otherwise so a leftover note from a
+        // toggled-off "yes" doesn't linger.
+        petsNote: form.hasPets ? cleanLine(form.petsNote, 200) : '',
         allergies: cleanText(form.allergies, 1000),
         houseRules: cleanText(form.houseRules, 2000),
         homeAddress: cleanLine(form.homeAddress, 300),
         phone: cleanLine(form.phone, 32),
         coParentName: cleanLine(form.coParentName, 80),
         coParentEmail: cleanLine(form.coParentEmail, 254),
+        emergencyContactName: cleanLine(form.emergencyContactName, 80),
+        emergencyContactPhone: cleanLine(form.emergencyContactPhone, 32),
         children: children
-          .map((c) => ({ name: cleanLine(c.name, 60), age: cleanLine(c.age, 20), interests: cleanLine(c.interests ?? '', 200) }))
+          .map((c) => ({ name: cleanLine(c.name, 60), birthday: cleanLine(c.birthday ?? '', 10), interests: cleanLine(c.interests ?? '', 200) }))
           .filter((c) => c.name),
       })
       setSaved(true)
@@ -139,7 +148,6 @@ export function FamilyProfilePage() {
 
           <Card className="space-y-4">
             <CardLabel>Household</CardLabel>
-            <Input label="Neighborhood" value={form.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} />
             <Input label="Home address" value={form.homeAddress} onChange={(e) => set('homeAddress', e.target.value)} />
             <RateRangeInput
               role="family"
@@ -148,29 +156,51 @@ export function FamilyProfilePage() {
               onMinChange={(v) => set('rateMin', v)}
               onMaxChange={(v) => set('rateMax', v)}
             />
-            <Input label="Pets" value={form.pets} onChange={(e) => set('pets', e.target.value)} />
+            <YesNo
+              label="Any pets?"
+              value={form.hasPets}
+              onChange={(v) => { setForm((f) => ({ ...f, hasPets: v })); setSaved(false) }}
+            />
+            {form.hasPets && (
+              <Input label="Tell us about them" hint="Optional" placeholder="e.g. a friendly golden retriever" value={form.petsNote} onChange={(e) => set('petsNote', e.target.value)} />
+            )}
             <Textarea label="Allergies & special needs" value={form.allergies} onChange={(e) => set('allergies', e.target.value)} />
             <Textarea label="House rules & notes" value={form.houseRules} onChange={(e) => set('houseRules', e.target.value)} />
           </Card>
 
           <Card className="space-y-3">
             <CardLabel>Children</CardLabel>
-            {children.map((c, i) => (
-              <div key={i} className="grid gap-2 sm:grid-cols-[1fr_5rem_1.4fr]">
-                <Input placeholder="Name" value={c.name} onChange={(e) => setChildren((cs) => cs.map((x, idx) => (idx === i ? { ...x, name: e.target.value } : x)))} />
-                <Input placeholder="Age" value={c.age} onChange={(e) => setChildren((cs) => cs.map((x, idx) => (idx === i ? { ...x, age: e.target.value } : x)))} />
-                <Input placeholder="Interests" value={c.interests} onChange={(e) => setChildren((cs) => cs.map((x, idx) => (idx === i ? { ...x, interests: e.target.value } : x)))} />
-              </div>
-            ))}
-            <Button variant="ghost" size="sm" onClick={() => setChildren((cs) => [...cs, { name: '', age: '', interests: '' }])}>+ Add a child</Button>
+            {children.map((c, i) => {
+              const age = formatAge(c.birthday ?? '')
+              return (
+                <div key={i} className="space-y-2 rounded-ll-input border-1.5 border-ll-cream-dark p-3">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input placeholder="Name" value={c.name} onChange={(e) => setChildren((cs) => cs.map((x, idx) => (idx === i ? { ...x, name: e.target.value } : x)))} />
+                    <div>
+                      <Input type="date" value={c.birthday ?? ''} onChange={(e) => setChildren((cs) => cs.map((x, idx) => (idx === i ? { ...x, birthday: e.target.value } : x)))} />
+                      {age && <p className="mt-1 text-xs text-ll-warm-gray">{age} old</p>}
+                    </div>
+                  </div>
+                  <Input placeholder="Interests & anything else (optional)" value={c.interests ?? ''} onChange={(e) => setChildren((cs) => cs.map((x, idx) => (idx === i ? { ...x, interests: e.target.value } : x)))} />
+                </div>
+              )
+            })}
+            <Button variant="ghost" size="sm" onClick={() => setChildren((cs) => [...cs, { name: '', birthday: '', interests: '' }])}>+ Add a child</Button>
           </Card>
 
           <Card className="space-y-4">
-            <CardLabel>Contact</CardLabel>
+            <CardLabel>Primary contact</CardLabel>
             <Input label="Primary email" value={profile?.email ?? ''} disabled />
             <Input label="Phone" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
-            <Input label="Spouse / co-parent name" value={form.coParentName} onChange={(e) => set('coParentName', e.target.value)} />
-            <Input label="Spouse / co-parent email" value={form.coParentEmail} onChange={(e) => set('coParentEmail', e.target.value)} />
+            <Input label="Spouse / co-parent name" hint="Optional" value={form.coParentName} onChange={(e) => set('coParentName', e.target.value)} />
+            <Input label="Spouse / co-parent email" hint="Optional" value={form.coParentEmail} onChange={(e) => set('coParentEmail', e.target.value)} />
+          </Card>
+
+          <Card className="space-y-4">
+            <CardLabel>Emergency contact</CardLabel>
+            <p className="text-sm text-ll-warm-gray">Someone we can reach if we can’t reach you — a grandparent, guardian, or friend.</p>
+            <Input label="Name" hint="Optional" value={form.emergencyContactName} onChange={(e) => set('emergencyContactName', e.target.value)} />
+            <Input label="Phone" hint="Optional" value={form.emergencyContactPhone} onChange={(e) => set('emergencyContactPhone', e.target.value)} />
           </Card>
 
           {/* One error surface for the whole page, next to the Save button rather than buried

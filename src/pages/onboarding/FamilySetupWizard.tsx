@@ -14,7 +14,8 @@ import { cleanLine, cleanText } from '../../lib/sanitize'
 import { WizardShell } from '../../components/onboarding/WizardShell'
 import { PaymentStep } from '../../components/onboarding/PaymentStep'
 import { useSpring } from '../../lib/motion'
-import { Button, Input, Textarea, Avatar, RateRangeInput } from '../../components/ui'
+import { Button, Input, Textarea, Avatar, RateRangeInput, YesNo } from '../../components/ui'
+import { formatAge } from '../../lib/format'
 import { validateRatePair } from '../../lib/rates'
 import type { Child, FamilyProfile } from '../../types'
 
@@ -38,15 +39,17 @@ export function FamilySetupWizard() {
 
   // Local form state, hydrated from any saved progress.
   const [photoURL, setPhotoURL] = useState<string | null>(null)
-  const [neighborhood, setNeighborhood] = useState('')
-  const [children, setChildren] = useState<Child[]>([{ name: '', age: '', interests: '' }])
-  const [pets, setPets] = useState('')
+  const [children, setChildren] = useState<Child[]>([{ name: '', birthday: '', interests: '' }])
+  const [hasPets, setHasPets] = useState(false)
+  const [petsNote, setPetsNote] = useState('')
   const [allergies, setAllergies] = useState('')
   const [houseRules, setHouseRules] = useState('')
   const [homeAddress, setHomeAddress] = useState('')
   const [phone, setPhone] = useState('')
   const [coParentName, setCoParentName] = useState('')
   const [coParentEmail, setCoParentEmail] = useState('')
+  const [emergencyContactName, setEmergencyContactName] = useState('')
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState('')
   // Raw dollar strings while typing; parsed to cents on save (see RateRangeInput).
   const [rateMin, setRateMin] = useState('')
   const [rateMax, setRateMax] = useState('')
@@ -54,15 +57,17 @@ export function FamilySetupWizard() {
   useEffect(() => {
     if (!family) return
     setPhotoURL(family.photoURL ?? null)
-    setNeighborhood(family.neighborhood ?? '')
     if (family.children?.length) setChildren(family.children)
-    setPets(family.pets ?? '')
+    setHasPets(family.hasPets ?? false)
+    setPetsNote(family.petsNote ?? '')
     setAllergies(family.allergies ?? '')
     setHouseRules(family.houseRules ?? '')
     setHomeAddress(family.homeAddress ?? '')
     setPhone(family.phone ?? '')
     setCoParentName(family.coParentName ?? '')
     setCoParentEmail(family.coParentEmail ?? '')
+    setEmergencyContactName(family.emergencyContactName ?? '')
+    setEmergencyContactPhone(family.emergencyContactPhone ?? '')
     if (family.rateRange) {
       setRateMin(String(family.rateRange.minCents / 100))
       setRateMax(String(family.rateRange.maxCents / 100))
@@ -136,12 +141,14 @@ export function FamilySetupWizard() {
     const cleanChildren = children
       .map((c) => ({
         name: cleanLine(c.name, 60),
-        age: cleanLine(c.age, 20),
+        birthday: cleanLine(c.birthday ?? '', 10),
         interests: cleanLine(c.interests ?? '', 200),
       }))
       .filter(childHasContent)
-    if (!neighborhood.trim()) return setError('Please add your neighborhood.')
     if (!cleanChildren.length) return setError('Please add at least one child.')
+    if (cleanChildren.some((c) => !c.name || !c.birthday)) {
+      return setError('Please give each child a name and a birthday.')
+    }
     if (!homeAddress.trim()) return setError('Please add your home address.')
     const badRate = validateRatePair(rateMin, rateMax)
     if (badRate) {
@@ -155,9 +162,9 @@ export function FamilySetupWizard() {
     // (rangesOverlap treats a missing range permissively). A COMPLETE pair becomes a real
     // rateRange; a half-typed one is kept as a draft rather than discarded (see ratePatch).
     const ok = await persist({
-      neighborhood: cleanLine(neighborhood, 120),
       children: cleanChildren,
-      pets: cleanLine(pets, 200),
+      hasPets,
+      petsNote: hasPets ? cleanLine(petsNote, 200) : '',
       allergies: cleanText(allergies, 1000),
       houseRules: cleanText(houseRules, 2000),
       homeAddress: cleanLine(homeAddress, 300),
@@ -174,6 +181,8 @@ export function FamilySetupWizard() {
       primaryEmail: profile?.email ?? '',
       coParentName: cleanLine(coParentName, 80),
       coParentEmail: cleanLine(coParentEmail, 254),
+      emergencyContactName: cleanLine(emergencyContactName, 80),
+      emergencyContactPhone: cleanLine(emergencyContactPhone, 32),
       wizardStep: 2,
     })
     if (ok) setStep(2)
@@ -234,23 +243,32 @@ export function FamilySetupWizard() {
               />
             </label>
           </div>
-          <Input label="Neighborhood in Santa Barbara" value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} />
-
           <div className="space-y-3">
             <p className="text-sm font-semibold">Children</p>
-            {children.map((c, i) => (
-              <div key={i} className="grid gap-2 sm:grid-cols-[1fr_5rem_1.4fr]">
-                <Input placeholder="Name" value={c.name} onChange={(e) => updateChild(i, { name: e.target.value })} />
-                <Input placeholder="Age" value={c.age} onChange={(e) => updateChild(i, { age: e.target.value })} />
-                <Input placeholder="Interests" value={c.interests} onChange={(e) => updateChild(i, { interests: e.target.value })} />
-              </div>
-            ))}
-            <Button variant="ghost" size="sm" onClick={() => setChildren((cs) => [...cs, { name: '', age: '', interests: '' }])}>
+            {children.map((c, i) => {
+              const age = formatAge(c.birthday ?? '')
+              return (
+                <div key={i} className="space-y-2 rounded-ll-input border-1.5 border-ll-cream-dark p-3">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input placeholder="Name" value={c.name} onChange={(e) => updateChild(i, { name: e.target.value })} />
+                    <div>
+                      <Input type="date" value={c.birthday ?? ''} onChange={(e) => updateChild(i, { birthday: e.target.value })} />
+                      {age && <p className="mt-1 text-xs text-ll-warm-gray">{age} old</p>}
+                    </div>
+                  </div>
+                  <Input placeholder="Interests & anything else (optional)" value={c.interests ?? ''} onChange={(e) => updateChild(i, { interests: e.target.value })} />
+                </div>
+              )
+            })}
+            <Button variant="ghost" size="sm" onClick={() => setChildren((cs) => [...cs, { name: '', birthday: '', interests: '' }])}>
               + Add another child
             </Button>
           </div>
 
-          <Input label="Pets" hint="Optional" value={pets} onChange={(e) => setPets(e.target.value)} />
+          <YesNo label="Any pets?" value={hasPets} onChange={setHasPets} />
+          {hasPets && (
+            <Input label="Tell us about them" hint="Optional" placeholder="e.g. a friendly golden retriever" value={petsNote} onChange={(e) => setPetsNote(e.target.value)} />
+          )}
           <Textarea label="Allergies or special needs" hint="Optional" value={allergies} onChange={(e) => setAllergies(e.target.value)} />
           <Textarea label="House rules & important notes" hint="Optional" value={houseRules} onChange={(e) => setHouseRules(e.target.value)} />
           <Input label="Home address" value={homeAddress} onChange={(e) => setHomeAddress(e.target.value)} />
@@ -277,10 +295,15 @@ export function FamilySetupWizard() {
           transition={stepTransition}
         >
           <h1 className="text-display-md">How can we reach you?</h1>
+          <p className="text-sm font-semibold text-ll-warm-gray">Primary contact</p>
           <Input label="Primary email" value={profile?.email ?? ''} disabled />
           <Input label="Phone number" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <Input label="Spouse / co-parent name" hint="Optional" value={coParentName} onChange={(e) => setCoParentName(e.target.value)} />
           <Input label="Spouse / co-parent email" hint="Optional" type="email" value={coParentEmail} onChange={(e) => setCoParentEmail(e.target.value)} />
+          <p className="pt-2 text-sm font-semibold text-ll-warm-gray">Emergency contact</p>
+          <p className="text-sm text-ll-warm-gray">Someone we can reach if we can’t reach you.</p>
+          <Input label="Name" hint="Optional" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} />
+          <Input label="Phone" hint="Optional" type="tel" value={emergencyContactPhone} onChange={(e) => setEmergencyContactPhone(e.target.value)} />
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => goBack(0)}>Back</Button>

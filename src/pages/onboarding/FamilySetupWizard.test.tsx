@@ -57,12 +57,18 @@ function savedDoc(): Partial<FamilyProfile> {
   return save.mock.calls.reduce((acc, [patch]) => ({ ...acc, ...patch }), {})
 }
 
-/** Fill the minimum required fields on step 0 so Continue is allowed through. */
+/** Every date input on the page, in DOM order (the kids' birthday fields). */
+function birthdayInputs(): HTMLInputElement[] {
+  return Array.from(document.querySelectorAll<HTMLInputElement>('input[type="date"]'))
+}
+
+/** Fill the minimum required fields on step 0 so Continue is allowed through: one child needs a
+    name AND a birthday now, plus the home address. Neighborhood was removed. */
 async function fillRequiredStep0(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText(/neighborhood/i), 'Mesa')
   await user.type(screen.getByLabelText(/home address/i), '12 Ocean Rd')
-  const names = screen.getAllByPlaceholderText('Name')
-  await user.type(names[0], 'Ivy')
+  await user.type(screen.getAllByPlaceholderText('Name')[0], 'Ivy')
+  // A birthday well in the past so the computed age is stable.
+  await user.type(birthdayInputs()[0], '2021-05-04')
 }
 
 beforeEach(() => {
@@ -86,9 +92,8 @@ describe('FamilySetupWizard — resuming an abandoned wizard (bug A)', () => {
     // She got as far as Payment last time and closed the tab.
     stored.current = {
       uid: 'fam-1',
-      neighborhood: 'Mesa',
       homeAddress: '12 Ocean Rd',
-      children: [{ name: 'Ivy', age: '4', interests: '' }],
+      children: [{ name: 'Ivy', birthday: '2021-05-04', interests: '' }],
       phone: '805-555-0100',
       wizardStep: 2,
     }
@@ -99,46 +104,42 @@ describe('FamilySetupWizard — resuming an abandoned wizard (bug A)', () => {
   })
 
   it('starts at the beginning for an account saved before wizardStep existed', async () => {
-    stored.current = { uid: 'fam-1', neighborhood: 'Mesa' } // no wizardStep at all
+    stored.current = { uid: 'fam-1', homeAddress: '12 Ocean Rd' } // no wizardStep at all
     show()
     expect(await screen.findByRole('heading', { name: /tell us about your family/i })).toBeInTheDocument()
   })
 })
 
 describe('FamilySetupWizard — a partially typed child (bug B)', () => {
-  it('keeps a child row that has an age but no name yet', async () => {
+  it('blocks advancing (rather than silently dropping) a child with a birthday but no name', async () => {
+    // The old bug silently destroyed a half-typed child. Now every kept child needs a name AND a
+    // birthday, so a partial row surfaces a clear error instead of vanishing — no silent data loss.
     const user = userEvent.setup()
     show()
     await fillRequiredStep0(user)
 
     await user.click(screen.getByRole('button', { name: /add another child/i }))
-    const ages = screen.getAllByPlaceholderText('Age')
-    const interests = screen.getAllByPlaceholderText('Interests')
-    await user.type(ages[1], '2')
-    await user.type(interests[1], 'dinosaurs')
+    await user.type(birthdayInputs()[1], '2024-01-02') // birthday, but no name
 
     await user.click(screen.getByRole('button', { name: /continue/i }))
-    await waitFor(() => expect(save).toHaveBeenCalled())
 
-    const kids = savedDoc().children ?? []
-    expect(kids).toHaveLength(2)
-    expect(kids[1]).toMatchObject({ age: '2', interests: 'dinosaurs' })
+    expect(await screen.findByRole('alert')).toHaveTextContent(/name and a birthday/i)
   })
 
-  it('stores an empty name rather than inventing one for the nameless child', async () => {
+  it('blocks advancing a child with a name but no birthday', async () => {
     const user = userEvent.setup()
     show()
     await fillRequiredStep0(user)
+
     await user.click(screen.getByRole('button', { name: /add another child/i }))
-    await user.type(screen.getAllByPlaceholderText('Age')[1], '2')
+    await user.type(screen.getAllByPlaceholderText('Name')[1], 'Max') // name, but no birthday
 
     await user.click(screen.getByRole('button', { name: /continue/i }))
-    await waitFor(() => expect(save).toHaveBeenCalled())
 
-    expect((savedDoc().children ?? [])[1]?.name).toBe('')
+    expect(await screen.findByRole('alert')).toHaveTextContent(/name and a birthday/i)
   })
 
-  it('still drops a row the parent never touched at all', async () => {
+  it('drops a row the parent never touched at all, and advances on the one complete child', async () => {
     const user = userEvent.setup()
     show()
     await fillRequiredStep0(user)
@@ -147,7 +148,9 @@ describe('FamilySetupWizard — a partially typed child (bug B)', () => {
     await user.click(screen.getByRole('button', { name: /continue/i }))
     await waitFor(() => expect(save).toHaveBeenCalled())
 
+    // The untouched row is dropped; only the complete first child (Ivy) is kept.
     expect(savedDoc().children).toHaveLength(1)
+    expect((savedDoc().children ?? [])[0]).toMatchObject({ name: 'Ivy', birthday: '2021-05-04' })
   })
 })
 
@@ -165,7 +168,7 @@ describe('FamilySetupWizard — a half-filled budget (bug C)', () => {
   })
 
   it('gives the half-filled budget back when she returns', async () => {
-    stored.current = { uid: 'fam-1', neighborhood: 'Mesa', rateDraft: { min: '20', max: '' } }
+    stored.current = { uid: 'fam-1', homeAddress: '12 Ocean Rd', rateDraft: { min: '20', max: '' } }
     show()
     expect(await screen.findByLabelText(/minimum/i)).toHaveValue('20')
   })

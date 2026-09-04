@@ -23,7 +23,7 @@ vi.mock('../../lib/storage', () => ({ uploadProfilePhoto }))
 
 vi.mock('../../hooks/useProfile', () => ({
   useFamilyProfile: () => ({
-    profile: { photoURL: null, neighborhood: 'Mesa', children: [] },
+    profile: { photoURL: null, children: [] },
     loading: false,
     save,
   }),

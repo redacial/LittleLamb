@@ -522,16 +522,15 @@ describe('AdminPeoplePage — the application is visible to the person approving
     render(<AdminPeoplePage role="family" />)
   }
 
-  it('shows a family\u2019s neighbourhood, children and notes', () => {
+  it('shows a family\u2019s children and notes', () => {
+    // Neighbourhood was removed from the application (2026-09) \u2014 the home address covers it.
     showFamily(
       applicant({
         phone: '805-555-0142',
-        neighborhood: 'The Mesa',
         children: 'Olive (4), Theo (7)',
         notes: 'Theo has a mild peanut allergy',
       } as Partial<UserDoc>),
     )
-    expect(screen.getByText(/The Mesa/)).toBeInTheDocument()
     expect(screen.getByText(/Olive \(4\), Theo \(7\)/)).toBeInTheDocument()
     expect(screen.getByText(/peanut allergy/)).toBeInTheDocument()
   })

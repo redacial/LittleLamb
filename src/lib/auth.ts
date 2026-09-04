@@ -28,7 +28,6 @@ export async function fetchUserDoc(uid: string): Promise<UserDoc | null> {
  * application survives signup and an admin can review it — see UserDoc.
  */
 export interface ApplicationAnswers {
-  neighborhood?: string
   children?: string
   notes?: string
   yearsExperience?: string
@@ -41,7 +40,6 @@ export interface ApplicationAnswers {
  * applicant loses their account, not just the overlong field.
  */
 const LIMITS = {
-  neighborhood: 120,
   children: 500,
   notes: 1000,
   yearsExperience: 60,
@@ -63,7 +61,6 @@ function cleanApplication(input: ApplicationAnswers): Partial<ApplicationAnswers
   const put = (key: keyof ApplicationAnswers, value: string) => {
     if (value) out[key] = value
   }
-  put('neighborhood', cleanLine(input.neighborhood, LIMITS.neighborhood))
   put('children', cleanText(input.children, LIMITS.children))
   put('notes', cleanText(input.notes, LIMITS.notes))
   put('yearsExperience', cleanLine(input.yearsExperience, LIMITS.yearsExperience))

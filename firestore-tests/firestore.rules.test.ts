@@ -132,7 +132,7 @@ describe('families billing immutability', () => {
 
   it('a family CAN update non-billing profile fields', async () => {
     await assertSucceeds(
-      setDoc(doc(as(FAM), 'families', FAM), { uid: FAM, neighborhood: 'Mesa' }, { merge: true }),
+      setDoc(doc(as(FAM), 'families', FAM), { uid: FAM, homeAddress: '12 Ocean Rd' }, { merge: true }),
     )
   })
 })
@@ -451,10 +451,9 @@ describe('users — application fields', () => {
     }
   }
 
-  it('accepts a family application with neighborhood, children and notes', async () => {
+  it('accepts a family application with children and notes', async () => {
     await assertSucceeds(
       setDoc(doc(as(NEW), 'users', NEW), pendingUser({
-        neighborhood: 'The Mesa',
         children: 'Two kids, ages 3 and 6',
         notes: 'Peanut allergy.',
       })),
@@ -474,12 +473,6 @@ describe('users — application fields', () => {
   it('still accepts an account with no application fields at all', async () => {
     // Google signups and every pre-existing account have none of these. Absence must stay legal.
     await assertSucceeds(setDoc(doc(as(NEW), 'users', NEW), pendingUser({})))
-  })
-
-  it('rejects an over-long neighborhood', async () => {
-    await assertFails(
-      setDoc(doc(as(NEW), 'users', NEW), pendingUser({ neighborhood: 'N'.repeat(121) })),
-    )
   })
 
   it('rejects over-long children text', async () => {
@@ -523,6 +516,32 @@ describe('users — application fields', () => {
         status: 'approved',
         notes: 'X'.repeat(1001),
       }),
+    )
+  })
+})
+
+// The families doc has its own field caps (mirroring the client). These fields changed with the
+// profile redesign (2026-09): neighborhood removed; petsNote + emergency contact added.
+describe('families — profile field caps', () => {
+  it('accepts petsNote + emergency contact within their caps', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(as(FAM), 'families', FAM),
+        { uid: FAM, petsNote: 'A dog', emergencyContactName: 'Gran', emergencyContactPhone: '805-555-0000' },
+        { merge: true },
+      ),
+    )
+  })
+
+  it('rejects an over-long petsNote', async () => {
+    await assertFails(
+      setDoc(doc(as(FAM), 'families', FAM), { uid: FAM, petsNote: 'P'.repeat(201) }, { merge: true }),
+    )
+  })
+
+  it('rejects an over-long emergency contact name', async () => {
+    await assertFails(
+      setDoc(doc(as(FAM), 'families', FAM), { uid: FAM, emergencyContactName: 'N'.repeat(81) }, { merge: true }),
     )
   })
 })

@@ -86,13 +86,22 @@ beforeEach(() => {
   addDoc.mockClear()
 })
 
+/** A date comfortably beyond the 25h lead window, RELATIVE to the clock — a hardcoded literal
+ *  rots: once it drifts inside 25h, routeBooking sends a would-be-confirmed booking to the board
+ *  and the "stays confirmed" cases fail for the wrong reason. */
+function futureISO(daysOut = 7): string {
+  const d = new Date()
+  d.setDate(d.getDate() + daysOut)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 /** A new booking's input, minus the status under test. */
 const newBooking = {
   familyId: 'f1',
   familyName: 'The Ortegas',
   nannyId: null,
   nannyName: null,
-  date: '2026-09-04',
+  date: futureISO(),
   startTime: '15:00',
   endTime: '19:00',
   address: '5 Cliff Dr, Santa Barbara, CA',

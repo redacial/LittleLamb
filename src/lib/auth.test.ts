@@ -54,17 +54,15 @@ const base = {
 } as const
 
 describe('createAccount — the family application is persisted', () => {
-  it('writes neighborhood, children and notes onto the user doc', async () => {
+  it('writes children and notes onto the user doc', async () => {
     await createAccount({
       ...base,
       role: 'family',
-      neighborhood: 'The Mesa',
       children: 'Two kids, ages 3 and 6',
       notes: 'Peanut allergy.',
     })
 
     expect(writtenDoc()).toMatchObject({
-      neighborhood: 'The Mesa',
       children: 'Two kids, ages 3 and 6',
       notes: 'Peanut allergy.',
     })
@@ -101,25 +99,15 @@ describe('createAccount — application answers are sanitized before the write',
     expect(children).toBe('Two kids, ages 3 and 6')
   })
 
-  it('collapses the single-line neighborhood — no newlines reach the user doc', async () => {
-    await createAccount({ ...base, role: 'family', neighborhood: 'The\nMesa' })
-
-    const neighborhood = writtenDoc().neighborhood as string
-    expect(neighborhood).not.toContain('\n')
-    expect(neighborhood).toBe('The Mesa')
-  })
-
   it('length-caps the family answers rather than storing them unbounded', async () => {
     await createAccount({
       ...base,
       role: 'family',
-      neighborhood: 'N'.repeat(400),
       children: 'C'.repeat(3000),
       notes: 'X'.repeat(3000),
     })
 
     const written = writtenDoc()
-    expect((written.neighborhood as string).length).toBe(120)
     expect((written.children as string).length).toBe(500)
     expect((written.notes as string).length).toBe(1000)
   })
@@ -138,15 +126,15 @@ describe('createAccount — application answers are sanitized before the write',
   })
 
   it('omits blank answers entirely instead of writing empty strings', async () => {
-    await createAccount({ ...base, role: 'family', neighborhood: '', children: '   ' })
+    await createAccount({ ...base, role: 'family', notes: '', children: '   ' })
 
     const written = writtenDoc()
-    expect('neighborhood' in written).toBe(false)
+    expect('notes' in written).toBe(false)
     expect('children' in written).toBe(false)
   })
 
   it('never writes the other role\'s fields when they were not supplied', async () => {
-    await createAccount({ ...base, role: 'family', neighborhood: 'Riviera' })
+    await createAccount({ ...base, role: 'family', children: 'One kid, age 4' })
 
     const written = writtenDoc()
     expect('yearsExperience' in written).toBe(false)
@@ -154,7 +142,7 @@ describe('createAccount — application answers are sanitized before the write',
   })
 
   it('writes no undefined values — Firestore rejects them outright', async () => {
-    await createAccount({ ...base, role: 'family', neighborhood: 'Goleta' })
+    await createAccount({ ...base, role: 'family', children: 'One kid, age 4' })
 
     for (const [key, value] of Object.entries(writtenDoc())) {
       expect(value, `${key} must not be undefined`).not.toBeUndefined()
@@ -165,13 +153,11 @@ describe('createAccount — application answers are sanitized before the write',
 describe('signInWithGoogle — the application survives a Google signup too', () => {
   it('persists and sanitizes the answers on a first-time Google account', async () => {
     await signInWithGoogle('family', {
-      neighborhood: 'Goleta\n',
       children: 'One, age 4',
       notes: 'X'.repeat(3000),
     })
 
     const written = writtenDoc()
-    expect(written.neighborhood).toBe('Goleta')
     expect(written.children).toBe('One, age 4')
     expect((written.notes as string).length).toBe(1000)
   })

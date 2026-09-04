@@ -62,7 +62,6 @@ export function ApplicationPage() {
   const [source, setSource] = useState<'' | ReferralSource>('')
 
   // Family-only fields
-  const [neighborhood, setNeighborhood] = useState('')
   const [children, setChildren] = useState('')
   const [notes, setNotes] = useState('')
 
@@ -98,7 +97,7 @@ export function ApplicationPage() {
    */
   function applicationAnswers() {
     return role === 'family'
-      ? { neighborhood, children, notes }
+      ? { children, notes }
       : { yearsExperience: experience, personalStatement: statement }
   }
 
@@ -254,13 +253,6 @@ export function ApplicationPage() {
 
               {isFamily ? (
                 <>
-                  <Input
-                    label="Neighborhood in Santa Barbara"
-                    autoComplete="address-level2"
-                    placeholder="e.g. Mesa, Riviera, Goleta"
-                    value={neighborhood}
-                    onChange={(e) => setNeighborhood(e.target.value)}
-                  />
                   <Textarea
                     label="Number of children and their ages"
                     hint="A quick note is perfect. For example, two kids, ages 3 and 6."

@@ -6,7 +6,7 @@ import { ApplicationPage } from './ApplicationPage'
 
 // THE BUG THIS PINS:
 //
-// /apply collects the actual application — neighborhood, children, notes for families;
+// /apply collects the actual application — children, notes for families;
 // years of experience and a personal statement for nannies — and wrote it to
 // sessionStorage under 'll_application_draft'. Nothing in src/ ever read that key. It was
 // write-only, and sessionStorage dies with the tab.
@@ -66,12 +66,11 @@ function submittedPayload(): Record<string, unknown> {
 }
 
 describe('ApplicationPage — the family application reaches the database', () => {
-  it('persists neighborhood, children and notes so an admin can review the family', async () => {
+  it('persists children and notes so an admin can review the family', async () => {
     const user = userEvent.setup()
     renderPage()
 
     await fillSharedFields(user)
-    await user.type(screen.getByLabelText(/neighborhood/i), 'The Mesa')
     await user.type(screen.getByLabelText(/number of children/i), 'Two kids, ages 3 and 6')
     await user.type(screen.getByLabelText(/special needs or notes/i), 'Peanut allergy.')
 
@@ -80,7 +79,6 @@ describe('ApplicationPage — the family application reaches the database', () =
     await waitFor(() => expect(createAccount).toHaveBeenCalled())
     const payload = submittedPayload()
 
-    expect(payload.neighborhood).toBe('The Mesa')
     expect(payload.children).toBe('Two kids, ages 3 and 6')
     expect(payload.notes).toBe('Peanut allergy.')
   })
@@ -90,7 +88,7 @@ describe('ApplicationPage — the family application reaches the database', () =
     renderPage()
 
     await fillSharedFields(user)
-    await user.type(screen.getByLabelText(/neighborhood/i), 'Riviera')
+    await user.type(screen.getByLabelText(/number of children/i), 'One kid, age 4')
 
     await user.click(screen.getByRole('button', { name: /create account & apply/i }))
 
@@ -143,7 +141,6 @@ describe('ApplicationPage — the nanny application reaches the database', () =>
     await waitFor(() => expect(createAccount).toHaveBeenCalled())
     const payload = submittedPayload()
 
-    expect(payload.neighborhood).toBeUndefined()
     expect(payload.children).toBeUndefined()
     expect(payload.notes).toBeUndefined()
   })
@@ -173,7 +170,6 @@ describe('ApplicationPage — Google signup carries the application too', () => 
     const user = userEvent.setup()
     renderPage()
 
-    await user.type(screen.getByLabelText(/neighborhood/i), 'Goleta')
     await user.type(screen.getByLabelText(/number of children/i), 'One, age 4')
 
     await user.click(screen.getByRole('button', { name: /continue with google/i }))
@@ -185,7 +181,6 @@ describe('ApplicationPage — Google signup carries the application too', () => 
     ]
 
     expect(role).toBe('family')
-    expect(options.neighborhood).toBe('Goleta')
     expect(options.children).toBe('One, age 4')
   })
 })
