@@ -13,7 +13,7 @@ import { rangesOverlap, overlapWindow, formatRate, resolveBookingStatus } from '
 import { resolveRecurring } from '../../lib/recurring'
 import { RateDisclaimer } from '../../components/ui'
 import type { Booking } from '../../types'
-import { todayISO, isWithinAvailability } from '../../lib/bookingRules'
+import { todayISO, isWithinAvailability, canBook } from '../../lib/bookingRules'
 
 export function FamilyCalendarPage() {
   const { user, profile } = useAuth()
@@ -140,16 +140,21 @@ export function FamilyCalendarPage() {
       setPickedDay(null)
       setNotes('')
       setWantsRecurring(false)
-      // F3: the confirm used to close the modal and go silent — no signal the booking landed,
-      // let alone what state it landed in. The three outcomes mean genuinely different things to
-      // a parent, so the acknowledgement names which one happened rather than a flat "done".
+      // F3: the confirm used to close the modal and go silent. The acknowledgement names the
+      // actual outcome — the two the family experiences now that pending/accept-decline is gone:
+      //  • confirmed with the chosen nanny (in her hours, rates overlap, ≥25h out), or
+      //  • posted to the job board for any nanny to claim (out-of-hours, rate mismatch, same-day,
+      //    or short-notice). createBooking's routeBooking makes the same call, including forcing a
+      //    would-be-confirmed but short-notice booking to the board — so mirror that here with the
+      //    short-notice check, or the toast would promise "all set" for a booking that went to the
+      //    board.
+      const shortNotice = canBook({ date: pickedDay, startTime: start }).shortNotice
+      const landedConfirmed = status === 'confirmed' && !shortNotice
       const nannyLabel = chosen?.fullName?.split(' ')[0] ?? 'your nanny'
       toast.show(
-        status === 'confirmed'
+        landedConfirmed
           ? `Booked with ${nannyLabel} — you're all set!`
-          : status === 'same_day_review'
-            ? "Posted for our nannies — we'll be in touch shortly about today."
-            : `Sent to ${nannyLabel} to accept — we'll email you either way.`,
+          : "Posted to our nannies to pick up — we'll email you the moment someone claims it.",
       )
     } catch (e) {
       // Without this the modal simply sat there with the notes still in it and the spinner

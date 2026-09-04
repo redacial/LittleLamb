@@ -128,6 +128,10 @@ describe('parseRateDollars', () => {
   })
 })
 
+// The pending / accept-decline concept was removed (partner meeting 2026-09). A booking now
+// either auto-confirms (inside the nanny's hours AND the rates overlap AND not same-day) or goes
+// to the JOB BOARD as 'open' for any nanny to claim. There is no longer an out-of-hours request a
+// specific nanny accepts or declines, and no same_day_review admin queue.
 describe('resolveBookingStatus', () => {
   const base = { date: '2026-08-20', today: '2026-08-10', withinHours: true, rateOverlaps: true }
 
@@ -135,19 +139,19 @@ describe('resolveBookingStatus', () => {
     expect(resolveBookingStatus(base)).toBe('confirmed')
   })
 
-  it('downgrades to pending on a rate mismatch (soft, not blocked)', () => {
-    expect(resolveBookingStatus({ ...base, rateOverlaps: false })).toBe('pending')
+  it('posts to the board (open) on a rate mismatch instead of pending', () => {
+    expect(resolveBookingStatus({ ...base, rateOverlaps: false })).toBe('open')
   })
 
-  it('still downgrades to pending when outside hours', () => {
-    expect(resolveBookingStatus({ ...base, withinHours: false })).toBe('pending')
+  it('posts to the board (open) when outside the nanny’s hours instead of pending', () => {
+    expect(resolveBookingStatus({ ...base, withinHours: false })).toBe('open')
   })
 
-  it('routes same-day to admin regardless of hours or rate', () => {
+  it('posts same-day to the board (open), not an admin same_day_review queue', () => {
     const sameDay = { ...base, date: '2026-08-10' }
-    expect(resolveBookingStatus(sameDay)).toBe('same_day_review')
+    expect(resolveBookingStatus(sameDay)).toBe('open')
     expect(resolveBookingStatus({ ...sameDay, withinHours: false, rateOverlaps: false })).toBe(
-      'same_day_review',
+      'open',
     )
   })
 })

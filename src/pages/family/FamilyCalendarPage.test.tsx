@@ -19,9 +19,24 @@ import { FamilyCalendarPage } from './FamilyCalendarPage'
 // rather than `never` — the assertions below inspect the created booking's fields.
 const createBooking = vi.fn((_input: Record<string, unknown>) => Promise.resolve('new-booking-id'))
 
-// Monday 15:00–20:00 only. 2026-09-07 is a Monday; 2026-09-08 is a Tuesday.
-const MONDAY = '2026-09-07'
-const TUESDAY = '2026-09-08'
+// Dates RELATIVE to the machine clock, not hardcoded — a fixed '2026-09-07' silently drifts under
+// 25h (then <0h) as that day approaches and passes, which would flip the routing the confirm tests
+// assert. MONDAY is the Monday ~2 weeks out (always comfortably ≥25h and inside the nanny's Monday
+// hours → confirmed); TUESDAY is the day after (a Tuesday she never opened → job board).
+function iso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function nextMondayAtLeast(daysOut: number): Date {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + daysOut)
+  // Advance to the next Monday (getDay() === 1).
+  while (d.getDay() !== 1) d.setDate(d.getDate() + 1)
+  return d
+}
+const MONDAY_DATE = nextMondayAtLeast(10)
+const MONDAY = iso(MONDAY_DATE)
+const TUESDAY = iso(new Date(MONDAY_DATE.getTime() + 86_400_000))
 
 const nanny = {
   uid: 'n1',
@@ -138,8 +153,8 @@ describe('FamilyCalendarPage — "Make this recurring"', () => {
       date: TUESDAY,
       recurring: false,
     })
-    // And it must not have quietly auto-confirmed either — out-of-hours stays a request.
-    expect(createBooking.mock.calls[0][0]).toMatchObject({ status: 'pending' })
+    // And it must not have quietly auto-confirmed either — out-of-hours goes to the job board.
+    expect(createBooking.mock.calls[0][0]).toMatchObject({ status: 'open' })
   })
 
   it('does NOT set recurring when no nanny was chosen', async () => {
@@ -219,8 +234,9 @@ describe('FamilyCalendarPage — a booking that fails says so', () => {
   })
 })
 
-// F3: confirming a booking used to close the modal and go silent. The three outcomes mean
-// different things to a parent, so the toast must name which one happened — not a flat "done".
+// F3: confirming a booking used to close the modal and go silent. Now that pending/accept-decline
+// is gone, the two real outcomes are: auto-confirmed with the chosen nanny, or posted to the job
+// board. The toast must name which one happened.
 describe('FamilyCalendarPage — the confirmation toast (F3)', () => {
   beforeEach(() => {
     createBooking.mockClear()
@@ -228,7 +244,7 @@ describe('FamilyCalendarPage — the confirmation toast (F3)', () => {
 
   it('says "all set" when the booking auto-confirms inside the nanny’s hours', async () => {
     const user = userEvent.setup()
-    await openBookingModal(user, MONDAY) // inside Priya's Monday hours → confirmed
+    await openBookingModal(user, MONDAY) // inside Priya's Monday hours, ≥25h out → confirmed
     await user.selectOptions(screen.getByLabelText('Nanny'), 'n1')
     await user.click(screen.getByRole('button', { name: /confirm booking/i }))
 
@@ -237,14 +253,14 @@ describe('FamilyCalendarPage — the confirmation toast (F3)', () => {
     expect(toast.closest('[role="status"]')).toBeTruthy()
   })
 
-  it('says the request was SENT when the slot is outside the nanny’s hours', async () => {
+  it('says it was POSTED to the board when the slot is outside the nanny’s hours', async () => {
     const user = userEvent.setup()
-    await openBookingModal(user, TUESDAY) // Priya opened Monday only → pending
+    await openBookingModal(user, TUESDAY) // Priya opened Monday only → out-of-hours → open/board
     await user.selectOptions(screen.getByLabelText('Nanny'), 'n1')
     await user.click(screen.getByRole('button', { name: /confirm booking/i }))
 
-    // Pending must NOT read as confirmed — that's the distinction the whole toast exists for.
-    expect(await screen.findByText(/sent to priya to accept/i)).toBeInTheDocument()
+    // Out-of-hours must NOT read as confirmed — it goes to the job board, not to Priya directly.
+    expect(await screen.findByText(/posted to our nannies/i)).toBeInTheDocument()
     expect(screen.queryByText(/all set/i)).toBeNull()
   })
 })

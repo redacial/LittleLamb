@@ -110,38 +110,28 @@ export interface CreateBookingInput {
 }
 
 /**
- * Same-day bookings are posted to the nanny job board rather than held for admin (D66).
+ * Route a new booking to its final stored status, clearing any nanny off a board post.
  *
- * The old `same_day_review` route was a guaranteed dead end: it emailed the family
- * `same_day_booking_outcome` with outcome 'pending' ("we're checking") and then surfaced on an
- * admin banner that had NO action buttons — so the follow-up that promise implies could not be
- * sent by anybody. The family was told to wait, and then never heard back.
+ * The model (partner meeting 2026-09): a booking auto-confirms ONLY when it lands inside the
+ * chosen nanny's set hours, the rates overlap, it isn't same-day (all decided already by
+ * resolveBookingStatus → 'confirmed'), AND it is at least MIN_LEAD_HOURS out. Everything else —
+ * an already-'open' post from resolveBookingStatus, OR a 'confirmed' booking that is short-notice
+ * (<25h) — goes to the JOB BOARD as an 'open' post any nanny can claim.
  *
- * The fix reuses machinery that already exists rather than building admin matchmaking: an
- * `open` booking is already rendered on the nanny dashboard as "Open bookings you can pick up"
- * with a working Accept button, and claiming it emails the family (see assignNanny).
+ * The pending/accept-decline concept is gone: there is no out-of-hours request a specific nanny
+ * accepts. Out-of-hours, rate-mismatch, same-day, and short-notice all resolve to the board.
  *
- * Why normalise the stored status here instead of widening useOpenBookings' query to include
- * 'same_day_review': the board is defined at the RULES layer, not just the client. firestore.rules
- * grants a nanny read AND update on a booking that isn't theirs only when
- * `status in ['open', 'unmatched']` — the same literal list the query uses. A `same_day_review`
- * doc is therefore unreadable and unclaimable by a nanny no matter what the client asks for, so
- * widening the query alone would have produced permission-denied rather than a job board. Mapping
- * to `open` keeps firestore.rules untouched and makes the post claimable for real.
- *
- * Admin still SEES same-day work: these posts appear in the dashboard's unmatched/open section,
- * which is what Lucy needs in order to email nannies about urgent posts off-platform. What she no
- * longer gets is a control implying the platform will route it for her.
- *
- * The nanny is also cleared: a same-day request must not sit reserved against one nanny who may
- * never open the app in time. Families do not pick a nanny for same-day — the board does.
+ * Why the board is defined by the stored `status`: useOpenBookings queries status in
+ * ['open','unmatched'], and firestore.rules grants a nanny read AND update on a booking that
+ * isn't theirs only for that same literal list. So the post must actually be stored 'open' to be
+ * claimable — and any nanny the family picked is cleared, because a board post must not sit
+ * reserved against one nanny who may never open the app in time.
  */
-function routeSameDay(input: CreateBookingInput, shortNotice: boolean): CreateBookingInput {
-  // Short notice is routed the same way, and for the same reason: inside MIN_LEAD_HOURS a
-  // booking must not auto-confirm against a nanny who may never open the app in time. Only a
-  // would-be `confirmed` booking is downgraded — `pending` already awaits a human, and an
-  // open/unmatched post is already on the board.
-  const needsBoard = input.status === 'same_day_review' || (shortNotice && input.status === 'confirmed')
+function routeBooking(input: CreateBookingInput, shortNotice: boolean): CreateBookingInput {
+  // A would-be confirmed booking inside the lead window can't auto-confirm against a nanny who
+  // may never see it in time — send it to the board. An already-'open' post is board-bound by
+  // definition; normalise it so its nanny fields are cleared here in one place.
+  const needsBoard = input.status === 'open' || input.status === 'unmatched' || (shortNotice && input.status === 'confirmed')
   if (!needsBoard) return input
   return { ...input, status: 'open', nannyId: null, nannyName: null }
 }
@@ -156,7 +146,7 @@ export async function createBooking(rawInput: CreateBookingInput): Promise<strin
     throw new Error(`Cannot book ${rawInput.date}: that date is in the past.`)
   }
 
-  const input = routeSameDay(rawInput, guard.shortNotice)
+  const input = routeBooking(rawInput, guard.shortNotice)
   const address = cleanLine(input.address, 300)
   const ref = await addDoc(collection(db, 'bookings'), {
     ...input,
@@ -171,13 +161,11 @@ export async function createBooking(rawInput: CreateBookingInput): Promise<strin
   const base = bookingPayload(ref.id, { ...input, address })
   if (input.status === 'confirmed') {
     fireNotify({ type: 'booking_auto_confirmed', to: 'family+nanny', ...base })
-  } else if (input.status === 'pending') {
-    fireNotify({ type: 'booking_request_sent', to: 'family+nanny', ...base })
   }
-  // open/unmatched (which now includes same-day): no email until a nanny picks it up. Staying
-  // silent here is deliberate — the only same-day template says "we're checking and will let you
-  // know", and nothing on the platform was ever going to send that follow-up. The family's real
-  // confirmation is open_booking_picked_up, fired by assignNanny when a nanny claims the post.
+  // open/unmatched (out-of-hours, rate mismatch, same-day, short-notice): no email until a nanny
+  // claims it. Staying silent here is deliberate — the family's real confirmation is
+  // open_booking_picked_up, fired by assignNanny when a nanny claims the post. The old
+  // booking_request_sent email belonged to the removed pending/accept-decline flow.
 
   return ref.id
 }
@@ -264,5 +252,33 @@ export function useBookingActions() {
     },
     [],
   )
-  return { setStatus, assignNanny }
+
+  /**
+   * A FAMILY cancels one of its own bookings (the only in-app cancel path — nannies cannot cancel;
+   * they email/text Little Lamb, and admin cancels through the admin bookings page).
+   *
+   * Records the late-cancel outcome ON the booking: `lateCancel` + `lateCancelFeeCents` (full pay
+   * due to the nanny when the cancel is inside the free window) + `cancelledAt`. The fee is
+   * DISPLAYED and RECORDED only — the platform doesn't charge it; Little Lamb settles or waives it
+   * off-platform (admin has a waive toggle). Emails the nanny the cancellation notice (with its
+   * CANCEL iCal) exactly as before.
+   */
+  const cancelBooking = useCallback(async (id: string, booking: BookingMeta, feeCents: number) => {
+    const late = feeCents > 0
+    await updateDoc(doc(db, 'bookings', id), {
+      status: 'cancelled',
+      cancelledAt: serverTimestamp(),
+      lateCancel: late,
+      // Store the fee only when there is one, so a free cancel doesn't carry a misleading 0.
+      ...(late ? { lateCancelFeeCents: feeCents } : {}),
+    })
+    fireNotify({ type: 'booking_cancelled_by_family', to: 'nanny', ...bookingPayload(id, booking) })
+  }, [])
+
+  /** Admin waives (or un-waives) the late-cancel fee for extenuating circumstances. */
+  const setLateCancelWaived = useCallback(async (id: string, waived: boolean) => {
+    await updateDoc(doc(db, 'bookings', id), { lateCancelWaived: waived })
+  }, [])
+
+  return { setStatus, assignNanny, cancelBooking, setLateCancelWaived }
 }

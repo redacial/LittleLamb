@@ -14,6 +14,7 @@ import {
   hoursUntil,
   canBook,
   isLateCancel,
+  lateCancelFeeCents,
   isWithinAvailability,
   MIN_LEAD_HOURS,
   FREE_CANCEL_HOURS,
@@ -74,27 +75,43 @@ describe('canBook — the guard that was missing entirely', () => {
   })
 
   // Inside the lead time the booking is still ALLOWED — it just can't auto-confirm against a
-  // nanny who may never see it. Routing is resolveBookingStatus's job; this only reports.
+  // nanny who may never see it. It goes to the job board. Routing is the caller's job; this
+  // only reports.
   it('allows a booking inside the lead time but flags it as short notice', () => {
     const r = canBook({ date: '2026-08-24', startTime: '18:00', now })
     expect(r.ok).toBe(true)
     expect(r.shortNotice).toBe(true)
   })
 
-  it('does not flag short notice outside the lead window', () => {
+  it('does not flag short notice comfortably outside the lead window', () => {
     const r = canBook({ date: '2026-08-26', startTime: '18:00', now })
     expect(r.ok).toBe(true)
     expect(r.shortNotice).toBe(false)
   })
 
-  it('treats a start exactly at the lead boundary as short notice', () => {
+  // The window is 25h and the boundary is EXCLUSIVE (< 25h is short notice): a booking exactly
+  // 25h out routes normally, which — paired with the 24h free-cancel window — is what gives a
+  // family who books at the earliest normal moment a full hour to still cancel for free.
+  it('treats a start exactly at the 25h boundary as NOT short notice', () => {
+    // 12:00 Pacific on the 24th + 25h = 13:00 on the 25th.
+    const r = canBook({ date: '2026-08-25', startTime: '13:00', now })
+    expect(hoursUntil('2026-08-25', '13:00', now)).toBeCloseTo(MIN_LEAD_HOURS, 5)
+    expect(r.shortNotice).toBe(false)
+  })
+
+  it('treats a start just inside 25h as short notice', () => {
+    // 24h out — inside the 25h lead window.
     const r = canBook({ date: '2026-08-25', startTime: '12:00', now })
-    expect(hoursUntil('2026-08-25', '12:00', now)).toBeCloseTo(MIN_LEAD_HOURS, 5)
+    expect(hoursUntil('2026-08-25', '12:00', now)).toBeCloseTo(24, 5)
     expect(r.shortNotice).toBe(true)
+  })
+
+  it('the lead window is 25h', () => {
+    expect(MIN_LEAD_HOURS).toBe(25)
   })
 })
 
-describe('isLateCancel — the flag only; the policy is Lucy’s call', () => {
+describe('isLateCancel — the flag only; the fee is computed separately', () => {
   const now = new Date('2026-08-24T12:00:00-07:00')
 
   it('is late inside the free-cancel window', () => {
@@ -107,6 +124,55 @@ describe('isLateCancel — the flag only; the policy is Lucy’s call', () => {
 
   it('uses the same threshold the constant declares', () => {
     expect(FREE_CANCEL_HOURS).toBe(24)
+  })
+
+  // The 25h book / 24h cancel gap is deliberate: a family that books at the earliest normal
+  // moment (exactly 25h out) still has a full hour before they enter the late-cancel window.
+  it('leaves a 1h gap below the book window so a normal booking is always freely cancellable at first', () => {
+    expect(MIN_LEAD_HOURS - FREE_CANCEL_HOURS).toBe(1)
+  })
+})
+
+describe('lateCancelFeeCents — full pay = session hours × the nanny’s floor', () => {
+  const now = new Date('2026-08-24T12:00:00-07:00')
+
+  it('is zero when the cancel is NOT late (outside the free window)', () => {
+    // Three days out — a free cancel owes nothing regardless of the rate.
+    const fee = lateCancelFeeCents(
+      { date: '2026-08-27', startTime: '15:00', endTime: '19:00' },
+      2500,
+      now,
+    )
+    expect(fee).toBe(0)
+  })
+
+  it('is session hours × floor when the cancel is late', () => {
+    // Same-day 15:00–19:00 = 4h, floor $25.00 → $100.00 = 10000 cents.
+    const fee = lateCancelFeeCents(
+      { date: '2026-08-24', startTime: '15:00', endTime: '19:00' },
+      2500,
+      now,
+    )
+    expect(fee).toBe(10000)
+  })
+
+  it('handles fractional-hour sessions', () => {
+    // 18:00–19:30 = 1.5h, floor $30.00 → $45.00 = 4500 cents.
+    const fee = lateCancelFeeCents(
+      { date: '2026-08-24', startTime: '18:00', endTime: '19:30' },
+      3000,
+      now,
+    )
+    expect(fee).toBe(4500)
+  })
+
+  it('is zero when the nanny has no floor set (nothing to compute against)', () => {
+    const fee = lateCancelFeeCents(
+      { date: '2026-08-24', startTime: '15:00', endTime: '19:00' },
+      undefined,
+      now,
+    )
+    expect(fee).toBe(0)
   })
 })
 

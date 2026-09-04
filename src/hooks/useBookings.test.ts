@@ -198,20 +198,14 @@ describe('useBookingActions().assignNanny — the family must be told a nanny is
   })
 })
 
-describe('createBooking — same-day bookings are job-board posts, not an admin dead end', () => {
-  // D66. `same_day_review` told the family "we're checking" via same_day_booking_outcome
-  // (outcome: 'pending') and then routed to an admin banner with NO ACTION BUTTONS — so the
-  // follow-up that promise implies could never be sent by anyone. A guaranteed dead end.
+describe('createBooking — open bookings are job-board posts, cleared of any nanny', () => {
+  // The pending/accept-decline model is gone (partner meeting 2026-09). resolveBookingStatus now
+  // returns 'confirmed' (in-hours, rates overlap, not same-day) or 'open' (everything else —
+  // out-of-hours, rate mismatch, same-day). An 'open' post is claimed on the JOB BOARD; claiming
+  // it fires open_booking_picked_up to the family (see assignNanny above).
   //
-  // Same-day is now a posting on the EXISTING nanny job board: any nanny can claim it, and
-  // claiming it fires open_booking_picked_up to the family (see assignNanny above).
-  //
-  // The normalisation happens HERE rather than in resolveBookingStatus because the board is
-  // defined by the stored `status` field: useOpenBookings queries status in ['open',
-  // 'unmatched'], and firestore.rules grants a nanny read+update on a booking that is not
-  // theirs by that same literal list. A `same_day_review` doc is unreadable and unclaimable
-  // by a nanny at the RULES layer, so widening the client query alone would have produced
-  // permission-denied, not a job board.
+  // routeBooking clears any nanny off an 'open' post: a board post must not sit reserved against
+  // one nanny who may never see it — it goes to the whole board.
 
   /** The doc fields written to Firestore by the last createBooking call. */
   function written(): Record<string, unknown> {
@@ -219,38 +213,30 @@ describe('createBooking — same-day bookings are job-board posts, not an admin 
     return addDoc.mock.calls[0][1]
   }
 
-  it('stores a same-day booking as an `open` board post, not `same_day_review`', async () => {
-    await createBooking({ ...newBooking, status: 'same_day_review' })
+  it('stores an open booking as an `open` board post', async () => {
+    await createBooking({ ...newBooking, status: 'open' })
 
     // `open` is what both useOpenBookings and firestore.rules recognise as claimable.
     expect(written()).toMatchObject({ status: 'open' })
   })
 
-  it('drops any nanny the family picked — same-day is claimed, not assigned', async () => {
-    // A same-day request must not sit reserved against one nanny who may never see it;
-    // it goes to the whole board. The family cannot pick a nanny for same-day (D66).
-    await createBooking({ ...newBooking, nannyId: 'n1', nannyName: 'Priya', status: 'same_day_review' })
+  it('drops any nanny the family picked on an open post — it is claimed, not assigned', async () => {
+    // An out-of-hours or same-day request must not sit reserved against one nanny; it goes to
+    // the whole board.
+    await createBooking({ ...newBooking, nannyId: 'n1', nannyName: 'Priya', status: 'open' })
 
     expect(written()).toMatchObject({ status: 'open', nannyId: null, nannyName: null })
   })
 
-  it('does NOT promise a same-day family a follow-up nobody can send', async () => {
-    await createBooking({ ...newBooking, status: 'same_day_review' })
-
-    expect(notify).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'same_day_booking_outcome' }),
-    )
-  })
-
   it('emails nobody on creation of a board post — the email comes when a nanny claims it', async () => {
-    await createBooking({ ...newBooking, status: 'same_day_review' })
+    await createBooking({ ...newBooking, status: 'open' })
 
     expect(addDoc).toHaveBeenCalled()
     expect(notify).not.toHaveBeenCalled()
   })
 
   it('leaves a normal confirmed booking untouched', async () => {
-    // Guard against the normalisation over-reaching: only same-day is rerouted.
+    // Guard against the routing over-reaching: only board-bound posts are rerouted.
     await createBooking({ ...newBooking, nannyId: 'n1', nannyName: 'Priya', status: 'confirmed' })
 
     expect(written()).toMatchObject({ status: 'confirmed', nannyId: 'n1' })

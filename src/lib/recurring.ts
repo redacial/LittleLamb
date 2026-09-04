@@ -90,10 +90,11 @@ export interface RecurringDecision {
  *  1. A specific nanny is chosen. An open/unmatched booking has nobody to recur WITH.
  *  2. That nanny's stated weekly availability fully covers this weekday and time window.
  *     Without this a family could lock a weekly slot the nanny never opened.
- *  3. The booking itself resolved to `confirmed`. `pending` (out-of-hours or rate
- *     mismatch) and `same_day_review` both mean a human has yet to agree — a series must
- *     never be spawned off an unanswered request. Deliberately conservative: the family
- *     still gets the booking, just as a one-off they can re-request weekly.
+ *  3. The booking itself resolved to `confirmed`. An `open` booking (out-of-hours, rate
+ *     mismatch, same-day, or short-notice) has gone to the job board and has no committed
+ *     nanny — a weekly series must never be spawned off an unclaimed post. Deliberately
+ *     conservative: the family still gets the booking, just as a one-off they can re-request
+ *     weekly once a nanny is confirmed.
  *
  * Pure, so the rule is unit-tested rather than buried in a click handler (same rationale
  * as resolveBookingStatus in ./rates).

@@ -21,17 +21,25 @@
 import type { AvailabilityBlock } from '../types'
 
 /**
- * Minimum notice for a booking to route normally. Inside this window a booking is still
- * allowed, but it goes to the job board for a nanny to claim rather than auto-confirming
- * against someone who may never see it in time.
+ * Minimum notice for a booking to route normally (auto-confirm against a chosen nanny). Inside
+ * this window a booking is still allowed, but it goes to the JOB BOARD for any nanny to claim
+ * rather than auto-confirming against someone who may never see it in time.
+ *
+ * 25, not 24, ON PURPOSE — see FREE_CANCEL_HOURS. The one-hour gap between the two is a designed
+ * property, not a coincidence: do NOT collapse them to the same value.
  */
-export const MIN_LEAD_HOURS = 24
+export const MIN_LEAD_HOURS = 25
 
 /**
- * A family may cancel freely up to this many hours before the start. Inside it, the
- * cancellation is FLAGGED as late — protecting a nanny who has already turned down other work.
- * What Little Lamb does about a late cancel (fees, strikes, escalation) is a business decision
- * and deliberately lives outside this module.
+ * A family may cancel freely up to this many hours before the start. Inside it, the cancellation
+ * is FLAGGED as late and a full-pay fee is computed (see lateCancelFeeCents) — protecting a nanny
+ * who has already turned down other work. What Little Lamb does about the fee (collect, waive for
+ * a sick child, escalate) is a business decision handled off-platform; this module only computes
+ * and flags it.
+ *
+ * The 1h gap below MIN_LEAD_HOURS is the point: a family that books at the earliest NORMAL moment
+ * (exactly 25h out) still gets a full hour where they can cancel for free. Book exactly at 24h and
+ * you'd be inside the late-cancel window the instant you confirmed.
  */
 export const FREE_CANCEL_HOURS = 24
 
@@ -96,15 +104,45 @@ export function canBook(args: { date: string; startTime: string; now?: Date }): 
   return {
     ok: true,
     refusal: null,
-    // <= so a start exactly on the boundary counts as short notice: at precisely 24h out we
-    // would rather over-route to the job board than auto-confirm a booking nobody sees.
-    shortNotice: hoursUntil(args.date, args.startTime, now) <= MIN_LEAD_HOURS,
+    // Strictly < so a start EXACTLY at the boundary (25h out) routes normally — that is the
+    // earliest-normal-booking case the 25h/24h gap is designed to protect (see MIN_LEAD_HOURS).
+    // Anything closer than 25h is short notice and goes to the job board.
+    shortNotice: hoursUntil(args.date, args.startTime, now) < MIN_LEAD_HOURS,
   }
 }
 
 /** Is this cancellation inside the free window? Returns the FLAG only — no policy applied. */
 export function isLateCancel(date: string, startTime: string, now: Date = new Date()): boolean {
   return hoursUntil(date, startTime, now) < FREE_CANCEL_HOURS
+}
+
+/**
+ * Full-pay fee (in cents) owed when a family cancels inside the free-cancel window.
+ *
+ * Full pay = the whole session (start→end hours) × the nanny's CURRENT floor rate. It is what the
+ * family is warned about at cancel time and what admin sees; the platform does not charge it —
+ * wages are settled off-platform, and Little Lamb waives it for extenuating circumstances.
+ *
+ * Returns 0 when the cancel is NOT late (nothing owed) or when no floor is known (nothing to
+ * compute against) — callers can treat 0 as "no fee to show".
+ */
+export function lateCancelFeeCents(
+  booking: { date: string; startTime: string; endTime: string },
+  nannyFloorCents: number | undefined,
+  now: Date = new Date(),
+): number {
+  if (!nannyFloorCents || nannyFloorCents <= 0) return 0
+  if (!isLateCancel(booking.date, booking.startTime, now)) return 0
+  const hours = sessionHours(booking.startTime, booking.endTime)
+  if (hours <= 0) return 0
+  return Math.round(hours * nannyFloorCents)
+}
+
+/** Length of a booking in hours, from zero-padded "HH:MM" start/end on the same day. */
+function sessionHours(startTime: string, endTime: string): number {
+  const [sh, sm] = startTime.split(':').map(Number)
+  const [eh, em] = endTime.split(':').map(Number)
+  return (eh * 60 + em - (sh * 60 + sm)) / 60
 }
 
 /** day-of-week 0-6 (0 = Sunday), matching AvailabilityBlock.day. */

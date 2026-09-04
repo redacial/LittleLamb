@@ -85,14 +85,18 @@ export function parseRateDollars(input: string): number | null {
  * buried in a click handler.
  *
  * Order matters:
- *   same-day      -> same_day_review  (admin handles it personally, whatever else is true)
- *   outside hours -> pending          (existing rule: the nanny accepts or declines)
- *   rate mismatch -> pending          (NEW: same soft-downgrade, not a hard block)
- *   otherwise     -> confirmed
+ *   in-hours AND rate overlaps AND not same-day -> confirmed
+ *   everything else                             -> open   (goes to the JOB BOARD)
  *
- * A rate mismatch DOWNGRADES rather than blocking, mirroring how out-of-hours requests
- * already work: the family can still ask, and the nanny decides. Hard-filtering would
- * hide supply and could leave a family with a low range facing an empty directory.
+ * The pending / accept-decline concept was removed (partner meeting 2026-09). A booking now
+ * either auto-confirms against the chosen nanny — only when it falls inside her set hours, the
+ * rates overlap, and it isn't same-day — or it is posted to the job board as 'open' for any
+ * nanny to claim. There is no out-of-hours "request" a specific nanny accepts or declines, and no
+ * same_day_review admin queue.
+ *
+ * Note this does NOT apply the <25h short-notice rule — that depends on the exact start TIME, not
+ * just the calendar day, and is applied by the caller (routeBooking in useBookings.ts) which
+ * forces short-notice confirmed bookings to the board too.
  */
 export function resolveBookingStatus(args: {
   date: string
@@ -101,10 +105,8 @@ export function resolveBookingStatus(args: {
   rateOverlaps: boolean
 }): BookingStatus {
   const { date, today, withinHours, rateOverlaps } = args
-  if (date === today) return 'same_day_review'
-  if (!withinHours) return 'pending'
-  if (!rateOverlaps) return 'pending'
-  return 'confirmed'
+  if (date !== today && withinHours && rateOverlaps) return 'confirmed'
+  return 'open'
 }
 
 /**
