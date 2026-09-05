@@ -7,7 +7,7 @@ import {
   completeWizard,
   resumeStep,
   childHasContent,
-  ratePatch,
+  ratePatchValue,
 } from '../../hooks/useProfile'
 import { uploadProfilePhoto } from '../../lib/storage'
 import { cleanLine, cleanText } from '../../lib/sanitize'
@@ -16,7 +16,7 @@ import { PaymentStep } from '../../components/onboarding/PaymentStep'
 import { useSpring } from '../../lib/motion'
 import { Button, Input, Textarea, Avatar, RateRangeInput, YesNo } from '../../components/ui'
 import { formatAge } from '../../lib/format'
-import { validateRatePair } from '../../lib/rates'
+import { validateRateValue } from '../../lib/rates'
 import type { Child, FamilyProfile } from '../../types'
 
 const STEPS = ['Family profile', 'Contact', 'Payment']
@@ -50,9 +50,8 @@ export function FamilySetupWizard() {
   const [coParentEmail, setCoParentEmail] = useState('')
   const [emergencyContactName, setEmergencyContactName] = useState('')
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('')
-  // Raw dollar strings while typing; parsed to cents on save (see RateRangeInput).
-  const [rateMin, setRateMin] = useState('')
-  const [rateMax, setRateMax] = useState('')
+  // A single dollar string — the family's ceiling (most they'll pay). See ratePatchValue.
+  const [rate, setRate] = useState('')
 
   useEffect(() => {
     if (!family) return
@@ -69,13 +68,12 @@ export function FamilySetupWizard() {
     setEmergencyContactName(family.emergencyContactName ?? '')
     setEmergencyContactPhone(family.emergencyContactPhone ?? '')
     if (family.rateRange) {
-      setRateMin(String(family.rateRange.minCents / 100))
-      setRateMax(String(family.rateRange.maxCents / 100))
+      // Her ceiling is the top of the stored range.
+      setRate(String(family.rateRange.maxCents / 100))
     } else if (family.rateDraft) {
-      // A budget she started typing but never completed — hand it back rather than
-      // making her remember what she'd entered.
-      setRateMin(family.rateDraft.min)
-      setRateMax(family.rateDraft.max)
+      // A budget she started typing but never completed — hand it back rather than making her
+      // remember what she'd entered. The single value lives in rateDraft.min (see ratePatchValue).
+      setRate(family.rateDraft.min)
     }
     if (!resumed) {
       setStep(resumeStep(family.wizardStep, STEPS.length))
@@ -150,17 +148,17 @@ export function FamilySetupWizard() {
       return setError('Please give each child a name and a birthday.')
     }
     if (!homeAddress.trim()) return setError('Please add your home address.')
-    const badRate = validateRatePair(rateMin, rateMax)
+    const badRate = validateRateValue(rate)
     if (badRate) {
-      // Can't advance on a half-filled budget — but keep what she typed so the correction
-      // starts from her numbers. Uses save() directly because persist() clears the error
-      // state we're about to set.
-      await save(ratePatch(rateMin, rateMax)).catch(() => {})
+      // Can't advance on an invalid budget — but keep what she typed so the correction starts
+      // from her number. Uses save() directly because persist() clears the error we're about to
+      // set.
+      await save(ratePatchValue(rate, 'family')).catch(() => {})
       return setError(badRate)
     }
-    // The budget is OPTIONAL — leaving it blank matches the family with everyone
-    // (rangesOverlap treats a missing range permissively). A COMPLETE pair becomes a real
-    // rateRange; a half-typed one is kept as a draft rather than discarded (see ratePatch).
+    // The budget is OPTIONAL — leaving it blank matches the family with everyone (rangesOverlap
+    // treats a missing range permissively). A valid value becomes a {0, ceiling} rateRange; an
+    // in-progress one is kept as a draft rather than discarded (see ratePatchValue).
     const ok = await persist({
       children: cleanChildren,
       hasPets,
@@ -168,7 +166,7 @@ export function FamilySetupWizard() {
       allergies: cleanText(allergies, 1000),
       houseRules: cleanText(houseRules, 2000),
       homeAddress: cleanLine(homeAddress, 300),
-      ...ratePatch(rateMin, rateMax),
+      ...ratePatchValue(rate, 'family'),
       wizardStep: 1,
     })
     if (ok) setStep(1)
@@ -272,13 +270,7 @@ export function FamilySetupWizard() {
           <Textarea label="Allergies or special needs" hint="Optional" value={allergies} onChange={(e) => setAllergies(e.target.value)} />
           <Textarea label="House rules & important notes" hint="Optional" value={houseRules} onChange={(e) => setHouseRules(e.target.value)} />
           <Input label="Home address" value={homeAddress} onChange={(e) => setHomeAddress(e.target.value)} />
-          <RateRangeInput
-            role="family"
-            min={rateMin}
-            max={rateMax}
-            onMinChange={setRateMin}
-            onMaxChange={setRateMax}
-          />
+          <RateRangeInput role="family" value={rate} onChange={setRate} />
 
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <Button onClick={nextFromStep0} loading={busy}>Continue</Button>

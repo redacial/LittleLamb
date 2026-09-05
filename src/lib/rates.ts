@@ -57,12 +57,51 @@ function dollars(cents: number): string {
   return cents % 100 === 0 ? `$${cents / 100}` : `$${(cents / 100).toFixed(2)}`
 }
 
-/** Display form: "$25–35/hr", or "$30/hr" when the bounds are equal. */
+/**
+ * Display form. Handles both the historical two-sided range and the single-value model
+ * (partner meeting 2026-09): a nanny stores a FLOOR as {floor, RATE_MAX} → "from $25/hr", a
+ * family a CEILING as {0, ceiling} → "up to $35/hr". A range open on BOTH ends is "Any rate".
+ */
 export function formatRate(r?: RateRange | null): string {
   if (!isValidRange(r)) return 'Rate not set'
   const { minCents, maxCents } = r
+  const noFloor = minCents === 0
+  const noCeiling = maxCents === RATE_MAX_CENTS
+  if (noFloor && noCeiling) return 'Any rate'
+  if (noCeiling) return `from ${dollars(minCents)}/hr` // nanny floor
+  if (noFloor) return `up to ${dollars(maxCents)}/hr` // family ceiling
   if (minCents === maxCents) return `${dollars(minCents)}/hr`
   return `${dollars(minCents)}–${dollars(maxCents)}/hr`
+}
+
+/** A nanny's lowest acceptable rate, stored as a RateRange open at the top. */
+export function nannyFloorRange(floorCents: number): RateRange {
+  return { minCents: floorCents, maxCents: RATE_MAX_CENTS }
+}
+
+/** A family's highest acceptable rate, stored as a RateRange open at the bottom. */
+export function familyCeilingRange(ceilingCents: number): RateRange {
+  return { minCents: 0, maxCents: ceilingCents }
+}
+
+/**
+ * Validate a single typed rate value (nanny floor or family ceiling). Returns an error string, or
+ * null when it's usable. Blank is allowed — the rate is optional.
+ */
+export function validateRateValue(input: string): string | null {
+  if (input.trim() === '') return null
+  const cents = parseRateDollars(input)
+  if (cents === null) {
+    // parseRateDollars returns null for both non-numbers and over-max amounts; distinguish them
+    // so the message is actionable.
+    const cleaned = input.trim().replace(/^\$/, '').replace(/,/g, '')
+    const n = Number(cleaned)
+    if (Number.isFinite(n) && n > RATE_MAX_CENTS / 100) {
+      return `That’s higher than our $${RATE_MAX_CENTS / 100}/hr maximum.`
+    }
+    return 'Enter a dollar amount, like 25.'
+  }
+  return null
 }
 
 /**
@@ -107,24 +146,4 @@ export function resolveBookingStatus(args: {
   const { date, today, withinHours, rateOverlaps } = args
   if (date !== today && withinHours && rateOverlaps) return 'confirmed'
   return 'open'
-}
-
-/**
- * Validate a min/max pair as typed into a form. Returns an error string, or null when the
- * pair is usable. Empty is allowed (the range is optional) — but a half-filled pair is not.
- *
- * Lives here rather than beside RateRangeInput because it is pure logic with no React
- * dependency, and a component module that also exports helpers breaks Fast Refresh.
- */
-export function validateRatePair(min: string, max: string): string | null {
-  const bothEmpty = min.trim() === '' && max.trim() === ''
-  if (bothEmpty) return null
-
-  const lo = parseRateDollars(min)
-  const hi = parseRateDollars(max)
-  if (lo === null || hi === null) {
-    return `Enter both a minimum and a maximum, up to $${RATE_MAX_CENTS / 100} an hour.`
-  }
-  if (lo > hi) return 'The minimum can’t be more than the maximum.'
-  return null
 }

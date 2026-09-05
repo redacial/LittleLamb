@@ -1,37 +1,39 @@
-// Paired min/max hourly-rate fields, shared by both setup wizards and both profile
-// pages so the parsing, validation and disclaimer are identical everywhere.
+// A single hourly-rate field, shared by both setup wizards and both profile pages so the parsing,
+// validation and disclaimer are identical everywhere.
 //
-// State is held as the raw STRINGS the user typed, not as cents: parsing on every
-// keystroke would fight the user mid-entry (typing "2" in an empty field would commit
-// $2/hr). The parent asks for cents via `value`/`onChange` and gets null while the
-// input is incomplete or invalid.
+// Single value, not a range (partner meeting 2026-09): a nanny enters the LOWEST rate they'll
+// accept, a family the MOST they'll pay. The parent owns the raw string (so wizard steps can
+// persist a half-typed value) and maps it to the internal RateRange on save via nannyFloorRange /
+// familyCeilingRange — see rates.ts.
+//
+// State is the raw STRING the user typed, not cents: parsing every keystroke would fight the user
+// (typing "2" in an empty field would commit $2/hr).
 
 import { useId } from 'react'
 import { Input } from './Input'
 import { RateDisclaimer } from './RateDisclaimer'
-import { validateRatePair } from '../../lib/rates'
+import { validateRateValue } from '../../lib/rates'
 
 interface Props {
-  /** Raw dollar strings, owned by the parent so wizard steps can persist them. */
-  min: string
-  max: string
-  onMinChange: (v: string) => void
-  onMaxChange: (v: string) => void
-  /** Whose rate this is — changes the labels and helper copy. */
+  /** Raw dollar string, owned by the parent so wizard steps can persist it. */
+  value: string
+  onChange: (v: string) => void
+  /** Whose rate this is — changes the label and helper copy. */
   role: 'family' | 'nanny'
 }
 
-export function RateRangeInput({ min, max, onMinChange, onMaxChange, role }: Props) {
+export function RateRangeInput({ value, onChange, role }: Props) {
   const groupId = useId()
-  const error = validateRatePair(min, max)
-  // Only nag once they've actually started typing — an untouched pair isn't "wrong".
-  const touched = min.trim() !== '' || max.trim() !== ''
+  const error = validateRateValue(value)
+  // Only nag once they've actually started typing — an untouched field isn't "wrong".
+  const touched = value.trim() !== ''
 
   const heading = role === 'nanny' ? 'Your hourly rate' : 'Your hourly budget'
+  const label = role === 'nanny' ? 'Lowest rate you’ll accept' : 'Most you’ll pay per hour'
   const help =
     role === 'nanny'
-      ? 'The range you’re happy to work for. Families see this on your profile, and we match you with families whose budget fits.'
-      : 'What you’re comfortable paying per hour. We use it to show you nannies whose rates fit — you can still request anyone.'
+      ? 'The least you’re willing to work for. Families see this on your profile, and we match you with families whose budget meets it.'
+      : 'The most you’re comfortable paying per hour. We use it to show you nannies whose rates fit — you can still request anyone.'
 
   return (
     <div className="space-y-3" role="group" aria-labelledby={groupId}>
@@ -42,24 +44,14 @@ export function RateRangeInput({ min, max, onMinChange, onMaxChange, role }: Pro
         <p className="mt-1 text-sm text-ll-warm-gray">{help}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Input
-          label="Minimum"
-          inputMode="decimal"
-          placeholder="20"
-          value={min}
-          onChange={(e) => onMinChange(e.target.value)}
-          aria-describedby={`${groupId}-err`}
-        />
-        <Input
-          label="Maximum"
-          inputMode="decimal"
-          placeholder="30"
-          value={max}
-          onChange={(e) => onMaxChange(e.target.value)}
-          aria-describedby={`${groupId}-err`}
-        />
-      </div>
+      <Input
+        label={label}
+        inputMode="decimal"
+        placeholder={role === 'nanny' ? '25' : '35'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-describedby={`${groupId}-err`}
+      />
 
       <p id={`${groupId}-err`} className="text-sm text-red-600" role={touched && error ? 'alert' : undefined}>
         {touched && error ? error : ''}

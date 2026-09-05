@@ -6,6 +6,9 @@ import {
   parseRateDollars,
   isValidRange,
   resolveBookingStatus,
+  nannyFloorRange,
+  familyCeilingRange,
+  validateRateValue,
   RATE_MAX_CENTS,
 } from './rates'
 
@@ -101,6 +104,60 @@ describe('formatRate', () => {
   it('says so when unset or malformed', () => {
     expect(formatRate(undefined)).toBe('Rate not set')
     expect(formatRate(r(3000, 2000))).toBe('Rate not set')
+  })
+
+  // Single-value rates (partner meeting 2026-09): a nanny stores a FLOOR as {floor, RATE_MAX} and
+  // a family a CEILING as {0, ceiling}. formatRate must render those one-sided, not "$25–$500/hr".
+  it('renders a nanny floor as "from $X/hr"', () => {
+    expect(formatRate(r(2500, RATE_MAX_CENTS))).toBe('from $25/hr')
+  })
+
+  it('renders a family ceiling as "up to $X/hr"', () => {
+    expect(formatRate(r(0, 3500))).toBe('up to $35/hr')
+  })
+
+  it('renders an unbounded range (no real floor or ceiling) as "any rate"', () => {
+    expect(formatRate(r(0, RATE_MAX_CENTS))).toBe('Any rate')
+  })
+})
+
+describe('nannyFloorRange / familyCeilingRange — single value → internal RateRange', () => {
+  it('stores a nanny floor as {floor, RATE_MAX}', () => {
+    expect(nannyFloorRange(2500)).toEqual({ minCents: 2500, maxCents: RATE_MAX_CENTS })
+  })
+
+  it('stores a family ceiling as {0, ceiling}', () => {
+    expect(familyCeilingRange(3500)).toEqual({ minCents: 0, maxCents: 3500 })
+  })
+
+  it('a nanny floor and a family ceiling that meet still overlap (match)', () => {
+    // Nanny wants ≥ $25, family will pay ≤ $30 → they overlap ($25–30 works for both).
+    expect(rangesOverlap(nannyFloorRange(2500), familyCeilingRange(3000))).toBe(true)
+  })
+
+  it('a nanny floor above the family ceiling does NOT overlap', () => {
+    // Nanny wants ≥ $40, family will only pay ≤ $30 → no overlap.
+    expect(rangesOverlap(nannyFloorRange(4000), familyCeilingRange(3000))).toBe(false)
+  })
+})
+
+describe('validateRateValue — one number, not a pair', () => {
+  it('accepts a blank value (the rate is optional)', () => {
+    expect(validateRateValue('')).toBeNull()
+    expect(validateRateValue('   ')).toBeNull()
+  })
+
+  it('accepts a normal amount', () => {
+    expect(validateRateValue('25')).toBeNull()
+    expect(validateRateValue('$27.50')).toBeNull()
+  })
+
+  it('rejects a non-number', () => {
+    expect(validateRateValue('abc')).toMatch(/number|amount/i)
+  })
+
+  it('rejects an amount over the platform max', () => {
+    expect(validateRateValue('600')).toMatch(/high|max|500/i)
   })
 })
 

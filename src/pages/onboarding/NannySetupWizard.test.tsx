@@ -90,34 +90,36 @@ describe('NannySetupWizard — resuming an abandoned wizard (bug A)', () => {
   })
 })
 
-describe('NannySetupWizard — a half-filled rate on the final step (bug C)', () => {
-  it('does not lose a minimum typed without a maximum', async () => {
+// Single-value rate now (partner meeting 2026-09): a nanny types the LEAST she'll accept, stored
+// as a {floor, RATE_MAX} range. A value still mid-entry (unparseable) is kept as a draft.
+describe('NannySetupWizard — the rate on the final step (bug C: don’t lose a partial entry)', () => {
+  it('keeps a value still being typed as a draft instead of dropping it', async () => {
     const user = userEvent.setup()
     stored.current = atRateStep
     show()
-    await user.type(await screen.findByLabelText(/minimum/i), '25')
+    await user.type(await screen.findByLabelText(/lowest rate/i), '$')
     await user.click(screen.getByRole('button', { name: /finish setup/i }))
 
     await waitFor(() => expect(save).toHaveBeenCalled())
-    expect(savedDoc().rateDraft).toMatchObject({ min: '25' })
+    expect(savedDoc().rateDraft).toMatchObject({ min: '$' })
   })
 
-  it('gives the half-filled rate back when she returns', async () => {
-    stored.current = { ...atRateStep, rateDraft: { min: '25', max: '' } }
+  it('gives a half-typed rate back when she returns', async () => {
+    stored.current = { ...atRateStep, rateDraft: { min: '2', max: '' } }
     show()
-    expect(await screen.findByLabelText(/minimum/i)).toHaveValue('25')
+    expect(await screen.findByLabelText(/lowest rate/i)).toHaveValue('2')
   })
 
-  it('still writes a real rateRange once both bounds are filled', async () => {
+  it('writes a {floor, RATE_MAX} rateRange once a valid amount is entered', async () => {
     const user = userEvent.setup()
     stored.current = atRateStep
     show()
-    await user.type(await screen.findByLabelText(/minimum/i), '25')
-    await user.type(screen.getByLabelText(/maximum/i), '40')
+    await user.type(await screen.findByLabelText(/lowest rate/i), '25')
     await user.click(screen.getByRole('button', { name: /finish setup/i }))
 
     await waitFor(() => expect(save).toHaveBeenCalled())
-    expect(savedDoc().rateRange).toEqual({ minCents: 2500, maxCents: 4000 })
+    // Nanny floor: {2500, 50000}.
+    expect(savedDoc().rateRange).toEqual({ minCents: 2500, maxCents: 50000 })
   })
 })
 
@@ -127,8 +129,7 @@ describe('NannySetupWizard — a failed save (bug D)', () => {
     stored.current = atRateStep
     save.mockRejectedValue(new Error('offline'))
     show()
-    await user.type(await screen.findByLabelText(/minimum/i), '25')
-    await user.type(screen.getByLabelText(/maximum/i), '40')
+    await user.type(await screen.findByLabelText(/lowest rate/i), '25')
     await user.click(screen.getByRole('button', { name: /finish setup/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/couldn.t save/i)
@@ -143,8 +144,7 @@ describe('NannySetupWizard — a failed save (bug D)', () => {
     stored.current = atRateStep
     save.mockRejectedValue(new Error('offline'))
     show()
-    await user.type(await screen.findByLabelText(/minimum/i), '25')
-    await user.type(screen.getByLabelText(/maximum/i), '40')
+    await user.type(await screen.findByLabelText(/lowest rate/i), '25')
     await user.click(screen.getByRole('button', { name: /finish setup/i }))
     await screen.findByRole('alert')
     await new Promise((r) => setTimeout(r, 50))

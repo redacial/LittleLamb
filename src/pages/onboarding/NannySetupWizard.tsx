@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
-import { useNannyProfile, completeWizard, resumeStep, ratePatch } from '../../hooks/useProfile'
+import { useNannyProfile, completeWizard, resumeStep, ratePatchValue } from '../../hooks/useProfile'
 import { uploadProfilePhoto, uploadIntroVideo } from '../../lib/storage'
 import { cleanText, cleanLine } from '../../lib/sanitize'
 import { SELF_BADGES } from '../../lib/badges'
@@ -10,7 +10,7 @@ import { WizardShell } from '../../components/onboarding/WizardShell'
 import { AvailabilityEditor } from '../../components/onboarding/AvailabilityEditor'
 import { useSpring, useChipHover } from '../../lib/motion'
 import { Button, Input, Textarea, Avatar, Badge, RateRangeInput } from '../../components/ui'
-import { validateRatePair } from '../../lib/rates'
+import { validateRateValue } from '../../lib/rates'
 import { cn } from '../../lib/cn'
 import type { AvailabilityBlock, NannyProfile } from '../../types'
 
@@ -40,9 +40,8 @@ export function NannySetupWizard() {
   const [videoURL, setVideoURL] = useState<string | null>(null)
   const [selfBadges, setSelfBadges] = useState<string[]>([])
   const [availability, setAvailability] = useState<AvailabilityBlock[]>([])
-  // Raw dollar strings while typing; parsed to cents on save (see RateRangeInput).
-  const [rateMin, setRateMin] = useState('')
-  const [rateMax, setRateMax] = useState('')
+  // A single dollar string — the nanny's floor (least they'll accept). See ratePatchValue.
+  const [rate, setRate] = useState('')
 
   useEffect(() => {
     if (!nanny) return
@@ -53,13 +52,12 @@ export function NannySetupWizard() {
     setSelfBadges(nanny.selfBadges ?? [])
     setAvailability(nanny.availability ?? [])
     if (nanny.rateRange) {
-      setRateMin(String(nanny.rateRange.minCents / 100))
-      setRateMax(String(nanny.rateRange.maxCents / 100))
+      // Her floor is the bottom of the stored range.
+      setRate(String(nanny.rateRange.minCents / 100))
     } else if (nanny.rateDraft) {
-      // A rate she started typing but never completed — hand it back rather than
-      // making her remember what she'd entered.
-      setRateMin(nanny.rateDraft.min)
-      setRateMax(nanny.rateDraft.max)
+      // A rate she started typing but never completed — hand it back. The single value lives in
+      // rateDraft.min (see ratePatchValue).
+      setRate(nanny.rateDraft.min)
     }
     if (!resumed) {
       setStep(resumeStep(nanny.wizardStep, STEPS.length))
@@ -156,21 +154,20 @@ export function NannySetupWizard() {
 
   async function finish() {
     if (!uid) return
-    const invalid = validateRatePair(rateMin, rateMax)
+    const invalid = validateRateValue(rate)
     if (invalid) {
-      // She can't FINISH on a half-filled range — but what she typed is still hers. Save the
-      // draft before refusing, so the correction starts from her numbers instead of blank
-      // fields. Without this the validation gate itself becomes the thing that loses the data.
-      // Saved via save() directly, not persist(), because persist() clears the error state
-      // we are about to set.
-      await save(ratePatch(rateMin, rateMax)).catch(() => {})
+      // She can't FINISH on an invalid rate — but what she typed is still hers. Save the draft
+      // before refusing, so the correction starts from her number instead of a blank field.
+      // Saved via save() directly, not persist(), because persist() clears the error we're about
+      // to set.
+      await save(ratePatchValue(rate, 'nanny')).catch(() => {})
       return setError(invalid)
     }
-    // The range is OPTIONAL — skipping it leaves the nanny matchable with everyone
-    // (rangesOverlap treats a missing range permissively). A COMPLETE pair is written as a
-    // real rateRange; a half-typed one is preserved as a draft instead of being dropped.
-    // This is the LAST step, so anything discarded here is never seen again.
-    const ok = await persist({ ...ratePatch(rateMin, rateMax), wizardStep: 4 })
+    // The rate is OPTIONAL — skipping it leaves the nanny matchable with everyone (rangesOverlap
+    // treats a missing range permissively). A valid value is written as a {floor, RATE_MAX}
+    // rateRange; an in-progress one is preserved as a draft. This is the LAST step, so anything
+    // discarded here is never seen again.
+    const ok = await persist({ ...ratePatchValue(rate, 'nanny'), wizardStep: 4 })
     if (!ok) return
     setBusy(true)
     try {
@@ -361,13 +358,7 @@ export function NannySetupWizard() {
             Families pay you directly — this just helps us match you with families whose budget
             fits yours. You can change it any time, or skip it for now.
           </p>
-          <RateRangeInput
-            role="nanny"
-            min={rateMin}
-            max={rateMax}
-            onMinChange={setRateMin}
-            onMaxChange={setRateMax}
-          />
+          <RateRangeInput role="nanny" value={rate} onChange={setRate} />
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => goBack(3)}>Back</Button>

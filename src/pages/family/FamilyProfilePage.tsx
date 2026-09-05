@@ -5,7 +5,7 @@ import { uploadProfilePhoto } from '../../lib/storage'
 import { cleanLine, cleanText } from '../../lib/sanitize'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Card, CardLabel, Input, Textarea, Button, Avatar, RateRangeInput, YesNo } from '../../components/ui'
-import { parseRateDollars, validateRatePair } from '../../lib/rates'
+import { parseRateDollars, validateRateValue, familyCeilingRange } from '../../lib/rates'
 import { formatAge } from '../../lib/format'
 import { ReferralCard } from '../../components/ReferralCard'
 import type { Child } from '../../types'
@@ -28,9 +28,9 @@ export function FamilyProfilePage() {
     coParentEmail: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
-    // Raw dollar strings while typing; parsed to cents on save (see RateRangeInput).
-    rateMin: '',
-    rateMax: '',
+    // Raw dollar string while typing; parsed to cents on save. A family stores a single CEILING
+    // (the most they'll pay), held internally as a {0, ceiling} RateRange.
+    rate: '',
   })
   const [children, setChildren] = useState<Child[]>([])
   const [saved, setSaved] = useState(false)
@@ -51,8 +51,8 @@ export function FamilyProfilePage() {
       coParentEmail: family.coParentEmail ?? '',
       emergencyContactName: family.emergencyContactName ?? '',
       emergencyContactPhone: family.emergencyContactPhone ?? '',
-      rateMin: family.rateRange ? String(family.rateRange.minCents / 100) : '',
-      rateMax: family.rateRange ? String(family.rateRange.maxCents / 100) : '',
+      // The ceiling is the top of the stored range.
+      rate: family.rateRange ? String(family.rateRange.maxCents / 100) : '',
     })
     setChildren(family.children ?? [])
   }, [family])
@@ -87,15 +87,14 @@ export function FamilyProfilePage() {
   }
 
   async function onSave() {
-    const badRate = validateRatePair(form.rateMin, form.rateMax)
+    const badRate = validateRateValue(form.rate)
     if (badRate) return setError(badRate)
     setError(null)
-    const lo = parseRateDollars(form.rateMin)
-    const hi = parseRateDollars(form.rateMax)
+    const ceiling = parseRateDollars(form.rate)
     setBusy(true)
     try {
       await save({
-        ...(lo !== null && hi !== null ? { rateRange: { minCents: lo, maxCents: hi } } : {}),
+        ...(ceiling !== null ? { rateRange: familyCeilingRange(ceiling) } : {}),
         hasPets: form.hasPets,
         // Only keep a pets note when they have pets; clear it otherwise so a leftover note from a
         // toggled-off "yes" doesn't linger.
@@ -151,10 +150,8 @@ export function FamilyProfilePage() {
             <Input label="Home address" value={form.homeAddress} onChange={(e) => set('homeAddress', e.target.value)} />
             <RateRangeInput
               role="family"
-              min={form.rateMin}
-              max={form.rateMax}
-              onMinChange={(v) => set('rateMin', v)}
-              onMaxChange={(v) => set('rateMax', v)}
+              value={form.rate}
+              onChange={(v) => set('rate', v)}
             />
             <YesNo
               label="Any pets?"

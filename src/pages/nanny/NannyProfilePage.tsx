@@ -8,7 +8,7 @@ import { SELF_BADGES, badgeLabel } from '../../lib/badges'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { AvailabilityEditor } from '../../components/onboarding/AvailabilityEditor'
 import { Card, CardLabel, Textarea, Button, Avatar, Badge, RateRangeInput } from '../../components/ui'
-import { parseRateDollars, validateRatePair } from '../../lib/rates'
+import { parseRateDollars, validateRateValue, nannyFloorRange } from '../../lib/rates'
 import { ReferralCard } from '../../components/ReferralCard'
 import { cn } from '../../lib/cn'
 import { useChipHover } from '../../lib/motion'
@@ -27,8 +27,8 @@ export function NannyOwnProfilePage() {
   const [videoURL, setVideoURL] = useState<string | null>(null)
   const [selfBadges, setSelfBadges] = useState<string[]>([])
   const [availability, setAvailability] = useState<AvailabilityBlock[]>([])
-  const [rateMin, setRateMin] = useState('')
-  const [rateMax, setRateMax] = useState('')
+  // A nanny stores a single FLOOR (the least they'll accept), held internally as {floor, RATE_MAX}.
+  const [rate, setRate] = useState('')
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -42,8 +42,8 @@ export function NannyOwnProfilePage() {
     setSelfBadges(nanny.selfBadges ?? [])
     setAvailability(nanny.availability ?? [])
     if (nanny.rateRange) {
-      setRateMin(String(nanny.rateRange.minCents / 100))
-      setRateMax(String(nanny.rateRange.maxCents / 100))
+      // The floor is the bottom of the stored range.
+      setRate(String(nanny.rateRange.minCents / 100))
     }
   }, [nanny])
 
@@ -100,20 +100,19 @@ export function NannyOwnProfilePage() {
   }
 
   async function onSave() {
-    const badRate = validateRatePair(rateMin, rateMax)
+    const badRate = validateRateValue(rate)
     if (badRate) return setError(badRate)
     setError(null)
-    const lo = parseRateDollars(rateMin)
-    const hi = parseRateDollars(rateMax)
+    const floor = parseRateDollars(rate)
     setBusy(true)
     try {
       await save({
         bio: cleanText(bio, BIO_MAX),
         selfBadges,
         availability,
-        // Only write when both bounds parse — a cleared range is left untouched rather
-        // than half-written (removing a rate entirely is not yet a supported action).
-        ...(lo !== null && hi !== null ? { rateRange: { minCents: lo, maxCents: hi } } : {}),
+        // Only write when it parses — a cleared rate is left untouched rather than
+        // half-written (removing a rate entirely is not yet a supported action).
+        ...(floor !== null ? { rateRange: nannyFloorRange(floor) } : {}),
       })
       setSaved(true)
     } catch {
@@ -228,10 +227,8 @@ export function NannyOwnProfilePage() {
             <div className="mt-3">
               <RateRangeInput
                 role="nanny"
-                min={rateMin}
-                max={rateMax}
-                onMinChange={(v) => { setRateMin(v); setSaved(false) }}
-                onMaxChange={(v) => { setRateMax(v); setSaved(false) }}
+                value={rate}
+                onChange={(v) => { setRate(v); setSaved(false) }}
               />
             </div>
           </Card>

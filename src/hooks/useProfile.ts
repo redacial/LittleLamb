@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { parseRateDollars } from '../lib/rates'
-import type { Child, FamilyProfile, NannyProfile, RateDraft, RateRange } from '../types'
+import { parseRateDollars, nannyFloorRange, familyCeilingRange } from '../lib/rates'
+import type { Child, FamilyProfile, NannyProfile } from '../types'
 
 function stripUndefined<T extends object>(obj: T): Partial<T> {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>
@@ -102,34 +102,23 @@ export function childHasContent(c: Child): boolean {
 }
 
 /**
- * Split a typed min/max pair into what may be STORED as a real range and what can only be
- * kept as a draft.
+ * The rate patch to merge into a profile save (partner meeting 2026-09: single value, not a pair).
+ * A nanny types a FLOOR, a family a CEILING; the value is mapped to the internal RateRange via the
+ * role's range builder. A raw string that doesn't parse yet is kept in rateDraft.min (max unused)
+ * so an abandoned wizard doesn't lose it, and is hydrated back from there.
  *
- * `rateRange` is integer cents and firestore.rules requires both bounds present and
- * ordered, so a half-filled pair cannot go there — it would be rejected by the server. We
- * therefore write the raw strings to `rateDraft` instead of throwing them away, and clear
- * the draft once a complete range supersedes it.
+ * `rateDraft: null` (rather than omitting it) is deliberate: it must actively CLEAR a previously
+ * stored draft, and stripUndefined only strips `undefined`, so null survives to Firestore as a
+ * delete-by-overwrite.
  */
-export function splitRateEntry(
-  min: string,
-  max: string,
-): { rateRange?: RateRange; rateDraft: RateDraft | null } {
-  const lo = parseRateDollars(min)
-  const hi = parseRateDollars(max)
-  if (lo !== null && hi !== null && lo <= hi) {
-    // Complete and valid — the draft has served its purpose.
-    return { rateRange: { minCents: lo, maxCents: hi }, rateDraft: null }
+export function ratePatchValue(
+  value: string,
+  role: 'family' | 'nanny',
+): Partial<FamilyProfile & NannyProfile> {
+  const cents = parseRateDollars(value)
+  if (cents !== null) {
+    return { rateRange: role === 'nanny' ? nannyFloorRange(cents) : familyCeilingRange(cents), rateDraft: null }
   }
-  const touched = min.trim() !== '' || max.trim() !== ''
-  return { rateDraft: touched ? { min: min.trim(), max: max.trim() } : null }
-}
-
-/**
- * The rate patch to merge into a profile save. `rateDraft: null` (rather than omitting it)
- * is deliberate: it must actively clear a previously stored draft, and stripUndefined only
- * strips `undefined`, so null survives to Firestore as a delete-by-overwrite.
- */
-export function ratePatch(min: string, max: string): Partial<FamilyProfile & NannyProfile> {
-  const { rateRange, rateDraft } = splitRateEntry(min, max)
-  return { ...(rateRange ? { rateRange } : {}), rateDraft }
+  const touched = value.trim() !== ''
+  return { rateDraft: touched ? { min: value.trim(), max: '' } : null }
 }

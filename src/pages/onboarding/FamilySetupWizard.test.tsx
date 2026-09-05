@@ -29,7 +29,7 @@ vi.mock('../../context/AuthContext', () => ({
   }),
 }))
 
-// Only the Firestore-touching hooks are faked. resumeStep/childHasContent/ratePatch are
+// Only the Firestore-touching hooks are faked. resumeStep/childHasContent/ratePatchValue are
 // pure logic and must run for real — stubbing them would test the mock, not the fix.
 vi.mock('../../hooks/useProfile', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../hooks/useProfile')>()),
@@ -154,36 +154,39 @@ describe('FamilySetupWizard — a partially typed child (bug B)', () => {
   })
 })
 
-describe('FamilySetupWizard — a half-filled budget (bug C)', () => {
-  it('does not lose a minimum typed without a maximum', async () => {
+// Single-value budget now (partner meeting 2026-09): a family types the MOST they'll pay, stored
+// as a {0, ceiling} range. A value still mid-entry (unparseable) is kept as a draft, not dropped.
+describe('FamilySetupWizard — the budget (bug C: don’t lose a partial entry)', () => {
+  it('keeps a value still being typed as a draft instead of dropping it', async () => {
     const user = userEvent.setup()
     show()
     await fillRequiredStep0(user)
-    await user.type(screen.getByLabelText(/minimum/i), '20')
+    // "$" alone doesn't parse to a number yet — but must be preserved, not discarded.
+    await user.type(screen.getByLabelText(/most you.ll pay/i), '$')
 
     await user.click(screen.getByRole('button', { name: /continue/i }))
     await waitFor(() => expect(save).toHaveBeenCalled())
 
-    expect(savedDoc().rateDraft).toMatchObject({ min: '20' })
+    expect(savedDoc().rateDraft).toMatchObject({ min: '$' })
   })
 
-  it('gives the half-filled budget back when she returns', async () => {
-    stored.current = { uid: 'fam-1', homeAddress: '12 Ocean Rd', rateDraft: { min: '20', max: '' } }
+  it('gives a half-typed budget back when she returns', async () => {
+    stored.current = { uid: 'fam-1', homeAddress: '12 Ocean Rd', rateDraft: { min: '3', max: '' } }
     show()
-    expect(await screen.findByLabelText(/minimum/i)).toHaveValue('20')
+    expect(await screen.findByLabelText(/most you.ll pay/i)).toHaveValue('3')
   })
 
-  it('still writes a real rateRange once both bounds are filled', async () => {
+  it('writes a {0, ceiling} rateRange once a valid amount is entered', async () => {
     const user = userEvent.setup()
     show()
     await fillRequiredStep0(user)
-    await user.type(screen.getByLabelText(/minimum/i), '20')
-    await user.type(screen.getByLabelText(/maximum/i), '30')
+    await user.type(screen.getByLabelText(/most you.ll pay/i), '30')
 
     await user.click(screen.getByRole('button', { name: /continue/i }))
     await waitFor(() => expect(save).toHaveBeenCalled())
 
-    expect(savedDoc().rateRange).toEqual({ minCents: 2000, maxCents: 3000 })
+    // Family ceiling: {0, 3000}.
+    expect(savedDoc().rateRange).toEqual({ minCents: 0, maxCents: 3000 })
   })
 })
 
