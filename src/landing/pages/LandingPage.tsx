@@ -287,9 +287,9 @@ function ForFamilies() {
 /* --------------------------------------------------------------- NannyPreview */
 function NannyPreview() {
   const samples = [
-    { name: 'Maya R.', years: '6 yrs', badges: ['CPR', 'Ages 0-2'], rotate: -1.2 },
+    { name: 'Maya R.', years: '6 yrs', badges: ['CPR', 'Newborn'], rotate: -1.2 },
     { name: 'Jordan P.', years: '4 yrs', badges: ['First Aid', 'Pet-friendly'], rotate: 0.8 },
-    { name: 'Sofia L.', years: '9 yrs', badges: ['CPR', 'Ages 8-12'], rotate: -0.6 },
+    { name: 'Sofia L.', years: '9 yrs', badges: ['CPR', '8+'], rotate: -0.6 },
   ]
   return (
     <section className="relative overflow-hidden bg-ll-cream-dark/30 py-16 lg:py-24">

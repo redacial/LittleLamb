@@ -12,10 +12,11 @@ export interface BadgeDef {
 
 export const SELF_BADGES: BadgeDef[] = [
   { id: 'pet_friendly', label: 'Pet-Friendly', type: 'self' },
-  { id: 'ages_0_2', label: 'Ages 0–2', type: 'self' },
-  { id: 'ages_3_7', label: 'Ages 3–7', type: 'self' },
-  { id: 'ages_8_12', label: 'Ages 8–12', type: 'self' },
-  { id: 'newborn', label: 'Newborn Experience', type: 'self' },
+  // Age ranges a nanny is comfortable with (partner meeting 2026-09): Newborn, 1-3, 4-7, 8+.
+  { id: 'age_newborn', label: 'Newborn', type: 'self' },
+  { id: 'age_1_3', label: '1-3', type: 'self' },
+  { id: 'age_4_7', label: '4-7', type: 'self' },
+  { id: 'age_8_plus', label: '8+', type: 'self' },
   { id: 'multiples', label: 'Twins & Multiples', type: 'self' },
   { id: 'homework', label: 'Homework Help', type: 'self' },
   { id: 'swim', label: 'Water-Safe', type: 'self' },

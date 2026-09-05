@@ -128,12 +128,14 @@ async function seed() {
   await db.collection('families').doc(FAMILY_UID).set({
     uid: FAMILY_UID,
     photoURL: null,
-    neighborhood: 'Mesa',
+    // New profile shape (partner meeting 2026-09): kids by birthday, pets Y/N, emergency contact,
+    // no neighborhood. Birthdays are RELATIVE so the computed ages stay sensible over time.
     children: [
-      { name: 'Olive', age: '4', interests: 'painting, the beach' },
-      { name: 'Theo', age: '7', interests: 'soccer, dinosaurs' },
+      { name: 'Olive', birthday: ymd(daysFromNow(-365 * 4 - 90)), interests: 'painting, the beach' },
+      { name: 'Theo', birthday: ymd(daysFromNow(-365 * 7 - 30)), interests: 'soccer, dinosaurs' },
     ],
-    pets: 'One golden retriever, Biscuit',
+    hasPets: true,
+    petsNote: 'One golden retriever, Biscuit',
     allergies: 'Theo has a mild peanut allergy',
     houseRules: 'No screens after 7pm. Shoes off indoors.',
     homeAddress: '1820 Cliff Dr, Santa Barbara, CA 93109',
@@ -141,6 +143,8 @@ async function seed() {
     phone: '805-555-0142',
     coParentName: 'Daniel Hartley',
     coParentEmail: 'daniel@littlelamb.test',
+    emergencyContactName: 'Ruth Hartley (grandmother)',
+    emergencyContactPhone: '805-555-0177',
     specialNotes: 'Theo has soccer practice Tuesdays at 4pm.',
     hasPaymentMethod: true,
     // Billing-ready, so `npm run billing:local` actually produces an invoice instead of
@@ -155,9 +159,9 @@ async function seed() {
     // cycleStart, sweeping every historical booking into a surprise first invoice.
     nextChargeDate: ymd(daysFromNow(-1)),
     cycleStart: ymd(daysFromNow(-90)),
-    // $22-30/hr. The three seeded nannies below deliberately straddle this so the
-    // match / out-of-budget paths are both visible without editing any data.
-    rateRange: { minCents: 2200, maxCents: 3000 },
+    // Family CEILING of $30/hr (single value now → {0, ceiling}). The three seeded nannies below
+    // deliberately straddle it so the match / out-of-budget paths are both visible.
+    rateRange: { minCents: 0, maxCents: 3000 },
   })
 
   // ---- nannies/{uid} (public profiles; only approved nannies get a readable doc) ---------
@@ -169,7 +173,7 @@ async function seed() {
     introVideoURL: null,
     yearsExperience: '6',
     personalStatement: 'I believe childcare is about presence — being fully there for the little moments.',
-    selfBadges: ['pet_friendly', 'ages_0_2', 'ages_3_7', 'swim'],
+    selfBadges: ['pet_friendly', 'age_newborn', 'age_1_3', 'age_4_7', 'swim'],
     verifiedBadges: ['cpr', 'first_aid', 'background_check', 'interviewed'],
     availability: [
       { day: 1, start: '15:00', end: '20:00' },
@@ -178,7 +182,7 @@ async function seed() {
       { day: 4, start: '15:00', end: '20:00' },
       { day: 5, start: '12:00', end: '21:00' },
     ],
-    rateRange: { minCents: 2500, maxCents: 3500 }, // overlaps the family budget -> match
+    rateRange: { minCents: 2500, maxCents: 50000 }, // floor $25 <= family ceiling $30 -> match
   })
   await db.collection('nannies').doc(NANNY2_UID).set({
     uid: NANNY2_UID,
@@ -188,14 +192,14 @@ async function seed() {
     introVideoURL: null,
     yearsExperience: '4',
     personalStatement: 'Every child learns differently — my job is to meet them where they are.',
-    selfBadges: ['ages_3_7', 'ages_8_12', 'homework', 'newborn'],
+    selfBadges: ['age_4_7', 'age_8_plus', 'homework'],
     verifiedBadges: ['cpr', 'background_check', 'interviewed'],
     availability: [
       { day: 0, start: '09:00', end: '17:00' },
       { day: 6, start: '09:00', end: '17:00' },
       { day: 3, start: '16:00', end: '21:00' },
     ],
-    rateRange: { minCents: 1800, maxCents: 2200 }, // touches the low bound -> match ($22)
+    rateRange: { minCents: 2200, maxCents: 50000 }, // floor $22 <= family ceiling $30 -> match
   })
   await db.collection('nannies').doc(NANNY3_UID).set({
     uid: NANNY3_UID,
@@ -205,25 +209,27 @@ async function seed() {
     introVideoURL: null,
     yearsExperience: '8',
     personalStatement: 'Parents deserve to feel completely at ease when they walk out the door.',
-    selfBadges: ['ages_0_2', 'newborn', 'multiples'],
+    selfBadges: ['age_newborn', 'age_1_3', 'multiples'],
     verifiedBadges: ['cpr', 'first_aid', 'background_check', 'interviewed'],
     availability: [
       { day: 1, start: '08:00', end: '14:00' },
       { day: 2, start: '08:00', end: '14:00' },
       { day: 4, start: '08:00', end: '14:00' },
     ],
-    rateRange: { minCents: 4000, maxCents: 5000 }, // above the family budget -> soft-flagged
+    rateRange: { minCents: 4000, maxCents: 50000 }, // floor $40 > family ceiling $30 -> soft-flagged
   })
 
   // ---- bookings -------------------------------------------------------------------------
-  // A mix so every dashboard/list has content: an upcoming confirmed booking, a past one
-  // (drives review prompts), a pending request awaiting the nanny, and an open/unmatched one.
+  // A mix so every dashboard/list has content. Dates are RELATIVE to today so "upcoming" is
+  // actually upcoming (hardcoded literals rot). The pending/accept-decline status is gone
+  // (partner meeting 2026-09): an out-of-hours request is now an `open` job-board post, and there
+  // are two open posts so the nanny Job Board tab has content.
   const bookings = [
     {
       id: 'seed-booking-upcoming',
       familyId: FAMILY_UID, familyName: 'The Hartley Family',
       nannyId: NANNY_UID, nannyName: 'Maya Brooks',
-      date: '2026-06-16', startTime: '16:00', endTime: '20:00',
+      date: ymd(daysFromNow(10)), startTime: '16:00', endTime: '20:00',
       address: '1820 Cliff Dr, Santa Barbara, CA 93109',
       notes: 'Dinner at 6, bedtime routine starts at 7:30.',
       status: 'confirmed', recurring: true, recurrenceId: 'rec-001',
@@ -232,25 +238,25 @@ async function seed() {
       id: 'seed-booking-past',
       familyId: FAMILY_UID, familyName: 'The Hartley Family',
       nannyId: NANNY_UID, nannyName: 'Maya Brooks',
-      date: '2026-06-02', startTime: '17:00', endTime: '21:00',
+      date: ymd(daysFromNow(-14)), startTime: '17:00', endTime: '21:00',
       address: '1820 Cliff Dr, Santa Barbara, CA 93109',
       notes: 'Date night — back by 9.',
       status: 'confirmed', recurring: false, recurrenceId: null,
     },
     {
-      id: 'seed-booking-pending',
+      id: 'seed-booking-open-outofhours',
       familyId: FAMILY_UID, familyName: 'The Hartley Family',
-      nannyId: NANNY_UID, nannyName: 'Maya Brooks',
-      date: '2026-06-20', startTime: '10:00', endTime: '14:00',
+      nannyId: null, nannyName: null,
+      date: ymd(daysFromNow(6)), startTime: '10:00', endTime: '14:00',
       address: '1820 Cliff Dr, Santa Barbara, CA 93109',
-      notes: 'Outside your usual hours — Saturday morning. Beach day with the kids if you are free!',
-      status: 'pending', recurring: false, recurrenceId: null,
+      notes: 'Saturday morning beach day — outside anyone’s usual hours, open for pickup.',
+      status: 'open', recurring: false, recurrenceId: null,
     },
     {
       id: 'seed-booking-open',
       familyId: FAMILY_UID, familyName: 'The Hartley Family',
       nannyId: null, nannyName: null,
-      date: '2026-06-22', startTime: '09:00', endTime: '12:00',
+      date: ymd(daysFromNow(8)), startTime: '09:00', endTime: '12:00',
       address: '1820 Cliff Dr, Santa Barbara, CA 93109',
       notes: 'Could not find an available nanny — open for pickup.',
       status: 'open', recurring: false, recurrenceId: null,
@@ -269,18 +275,20 @@ async function seed() {
   })
 
   // ---- config: badges master list -------------------------------------------------------
+  // ONE flat `badges` array — the shape useBadgeCatalog actually reads (it looks at
+  // snap.data().badges). The old seed wrote {self, verified}, which the hook ignored, so a fresh
+  // env silently fell back to the code defaults. Age ranges updated 2026-09: Newborn / 1-3 / 4-7 /
+  // 8+. Keep this in step with SELF_BADGES/VERIFIED_BADGES in src/lib/badges.ts.
   await db.collection('config').doc('badges').set({
-    self: [
+    badges: [
       { id: 'pet_friendly', label: 'Pet-Friendly', type: 'self' },
-      { id: 'ages_0_2', label: 'Ages 0–2', type: 'self' },
-      { id: 'ages_3_7', label: 'Ages 3–7', type: 'self' },
-      { id: 'ages_8_12', label: 'Ages 8–12', type: 'self' },
-      { id: 'newborn', label: 'Newborn Experience', type: 'self' },
+      { id: 'age_newborn', label: 'Newborn', type: 'self' },
+      { id: 'age_1_3', label: '1-3', type: 'self' },
+      { id: 'age_4_7', label: '4-7', type: 'self' },
+      { id: 'age_8_plus', label: '8+', type: 'self' },
       { id: 'multiples', label: 'Twins & Multiples', type: 'self' },
       { id: 'homework', label: 'Homework Help', type: 'self' },
       { id: 'swim', label: 'Water-Safe', type: 'self' },
-    ],
-    verified: [
       { id: 'cpr', label: 'CPR Certified', type: 'verified' },
       { id: 'first_aid', label: 'First Aid Certified', type: 'verified' },
       { id: 'background_check', label: 'Background Checked', type: 'verified' },
