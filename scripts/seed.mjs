@@ -32,6 +32,12 @@ const ADMIN_UID = 'seed-admin-001'
 // A few extra nannies so the directory looks alive.
 const NANNY2_UID = 'seed-nanny-002'
 const NANNY3_UID = 'seed-nanny-003'
+// Two more approved families (3 total) and nine more approved nannies (12 total), generated below
+// from EXTRA_FAMILIES / EXTRA_NANNIES so the directory + booking flows have ranging test data:
+// varied experience, rate floors that straddle each family's ceiling, different availability
+// shapes, and every age-badge combination. UIDs stay stable for idempotent re-seeds.
+const EXTRA_FAMILY_UIDS = ['seed-family-002', 'seed-family-003']
+const EXTRA_NANNY_UIDS = Array.from({ length: 9 }, (_, i) => `seed-nanny-${String(i + 4).padStart(3, '0')}`)
 // Pending applicants so the admin dashboard has approval actions to show.
 const PENDING_FAMILY_UID = 'seed-pending-family'
 const PENDING_NANNY_UID = 'seed-pending-nanny'
@@ -91,6 +97,91 @@ function userDoc({ uid, role, email, fullName, phone, approved = true, status = 
   }
 }
 
+/** Birthday `yearsOld` years + `plusDays` days ago, as a stored "YYYY-MM-DD". Relative → stable. */
+function birthdayFor(yearsOld, plusDays = 0) {
+  return ymd(daysFromNow(-365 * yearsOld - plusDays))
+}
+
+// ---- Two additional approved families (with the primary Hartley = 3 total) ---------------------
+// Ranging: family sizes 1→4 kids, pets Y/N, and rate CEILINGs that make some nannies match and
+// others sit above budget. Login emails follow family2@/family3@ so all three are usable.
+const EXTRA_FAMILIES = [
+  {
+    uid: EXTRA_FAMILY_UIDS[0],
+    fullName: 'The Nakamura Family',
+    email: 'family2@littlelamb.test',
+    phone: '805-555-0210',
+    children: [{ name: 'Kai', birthday: birthdayFor(1, 40), interests: 'blocks, dogs' }],
+    hasPets: false,
+    allergies: '',
+    houseRules: 'Nap at 12:30 sharp. Bottle in the fridge.',
+    homeAddress: '340 Por La Mar Cir, Santa Barbara, CA 93103',
+    coParentName: 'Jenna Nakamura',
+    coParentEmail: 'jenna@littlelamb.test',
+    emergencyContactName: 'Paul Nakamura (uncle)',
+    emergencyContactPhone: '805-555-0211',
+    // Low ceiling $22 → only the cheapest nannies match.
+    rateCeilingCents: 2200,
+  },
+  {
+    uid: EXTRA_FAMILY_UIDS[1],
+    fullName: 'The Alvarez Family',
+    email: 'family3@littlelamb.test',
+    phone: '805-555-0220',
+    children: [
+      { name: 'Mateo', birthday: birthdayFor(3, 10), interests: 'trucks, soccer' },
+      { name: 'Lucia', birthday: birthdayFor(6, 200), interests: 'reading, art' },
+      { name: 'Diego', birthday: birthdayFor(9, 5), interests: 'basketball, Legos' },
+      { name: 'Sol', birthday: birthdayFor(11, 120), interests: 'music, coding' },
+    ],
+    hasPets: true,
+    petsNote: 'Two cats (Luna & Pepper) and a bearded dragon.',
+    allergies: 'Lucia is lactose-intolerant.',
+    houseRules: 'Homework before screens. Everyone helps with dinner cleanup.',
+    homeAddress: '1512 Grand Ave, Santa Barbara, CA 93103',
+    coParentName: 'Marisol Alvarez',
+    coParentEmail: 'marisol@littlelamb.test',
+    emergencyContactName: 'Rosa Alvarez (grandmother)',
+    emergencyContactPhone: '805-555-0221',
+    // High ceiling $50 → matches everyone, including the priciest nannies.
+    rateCeilingCents: 5000,
+  },
+]
+
+// ---- Nine additional approved nannies (with Maya/Sofia/Grace = 12 total) -----------------------
+// Ranging: experience 1→15 yrs, floors $18→$45 (straddling every family ceiling), varied weekly
+// availability (weekday evenings, weekend days, mornings, wide-open), and every age-badge combo so
+// the directory shows the full Newborn/1-3/4-7/8+ spread. Verified-badge sets vary too.
+const EXTRA_NANNIES = [
+  { name: 'Hannah Kim', years: '2', floorCents: 1800, self: ['age_newborn', 'age_1_3', 'pet_friendly'], verified: ['background_check', 'interviewed'],
+    bio: 'Nursing student who adores babies and toddlers. Patient, tidy, and great with bottle and nap routines.',
+    availability: [{ day: 1, start: '08:00', end: '13:00' }, { day: 3, start: '08:00', end: '13:00' }, { day: 5, start: '08:00', end: '13:00' }] },
+  { name: 'Olivia Bennett', years: '5', floorCents: 2400, self: ['age_1_3', 'age_4_7', 'swim'], verified: ['cpr', 'first_aid', 'background_check', 'interviewed'],
+    bio: 'Former preschool aide. Loves outdoor adventures, tide pools, and turning chores into games.',
+    availability: [{ day: 1, start: '15:00', end: '20:00' }, { day: 2, start: '15:00', end: '20:00' }, { day: 4, start: '15:00', end: '20:00' }] },
+  { name: 'Priya Sharma', years: '9', floorCents: 3200, self: ['age_4_7', 'age_8_plus', 'homework', 'multiples'], verified: ['cpr', 'background_check', 'interviewed'],
+    bio: 'Certified tutor and longtime family manager. Homework, projects, and calm through the after-school chaos.',
+    availability: [{ day: 1, start: '14:00', end: '19:00' }, { day: 2, start: '14:00', end: '19:00' }, { day: 3, start: '14:00', end: '19:00' }, { day: 4, start: '14:00', end: '19:00' }] },
+  { name: 'Emma Thompson', years: '1', floorCents: 2000, self: ['age_4_7', 'age_8_plus'], verified: ['interviewed'],
+    bio: 'Energetic Westmont freshman, all-star soccer coach for the neighborhood kids. Weekends are my thing.',
+    availability: [{ day: 6, start: '09:00', end: '18:00' }, { day: 0, start: '10:00', end: '16:00' }] },
+  { name: 'Naomi Carter', years: '12', floorCents: 4000, self: ['age_newborn', 'age_1_3', 'multiples', 'pet_friendly'], verified: ['cpr', 'first_aid', 'background_check', 'interviewed'],
+    bio: 'Newborn-care specialist and mother of twins. Sleep schedules and multiples are my superpower.',
+    availability: [{ day: 1, start: '07:00', end: '15:00' }, { day: 2, start: '07:00', end: '15:00' }, { day: 3, start: '07:00', end: '15:00' }, { day: 4, start: '07:00', end: '15:00' }, { day: 5, start: '07:00', end: '15:00' }] },
+  { name: 'Chloe Martin', years: '4', floorCents: 2600, self: ['age_1_3', 'age_4_7', 'swim', 'pet_friendly'], verified: ['cpr', 'background_check', 'interviewed'],
+    bio: 'Art teacher by day. Messy projects, beach days, and a very good dog-sitter on the side.',
+    availability: [{ day: 3, start: '16:00', end: '21:00' }, { day: 5, start: '16:00', end: '21:00' }, { day: 6, start: '10:00', end: '17:00' }] },
+  { name: 'Sarah Nguyen', years: '7', floorCents: 3000, self: ['age_4_7', 'age_8_plus', 'homework', 'swim'], verified: ['cpr', 'first_aid', 'background_check', 'interviewed'],
+    bio: 'Elementary teacher on summer break. Reading, science experiments, and kids who leave a little smarter.',
+    availability: [{ day: 1, start: '15:00', end: '21:00' }, { day: 3, start: '15:00', end: '21:00' }, { day: 5, start: '12:00', end: '21:00' }] },
+  { name: 'Isabella Rossi', years: '15', floorCents: 4500, self: ['age_newborn', 'age_1_3', 'age_4_7', 'age_8_plus', 'multiples'], verified: ['cpr', 'first_aid', 'background_check', 'interviewed'],
+    bio: 'Career nanny, twenty families over fifteen years. Every age, every temperament — nothing surprises me.',
+    availability: [{ day: 1, start: '08:00', end: '18:00' }, { day: 2, start: '08:00', end: '18:00' }, { day: 3, start: '08:00', end: '18:00' }, { day: 4, start: '08:00', end: '18:00' }, { day: 5, start: '08:00', end: '18:00' }] },
+  { name: 'Zoe Williams', years: '3', floorCents: 2200, self: ['age_1_3', 'age_4_7', 'homework'], verified: ['background_check', 'interviewed'],
+    bio: 'Grad student in child psychology. Gentle, curious, and endlessly patient with the tough days.',
+    availability: [{ day: 2, start: '16:00', end: '20:00' }, { day: 4, start: '16:00', end: '20:00' }, { day: 0, start: '12:00', end: '18:00' }] },
+]
+
 async function seed() {
   console.log(`Seeding emulators for project "${PROJECT_ID}"...`)
 
@@ -104,6 +195,11 @@ async function seed() {
     upsertAuthUser({ uid: PENDING_FAMILY_UID, email: 'pending-family@littlelamb.test', displayName: 'The Nguyen Family' }),
     upsertAuthUser({ uid: PENDING_NANNY_UID, email: 'pending-nanny@littlelamb.test', displayName: 'Ella Thompson' }),
     upsertAuthUser({ uid: INTERVIEW_NANNY_UID, email: 'interview-nanny@littlelamb.test', displayName: 'Priya Raman' }),
+    // The two extra families and nine extra nannies.
+    ...EXTRA_FAMILIES.map((f) => upsertAuthUser({ uid: f.uid, email: f.email, displayName: f.fullName })),
+    ...EXTRA_NANNIES.map((n, i) =>
+      upsertAuthUser({ uid: EXTRA_NANNY_UIDS[i], email: `nanny${i + 4}@littlelamb.test`, displayName: n.name }),
+    ),
   ])
 
   // ---- users/{uid} ----------------------------------------------------------------------
@@ -122,6 +218,20 @@ async function seed() {
   }
   for (const [uid, data] of Object.entries(users)) {
     await db.collection('users').doc(uid).set(data)
+  }
+
+  // users/{uid} for the extra approved families + nannies.
+  for (const f of EXTRA_FAMILIES) {
+    await db.collection('users').doc(f.uid).set(
+      userDoc({ uid: f.uid, role: 'family', email: f.email, fullName: f.fullName, phone: f.phone }),
+    )
+  }
+  for (let i = 0; i < EXTRA_NANNIES.length; i++) {
+    const uid = EXTRA_NANNY_UIDS[i]
+    const n = EXTRA_NANNIES[i]
+    await db.collection('users').doc(uid).set(
+      userDoc({ uid, role: 'nanny', email: `nanny${i + 4}@littlelamb.test`, fullName: n.name, phone: `805-555-${String(3000 + i).padStart(4, '0')}`, stage: 'decision_made' }),
+    )
   }
 
   // ---- families/{uid} -------------------------------------------------------------------
@@ -163,6 +273,29 @@ async function seed() {
     // deliberately straddle it so the match / out-of-budget paths are both visible.
     rateRange: { minCents: 0, maxCents: 3000 },
   })
+
+  // The two extra families. Not billing-configured (no stripeCustomerId/nextChargeDate) — only
+  // the Hartleys drive the local billing run; these exist for the directory + booking flows.
+  for (const f of EXTRA_FAMILIES) {
+    await db.collection('families').doc(f.uid).set({
+      uid: f.uid,
+      photoURL: null,
+      children: f.children,
+      hasPets: f.hasPets,
+      ...(f.petsNote ? { petsNote: f.petsNote } : {}),
+      allergies: f.allergies ?? '',
+      houseRules: f.houseRules ?? '',
+      homeAddress: f.homeAddress,
+      primaryEmail: f.email,
+      phone: f.phone,
+      coParentName: f.coParentName ?? '',
+      coParentEmail: f.coParentEmail ?? '',
+      emergencyContactName: f.emergencyContactName ?? '',
+      emergencyContactPhone: f.emergencyContactPhone ?? '',
+      hasPaymentMethod: true,
+      rateRange: { minCents: 0, maxCents: f.rateCeilingCents },
+    })
+  }
 
   // ---- nannies/{uid} (public profiles; only approved nannies get a readable doc) ---------
   await db.collection('nannies').doc(NANNY_UID).set({
@@ -219,6 +352,26 @@ async function seed() {
     rateRange: { minCents: 4000, maxCents: 50000 }, // floor $40 > family ceiling $30 -> soft-flagged
   })
 
+  // The nine extra nannies (12 total in the directory). Each stores a single FLOOR as
+  // {floor, RATE_MAX}; floors range $18–$45 so they straddle all three family ceilings.
+  for (let i = 0; i < EXTRA_NANNIES.length; i++) {
+    const uid = EXTRA_NANNY_UIDS[i]
+    const n = EXTRA_NANNIES[i]
+    await db.collection('nannies').doc(uid).set({
+      uid,
+      fullName: n.name,
+      photoURL: null,
+      bio: n.bio,
+      introVideoURL: null,
+      yearsExperience: n.years,
+      personalStatement: '',
+      selfBadges: n.self,
+      verifiedBadges: n.verified,
+      availability: n.availability,
+      rateRange: { minCents: n.floorCents, maxCents: 50000 },
+    })
+  }
+
   // ---- bookings -------------------------------------------------------------------------
   // A mix so every dashboard/list has content. Dates are RELATIVE to today so "upcoming" is
   // actually upcoming (hardcoded literals rot). The pending/accept-decline status is gone
@@ -260,6 +413,44 @@ async function seed() {
       address: '1820 Cliff Dr, Santa Barbara, CA 93109',
       notes: 'Could not find an available nanny — open for pickup.',
       status: 'open', recurring: false, recurrenceId: null,
+    },
+    // Family 2 (Nakamura): one confirmed with Sofia, one open post from the whole network.
+    {
+      id: 'seed-booking-f2-confirmed',
+      familyId: EXTRA_FAMILY_UIDS[0], familyName: 'The Nakamura Family',
+      nannyId: NANNY2_UID, nannyName: 'Sofia Reyes',
+      date: ymd(daysFromNow(5)), startTime: '09:00', endTime: '13:00',
+      address: '340 Por La Mar Cir, Santa Barbara, CA 93103',
+      notes: 'Kai naps at 12:30 — bottle is in the fridge.',
+      status: 'confirmed', recurring: false, recurrenceId: null,
+    },
+    {
+      id: 'seed-booking-f2-open',
+      familyId: EXTRA_FAMILY_UIDS[0], familyName: 'The Nakamura Family',
+      nannyId: null, nannyName: null,
+      date: ymd(daysFromNow(9)), startTime: '18:00', endTime: '22:00',
+      address: '340 Por La Mar Cir, Santa Barbara, CA 93103',
+      notes: 'Anniversary dinner — evening sitter needed.',
+      status: 'open', recurring: false, recurrenceId: null,
+    },
+    // Family 3 (Alvarez): a recurring confirmed with Priya, and a past one for reviews.
+    {
+      id: 'seed-booking-f3-recurring',
+      familyId: EXTRA_FAMILY_UIDS[1], familyName: 'The Alvarez Family',
+      nannyId: EXTRA_NANNY_UIDS[2], nannyName: 'Priya Sharma',
+      date: ymd(daysFromNow(3)), startTime: '15:00', endTime: '18:00',
+      address: '1512 Grand Ave, Santa Barbara, CA 93103',
+      notes: 'After-school: homework first, then the park.',
+      status: 'confirmed', recurring: true, recurrenceId: 'rec-002',
+    },
+    {
+      id: 'seed-booking-f3-past',
+      familyId: EXTRA_FAMILY_UIDS[1], familyName: 'The Alvarez Family',
+      nannyId: EXTRA_NANNY_UIDS[2], nannyName: 'Priya Sharma',
+      date: ymd(daysFromNow(-7)), startTime: '15:00', endTime: '18:00',
+      address: '1512 Grand Ave, Santa Barbara, CA 93103',
+      notes: 'The usual after-school routine.',
+      status: 'confirmed', recurring: false, recurrenceId: null,
     },
   ]
   for (const b of bookings) {
@@ -346,11 +537,12 @@ async function seed() {
   })
 
   console.log('\nSeed complete. Temp accounts (password for all: ' + PASSWORD + '):')
-  console.log('  Family : family@littlelamb.test')
-  console.log('  Nanny  : nanny@littlelamb.test')
-  console.log('  Admin  : admin@littlelamb.test')
-  console.log('  Nanny (interview stage) : interview-nanny@littlelamb.test')
-  console.log('\nPlus 2 extra nannies, 3 pending applicants, and sample bookings/invoices.')
+  console.log('  Admin   : admin@littlelamb.test')
+  console.log('  Families: family@ , family2@ , family3@   (@littlelamb.test)')
+  console.log('  Nannies : nanny@ , nanny2@ … nanny12@      (@littlelamb.test)')
+  console.log('  Pending : pending-family@ , pending-nanny@ , interview-nanny@')
+  console.log('\n3 approved families + 12 approved nannies with ranging rates, ages, availability,')
+  console.log('and badges. Bookings across all three families (confirmed / recurring / past / open).')
   console.log('Config seeded: badges, calendly, billing (enabled=false — dry run), policies.')
 }
 
