@@ -1,6 +1,12 @@
 # Backlog.md — Resume Point
 
-## POST-MVP — family booking UX (found by David walking the app, 2026-08-23)
+## ⭐ TOP — Booking UX needs a major UI overhaul (David, 2026-09, smoke test)
+Walking the redesigned demo (3 families / 12 nannies), David flagged that the **booking user
+experience needs a major change on the UI side** — not the logic (the 25h window / job-board
+routing / rate matching all work), the *flow and screens* a family moves through to make a booking.
+Deferred deliberately — captured here for a dedicated design pass later. Related to and likely
+subsumes **F2** below (week-first day/hour calendar grid). Scope + direction TBD with David; this is
+a rethink of the booking flow's UI, not a tweak.
 
 Three findings from a real click-through of the family flow.
 
