@@ -1,14 +1,52 @@
 # Backlog.md — Resume Point
 
-## ⭐ TOP — Booking UX needs a major UI overhaul (David, 2026-09, smoke test)
-Walking the redesigned demo (3 families / 12 nannies), David flagged that the **booking user
-experience needs a major change on the UI side** — not the logic (the 25h window / job-board
-routing / rate matching all work), the *flow and screens* a family moves through to make a booking.
-Deferred deliberately — captured here for a dedicated design pass later. Related to and likely
-subsumes **F2** below (week-first day/hour calendar grid). Scope + direction TBD with David; this is
-a rethink of the booking flow's UI, not a tweak.
+## ⭐ TOP — Booking UX + Onboarding: major UI overhaul (David, 2026-09)
+Walking the redesigned demo, David flagged that the **booking user experience needs a major UI
+change** — not the logic (25h window / job-board routing / rate matching all work), the *flow and
+screens* a family moves through. All items below are DEFERRED to a dedicated design pass; captured
+here as INCOMPLETE. Direction/feel to be hashed out with David before building. Read
+DESIGN_SYSTEM.md first; build the calendar grid as ONE shared component (family + nanny). These
+supersede/absorb the older **F2** item below.
 
-Three findings from a real click-through of the family flow.
+### BK-1. Week-view calendar, click through weeks (not month-at-a-glance)
+Google-Calendar-style **week view** as the default. Members page through weeks (prev/next) rather
+than seeing a whole month. Absorbs F2. (Month/Week toggle can remain per CLAUDE.md §6.1, but week
+is the primary view.)
+
+### BK-2. Drag-to-create a booking on the time grid
+Instead of click-a-day → then pick times in a modal: the user **drags down the time column** to
+define the slot directly. Rules: **minimum 1 hour**, snap to **15-minute intervals** (e.g. drag
+3:00–4:15). On release, a popover/modal opens **pre-filled with the dragged times**, and further
+editing happens from there.
+
+### BK-3. Suggested time bubbles for "Book a nanny"
+When booking a specific nanny, offer **suggested time bubbles** (tappable quick-picks) to book into,
+rather than starting from a blank grid. Exact feel/logic TBD with David (likely driven off the
+nanny's availability + the family's history).
+
+### BK-4. Remember & pre-fill the family's last choices
+On a new booking, **auto-select the nanny the family used last** and remember saved booking info, so
+repeat bookings are near-one-tap. (Family already has bookings history to derive this from.)
+
+### BK-5. Pre-populate the notes field with the family's saved notes
+In the booking view's notes box, **pre-fill with the family's saved/profile notes** so the family
+sees what's already conveyed to the nanny, then adds booking-specific notes ON TOP — no duplicating
+what's already on file.
+
+### ONB-1. ⭐ IMPORTANT — TurboTax-style guided onboarding (INCOMPLETE — more to come)
+Rework onboarding into a **thorough, detailed, guided flow with easy select-options that work like
+TurboTax** — progressive branching questions with quick Yes/No / choice chips, then **freedom to add
+free-text notes** on top of each. Example: "Pets? Y/N" → if Yes → "Breed?" → optional notes. Applies
+across the family (and likely nanny) profile capture. This is a larger track than the booking items;
+**David has more to add — treat as INCOMPLETE and keep appending.** The existing YesNo control
+(`src/components/ui/YesNo.tsx`) and the pets-Y/N + birthday work from the 2026-09 redesign are the
+seed of this pattern.
+
+---
+
+## POST-MVP — family booking UX (found by David walking the app, 2026-08-23)
+
+Three findings from a real click-through of the family flow. (F2 is now absorbed by BK-1 above.)
 
 **Status (2026-08-30):**
 - **F1 — DONE.** The `bookingRules.ts` module + the rules-layer past-date backstop shipped
