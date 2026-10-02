@@ -4,11 +4,13 @@
 D66–D69, `session-log/2026-08-30-error-handling-and-a11y.md` (most recent), then
 `git log --oneline -12`.
 
-**Branch:** `landing-page-prelaunch`. **7 commits ahead of its upstream** (4 landed 2026-08-30),
-90 ahead of `main`. Tree clean; `scratchpad/` is now gitignored.
+**Branch:** `landing-page-prelaunch`. **Pushed 2026-10-02** (`913da4a..3ad2b94`) — now level with
+upstream, 106 ahead of `main`. Tree clean; `scratchpad/` is gitignored.
 
-> ⚠️ **First thing next session: PUSH and confirm CI green.** The unpushed count is large and has
-> never run on a real runner. Everything below assumes that's done.
+> ⚠️ **Push is DONE (2026-10-02). CI was NOT confirmed green** — `gh` isn't installed on this
+> machine, so the run couldn't be polled. First thing next session: confirm CI green at
+> https://github.com/redacial/LittleLamb/actions (or `brew install gh`). Everything below assumes
+> CI passed.
 
 ---
 

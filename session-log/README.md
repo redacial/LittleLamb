@@ -111,3 +111,10 @@ was built, and what's left. This is the human-readable memory of the project's e
   anyone could read every photo/video by URL). And the **rules past-date backstop**, red on arrival,
   re-anchored to Pacific (`+1d+8h`) so it rejects a genuine yesterday yet never rejects a Pacific
   today, robust across the whole day. Green: ~355 + 95 + 49. Nothing deployed.
+- `2026-10-02-push-and-catch-up.md` — Short session. **Pushed the 10 unpushed commits**
+  (`913da4a..3ad2b94`) that had accumulated on `landing-page-prelaunch` since 2026-08-30 — the whole
+  2026-09 booking/profile redesign plus backlog docs. Branch now level with upstream, still 106 ahead
+  of `main`. CI couldn't be confirmed green from here (`gh` not installed → watch the Actions page).
+  Nothing deployed, nothing public; billing still SAFE. Gave David a launch-readiness catch-up:
+  ~1–1.5 eng-days to a billing-OFF public launch, then his console tasks; live payments still
+  deferred (EIN); Lucy's content is the long pole; the BK-1..5 / ONB-1 UI overhaul is post-launch.
