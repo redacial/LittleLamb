@@ -153,3 +153,22 @@ describe('MonthGrid — booking status is distinguishable without colour', () =>
     expect(new Set(glyphs).size).toBeGreaterThan(1)
   })
 })
+
+// An open (unclaimed) booking has no nanny yet, so the label fell back to the FAMILY name — on the
+// family's own calendar that read as "The Hartley Family" booked to... the Hartley family. It
+// should say what's actually happening, matching the dashboard's "Finding a nanny".
+describe('MonthGrid — an unclaimed booking reads as "Finding a nanny"', () => {
+  it('labels an open booking with no nanny as "Finding a nanny", not the family name', () => {
+    render(
+      <MonthGrid
+        year={2026}
+        month={7}
+        today={TODAY}
+        bookings={[booking({ id: 'b-open', date: '2026-08-27', status: 'open', nannyId: null as unknown as string, nannyName: undefined })]}
+      />,
+    )
+    const text = label('2026-08-27').textContent ?? ''
+    expect(text).toMatch(/finding a nanny/i)
+    expect(text).not.toMatch(/smiths/i)
+  })
+})

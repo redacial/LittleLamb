@@ -8,7 +8,6 @@ import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { MonthGrid } from '../../components/calendar/MonthGrid'
 import { Modal, Button, Input, Textarea, Select, Avatar, StatusPill, useToast } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
-import { cn } from '../../lib/cn'
 import { rangesOverlap, overlapWindow, formatRate, resolveBookingStatus } from '../../lib/rates'
 import { resolveRecurring } from '../../lib/recurring'
 import { RateDisclaimer } from '../../components/ui'
@@ -199,12 +198,6 @@ export function FamilyCalendarPage() {
           onPickBooking={(b) => setViewBooking(b)}
         />
 
-        {/* Calm, static legend — no motion on the data surface. */}
-        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-ll-warm-gray">
-          <LegendDot className="bg-ll-sage" label="Confirmed" />
-          <LegendDot className="bg-ll-terra" label="Awaiting nanny" />
-          <LegendDot className="bg-ll-peri" label="Booked" />
-        </div>
 
         {/* New booking modal */}
         <Modal open={!!pickedDay} onClose={closeBookingModal} title={pickedDay ? `Book for ${formatDate(pickedDay)}` : ''}>
@@ -314,15 +307,6 @@ export function FamilyCalendarPage() {
         </Modal>
       </PageBody>
     </>
-  )
-}
-
-function LegendDot({ className, label }: { className: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span className={cn('h-2.5 w-2.5 rounded-full border-1.5 border-ll-ink/10', className)} aria-hidden />
-      {label}
-    </span>
   )
 }
 

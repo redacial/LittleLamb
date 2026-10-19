@@ -166,7 +166,10 @@ export function MonthGrid({
               <div className="mt-1 space-y-0.5">
                 {dayBookings.slice(0, 2).map((b) => {
                   const mark = statusMark(b.status)
-                  const who = b.nannyName ?? b.familyName ?? 'Booking'
+                  // An unclaimed booking has no nanny yet; falling back to the family name made it
+                  // read as booked to the family itself.
+                  const unclaimed = !b.nannyName && (b.status === 'open' || b.status === 'unmatched')
+                  const who = unclaimed ? 'Finding a nanny' : (b.nannyName ?? b.familyName ?? 'Booking')
                   return (
                     <span
                       key={b.id}
@@ -212,9 +215,9 @@ export function MonthGrid({
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden="true" className="grid h-3.5 w-3.5 place-items-center rounded-full bg-pending text-[0.6rem] leading-none text-ll-ink">
-            {STATUS_MARK.pending.glyph}
+            {STATUS_MARK.open.glyph}
           </span>
-          Pending
+          Open
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden="true" className="grid h-3.5 w-3.5 place-items-center rounded-full bg-booked text-[0.6rem] leading-none text-ll-ink">
