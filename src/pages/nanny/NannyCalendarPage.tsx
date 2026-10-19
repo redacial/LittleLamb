@@ -49,7 +49,7 @@ export function NannyCalendarPage() {
       />
       <PageBody>
         <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
-          <MonthGrid year={year} month={month} today={today} bookings={bookings} />
+          <MonthGrid year={year} month={month} today={today} bookings={bookings} labelWith="family" />
           <Card>
             <CardLabel>Weekly availability</CardLabel>
             <ul className="mt-2 divide-y divide-ll-cream-dark text-sm">

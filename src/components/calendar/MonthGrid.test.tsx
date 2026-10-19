@@ -172,3 +172,22 @@ describe('MonthGrid — an unclaimed booking reads as "Finding a nanny"', () => 
     expect(text).not.toMatch(/smiths/i)
   })
 })
+
+// The nanny's own calendar labelled every session with HER name ("Maya Brooks" on every day),
+// because the label preferred nannyName. On the nanny's side the useful name is the family's.
+describe('MonthGrid — the nanny calendar names the family, not the nanny', () => {
+  it('labels a booking with the family name when showing the family side', () => {
+    render(
+      <MonthGrid
+        year={2026}
+        month={7}
+        today={TODAY}
+        labelWith="family"
+        bookings={[booking({ id: 'b-n', date: '2026-08-27', status: 'confirmed', nannyName: 'Ada', familyName: 'The Smiths' })]}
+      />,
+    )
+    const text = label('2026-08-27').textContent ?? ''
+    expect(text).toMatch(/the smiths/i)
+    expect(text).not.toMatch(/ada/i)
+  })
+})

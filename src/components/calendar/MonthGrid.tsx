@@ -48,6 +48,7 @@ export function MonthGrid({
   onPickDay,
   onPickBooking,
   onPickRange,
+  labelWith = 'nanny',
 }: {
   year: number
   month: number // 0-based
@@ -57,6 +58,8 @@ export function MonthGrid({
   onPickBooking?: (b: Booking) => void
   /** Fired when the user drags across a range of days (start ≤ end). Optional. */
   onPickRange?: (startDate: string, endDate: string) => void
+  /** Whose name labels each booking: the nanny (family's view) or the family (nanny's view). */
+  labelWith?: 'nanny' | 'family'
 }) {
   const first = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -169,7 +172,8 @@ export function MonthGrid({
                   // An unclaimed booking has no nanny yet; falling back to the family name made it
                   // read as booked to the family itself.
                   const unclaimed = !b.nannyName && (b.status === 'open' || b.status === 'unmatched')
-                  const who = unclaimed ? 'Finding a nanny' : (b.nannyName ?? b.familyName ?? 'Booking')
+                  const named = labelWith === 'family' ? (b.familyName ?? b.nannyName) : (b.nannyName ?? b.familyName)
+                  const who = unclaimed ? 'Finding a nanny' : (named ?? 'Booking')
                   return (
                     <span
                       key={b.id}
