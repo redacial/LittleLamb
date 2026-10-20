@@ -1,0 +1,78 @@
+{
+  "01-landing-hero": {
+    "seconds": 15.8,
+    "speed": 1.0
+  },
+  "02-meet-the-network": {
+    "seconds": 10.3,
+    "speed": 1.0
+  },
+  "03-family-apply": {
+    "seconds": 20.0,
+    "speed": 1.47
+  },
+  "04-nanny-application-status": {
+    "seconds": 11.3,
+    "speed": 1.0
+  },
+  "05-admin-dashboard": {
+    "seconds": 12.2,
+    "speed": 1.0
+  },
+  "06-admin-vetting": {
+    "seconds": 20.0,
+    "speed": 1.07
+  },
+  "07-family-dashboard": {
+    "seconds": 10.8,
+    "speed": 1.0
+  },
+  "08-family-browse-nannies": {
+    "seconds": 14.1,
+    "speed": 1.0
+  },
+  "09-nanny-profile": {
+    "seconds": 14.9,
+    "speed": 1.0
+  },
+  "10-family-book-confirmed": {
+    "seconds": 20.0,
+    "speed": 1.8
+  },
+  "11-family-last-minute": {
+    "seconds": 20.0,
+    "speed": 1.16
+  },
+  "12-nanny-job-board-claim": {
+    "seconds": 10.4,
+    "speed": 1.0
+  },
+  "13-nanny-dashboard": {
+    "seconds": 16.8,
+    "speed": 1.0
+  },
+  "14-nanny-own-profile": {
+    "seconds": 12.7,
+    "speed": 1.0
+  },
+  "15-family-review": {
+    "seconds": 20.0,
+    "speed": 1.27
+  },
+  "16-admin-bookings": {
+    "seconds": 20.0,
+    "speed": 1.32
+  },
+  "17-admin-settings": {
+    "seconds": 12.0,
+    "speed": 1.0
+  },
+  "18-mobile-landing": {
+    "seconds": 14.5,
+    "speed": 1.0
+  },
+  "19-mobile-family": {
+    "seconds": 12.0,
+    "speed": 1.0
+  }
+}

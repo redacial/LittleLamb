@@ -1,3 +1,6 @@
+> **2026-10-19:** CS 195 launch video delivered (all 6 steps) — see `session-log/2026-10-19-launch-video.md`
+> for open items (team photos, OKR sign-off, Premium TTS voice).
+
 # Next session — push + CI, then Gate 2 (first deploy)
 
 **Start by reading:** `CLAUDE.md` (esp. § Testing — test-first is a hard rule), `DECISIONS.md`

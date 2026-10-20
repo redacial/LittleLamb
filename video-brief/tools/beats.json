@@ -1,0 +1,98 @@
+[
+ {
+  "id": "01",
+  "time": "0:00\u20130:12",
+  "text": "It's five o'clock. Your sitter just cancelled. You have a dinner at seven, and two kids who need someone you can actually trust.",
+  "visual": "**AI-B1** \u2014 warm kitchen at dusk, parent reads a phone, a child tugs their sleeve. On-screen phone text: \"So sorry, can't make it tonight.\""
+ },
+ {
+  "id": "02",
+  "time": "0:12\u20130:30",
+  "text": "This is Little Lamb Nannies. We connect Santa Barbara families with nannies who are vetted before you ever meet them. Every nanny is background-checked, and interviewed in person by us, the founders.",
+  "visual": "`01-landing-hero.mp4` (0:00\u201315.8) \u2192 hold last frame"
+ },
+ {
+  "id": "03",
+  "time": "0:30\u20130:52",
+  "text": "Here's how finding a sitter works today. You text three friends. You post in a Facebook group. You hire whoever is free, and you hope. The big national apps don't really fix it. They show you strangers from a giant marketplace, and you're still the one doing the vetting.",
+  "visual": "**AI-B2** \u2014 over-the-shoulder phone, a long group-text thread scrolling (\"anyone know a sitter??\") \u2192 `02-meet-the-network.mp4`"
+ },
+ {
+  "id": "04",
+  "time": "0:52\u20131:10",
+  "text": "So we built Little Lamb for two groups. Families from Santa Barbara churches and Westmont faculty. And nannies from those same places: Westmont students and people from our local churches. It's a community, not a marketplace.",
+  "visual": "**TITLE-1** \"Built for a community\" (Caveat) over **AI-B3** (sunny Santa Barbara street / church courtyard / Westmont-style campus lawn) \u2192 `18-mobile-landing.mp4`"
+ },
+ {
+  "id": "05",
+  "time": "1:10\u20131:32",
+  "text": "It starts with a short application. Families tell us about their kids. Nannies apply too, and they can see exactly where they are. Received. Under review. Interview. Decision. Nobody goes live until we've met them.",
+  "visual": "`03-family-apply.mp4` (to \"Thanks, Rebecca\") \u2192 `04-nanny-application-status.mp4`"
+ },
+ {
+  "id": "06",
+  "time": "1:32\u20131:52",
+  "text": "On our side, Lucy and I review every person by hand. We meet every family and every nanny. When we confirm a certification, like CPR or first aid, it shows up as verified by Little Lamb. Not just self-reported.",
+  "visual": "`05-admin-dashboard.mp4` \u2192 `06-admin-vetting.mp4` (badges ticked, Approve)"
+ },
+ {
+  "id": "07",
+  "time": "1:52\u20132:12",
+  "text": "Once you're approved, you browse nannies who already live in your community. Their experience, their badges, the ages they love, and when they're free. Every nanny also records a one-minute intro, so you hear their voice before they walk through your door.",
+  "visual": "`08-family-browse-nannies.mp4` \u2192 `09-nanny-profile.mp4`"
+ },
+ {
+  "id": "08",
+  "time": "2:12\u20132:30",
+  "text": "Booking takes about thirty seconds. Pick a day, a time, and a nanny. If she's free then, it's confirmed on the spot. Want the same time every week? Check one box.",
+  "visual": "`10-family-book-confirmed.mp4` (ends on \"Booked with Maya \u2014 you're all set!\")"
+ },
+ {
+  "id": "09",
+  "time": "2:30\u20132:56",
+  "text": "And this is the part we care about most. Remember that five o'clock cancellation? Post it, and it goes straight to our job board. Every nanny in the network can see it. The first one who's free claims it, and you're covered. That's emergency care you can't get from a group text.",
+  "visual": "`11-family-last-minute.mp4` \u2192 `12-nanny-job-board-claim.mp4`"
+ },
+ {
+  "id": "10",
+  "time": "2:56\u20133:10",
+  "text": "For nannies, it means a steady schedule without chasing clients. Bookings, calendar, and profile, all in one place. And they never pay us a thing.",
+  "visual": "`13-nanny-dashboard.mp4` \u2192 `14-nanny-own-profile.mp4`"
+ },
+ {
+  "id": "11",
+  "time": "3:10\u20133:24",
+  "text": "After every visit, both sides leave a private review that only we see. And when something needs a human, we can step in and fix it ourselves.",
+  "visual": "`15-family-review.mp4` \u2192 `16-admin-bookings.mp4`"
+ },
+ {
+  "id": "12",
+  "time": "3:24\u20133:46",
+  "text": "Right now our waitlist is live, and we're beta testing with a few families and nannies. We open to the public in January. Email confirmations, calendar invites, and payments switch on at launch. After that comes a week-view calendar, drag-to-book, one-tap rebooking, and a mobile app.",
+  "visual": "**ROADMAP card** (Now \u00b7 January \u00b7 Next) over soft **AI-B4** b-roll; optional 2-s cut to `17-admin-settings.mp4`"
+ },
+ {
+  "id": "13",
+  "time": "3:46\u20134:02",
+  "text": "Our goals for the first semester are simple. Forty vetted nannies and ten founding families. Most last-minute requests covered within two hours. And reviews that stay above four point eight stars.",
+  "visual": "**OKR card** (3 rows, DM Mono numbers)"
+ },
+ {
+  "id": "14",
+  "time": "4:02\u20134:16",
+  "text": "We're Lucy Behringer and David Melesse, two Westmont seniors who met freshman year. Lucy brings firsthand childcare experience and runs operations. I build the platform.",
+  "visual": "**TEAM card** \u2014 real photos of Lucy and David (supplied by David), names in Caveat, roles in DM Mono"
+ },
+ {
+  "id": "15",
+  "time": "4:16\u20134:30",
+  "text": "Little Lamb is Christ-centered. Every nanny carries a reference from a pastor or church leader. And ten percent of what we earn goes to local nonprofits serving kids.",
+  "visual": "**AI-B5** \u2014 hands of a nanny and a child planting seeds / drawing with chalk, golden hour"
+ },
+ {
+  "id": "16",
+  "time": "4:30\u20134:40",
+  "text": "Little Lamb opens in January. Join the waitlist at little lamb nannies dot com. We'd love to meet you.",
+  "visual": "**OUTRO** \u2014 logo lockup on cream, \"littlelambnannies.com \u00b7 Opening January 2027 \u00b7 Santa Barbara\""
+ }
+]

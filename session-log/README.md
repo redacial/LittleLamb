@@ -118,3 +118,8 @@ was built, and what's left. This is the human-readable memory of the project's e
   Nothing deployed, nothing public; billing still SAFE. Gave David a launch-readiness catch-up:
   ~1–1.5 eng-days to a billing-OFF public launch, then his console tasks; live payments still
   deferred (EIN); Lucy's content is the long pole; the BK-1..5 / ONB-1 UI overhaul is post-launch.
+- `2026-10-19-launch-video.md` — CS 195 launch video, **all 6 steps delivered** (rough cut 4:10): Step 1 (product recap +
+  David's answers on team, Jan public launch, church/Westmont market, emergency-nanny differentiator,
+  no pricing on camera) done; Step 2 footage capture in progress (demo avatar overlay, scout pass,
+  19-clip Playwright recorder, uncommitted test-first calendar label fix). Then resumed: script, ChatGPT
+  prompt, TTS and rough cut done; two calendar label bugs fixed test-first.

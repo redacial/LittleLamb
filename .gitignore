@@ -22,3 +22,13 @@ scripts.zip
 
 # Session scratch dir (temp files, never committed)
 scratchpad/
+
+# Launch-video media + local-only artifacts (scripts/docs in video-brief/ are tracked)
+video-brief/clips/*.mp4
+video-brief/clips/raw/
+video-brief/voiceover/*.aiff
+video-brief/voiceover/*.m4a
+video-brief/rough-cut.mp4
+video-brief/rough-cut-work/
+video-brief/scout/
+video-brief/tools/.auth/

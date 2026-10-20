@@ -1,0 +1,129 @@
+{
+  "01-intro": {
+    "seconds": 7.9,
+    "slot": 12,
+    "clips": [],
+    "footage": 0
+  },
+  "02-what-is-it": {
+    "seconds": 11.46,
+    "slot": 18,
+    "clips": [
+      "01-landing-hero"
+    ],
+    "footage": 15.8
+  },
+  "03-problem": {
+    "seconds": 16.64,
+    "slot": 22,
+    "clips": [
+      "02-meet-the-network"
+    ],
+    "footage": 10.3
+  },
+  "04-who-for": {
+    "seconds": 14.27,
+    "slot": 18,
+    "clips": [
+      "18-mobile-landing"
+    ],
+    "footage": 14.5
+  },
+  "05-apply": {
+    "seconds": 15.5,
+    "slot": 22,
+    "clips": [
+      "03-family-apply",
+      "04-nanny-application-status"
+    ],
+    "footage": 31.3
+  },
+  "06-vetting": {
+    "seconds": 14.09,
+    "slot": 20,
+    "clips": [
+      "05-admin-dashboard",
+      "06-admin-vetting"
+    ],
+    "footage": 32.2
+  },
+  "07-browse": {
+    "seconds": 14.04,
+    "slot": 20,
+    "clips": [
+      "08-family-browse-nannies",
+      "09-nanny-profile"
+    ],
+    "footage": 29.0
+  },
+  "08-booking": {
+    "seconds": 11.56,
+    "slot": 18,
+    "clips": [
+      "10-family-book-confirmed"
+    ],
+    "footage": 20.0
+  },
+  "09-emergency": {
+    "seconds": 16.97,
+    "slot": 26,
+    "clips": [
+      "11-family-last-minute",
+      "12-nanny-job-board-claim"
+    ],
+    "footage": 30.4
+  },
+  "10-nannies": {
+    "seconds": 9.86,
+    "slot": 14,
+    "clips": [
+      "13-nanny-dashboard",
+      "14-nanny-own-profile"
+    ],
+    "footage": 29.5
+  },
+  "11-reviews": {
+    "seconds": 8.3,
+    "slot": 14,
+    "clips": [
+      "15-family-review",
+      "16-admin-bookings"
+    ],
+    "footage": 40.0
+  },
+  "12-roadmap": {
+    "seconds": 17.81,
+    "slot": 22,
+    "clips": [
+      "17-admin-settings"
+    ],
+    "footage": 12.0
+  },
+  "13-okrs": {
+    "seconds": 11.79,
+    "slot": 16,
+    "clips": [],
+    "footage": 0
+  },
+  "14-team": {
+    "seconds": 10.78,
+    "slot": 14,
+    "clips": [],
+    "footage": 0
+  },
+  "15-values": {
+    "seconds": 9.48,
+    "slot": 14,
+    "clips": [],
+    "footage": 0
+  },
+  "16-outro": {
+    "seconds": 6.71,
+    "slot": 10,
+    "clips": [],
+    "footage": 0
+  },
+  "full-voiceover": {
+    "seconds": 206.81
+  }
+}
