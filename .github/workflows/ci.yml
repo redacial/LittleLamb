@@ -98,11 +98,11 @@ jobs:
             package-lock.json
             firestore-tests/package-lock.json
 
-      # The Firestore emulator is a Java process.
+      # The Firestore emulator is a Java process. firebase-tools requires Java 21+.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Install (firestore-tests)
         run: npm ci --prefix firestore-tests

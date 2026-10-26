@@ -83,7 +83,7 @@ export default tseslint.config(
     // the BROWSER, where document/window/getComputedStyle are correct and Node globals are
     // not. ESLint cannot see that boundary — it lints one file with one global scope — so
     // narrowing this to globals.node would produce 8 false no-undef errors on correct code.
-    files: ['*.config.{js,ts}', 'scripts/**/*.{js,mjs,cjs}'],
+    files: ['*.config.{js,ts}', 'scripts/**/*.{js,mjs,cjs}', 'video-brief/tools/**/*.{js,mjs,cjs}'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
     rules: {
       'no-console': 'off',
