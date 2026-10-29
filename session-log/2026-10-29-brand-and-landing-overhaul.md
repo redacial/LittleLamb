@@ -15,3 +15,15 @@
 ## Not yet
 - **Not deployed.** The live site still shows the old page until `npm run deploy:landing:prod`.
 - The app's public `HomePage.tsx` is not restyled (it isn't live).
+
+## Later the same day: colour-blocked version shipped
+David tried the full colour-blocked version, reverted to the light version, then chose the colour
+version. What's live:
+- sage nav and hero with the white logo and lamb
+- sand "care" and "steps" sections
+- terra "how we vet" and "save your spot" sections
+- sage-wash "nannies" and blush "who we are" sections
+
+Body text is ink on every solid band (AA). This responds to Lucy's UX feedback: the page felt like
+a generic dev site, the old logo didn't feel family-focused, and colours needed better
+readability. Her feedback is logged as GitHub issues.

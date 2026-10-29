@@ -84,10 +84,23 @@ function PrimaryButton({ children, onClick }: { children: ReactNode; onClick: ()
   )
 }
 
-function SectionTitle({ kicker, children, center }: { kicker: string; children: ReactNode; center?: boolean }) {
+function SectionTitle({
+  kicker,
+  children,
+  center,
+  onColor,
+}: {
+  kicker: string
+  children: ReactNode
+  center?: boolean
+  /** On a solid sage or terra band the terra kicker loses contrast, so it goes ink. */
+  onColor?: boolean
+}) {
   return (
     <div className={cn(center && 'text-center')}>
-      <p className="font-display text-2xl leading-none text-ll-brand-terra-ink">{kicker}</p>
+      <p className={cn('font-display text-2xl leading-none', onColor ? 'text-ll-ink' : 'text-ll-brand-terra-ink')}>
+        {kicker}
+      </p>
       <h2 className="mt-1 font-display text-[clamp(2.4rem,5.5vw,3.4rem)] leading-[0.95] text-ll-ink">
         {children}
       </h2>
@@ -100,10 +113,12 @@ function SectionTitle({ kicker, children, center }: { kicker: string; children: 
 function Hero() {
   const { openWaitlist } = useWaitlist()
   return (
-    <section className="relative overflow-hidden">
+    // Solid brand sage, like the brand kit's sage logo card. Body text is ink here: warm-gray and
+    // white both fail AA on this sage (ink is 6.0:1).
+    <section className="relative overflow-hidden bg-ll-brand-sage">
       <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 pt-12 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:pb-28 lg:pt-20">
         <div>
-          <p className="inline-flex -rotate-2 items-center gap-2 rounded-full bg-ll-note-sage px-4 py-1.5 font-display text-xl leading-none text-ll-brand-sage-ink">
+          <p className="inline-flex -rotate-2 items-center gap-2 rounded-full bg-ll-paper px-4 py-1.5 font-display text-xl leading-none text-ll-brand-sage-ink">
             <HeartDoodle className="h-4 w-4" />
             Opening soon in Santa Barbara
           </p>
@@ -111,7 +126,7 @@ function Hero() {
             Care you can trust, <DrawnUnderline tone="terra">tonight</DrawnUnderline> or every
             Tuesday.
           </h1>
-          <p className="mt-6 max-w-[34rem] text-lg leading-relaxed text-ll-warm-gray">
+          <p className="mt-6 max-w-[34rem] text-lg leading-relaxed text-ll-ink">
             Little Lamb is a small, local circle of nannies we have met in person. When a sitter
             cancels at five o’clock, post it and every nanny in our circle sees it. When you want the
             same caring face each week, we’ll help you find your person.
@@ -123,12 +138,12 @@ function Hero() {
             <button
               type="button"
               onClick={() => openWaitlist({ role: 'nanny' })}
-              className="inline-flex items-center gap-1 font-display text-2xl leading-none text-ll-brand-sage-ink hover:underline"
+              className="inline-flex items-center gap-1 font-display text-2xl leading-none text-ll-ink hover:underline"
             >
               I’m a nanny <ArrowDoodle className="h-5 w-8" />
             </button>
           </div>
-          <p className="mt-5 text-sm text-ll-warm-gray">Free to join the list. No commitment.</p>
+          <p className="mt-5 text-sm text-ll-ink">Free to join the list. No commitment.</p>
         </div>
 
         <HeroBoard />
@@ -142,8 +157,8 @@ function HeroBoard() {
   return (
     <div className="relative mx-auto w-full max-w-[26rem] pb-6 pt-10">
       <FloatLoop speed="slow">
-        <div className="mx-auto grid aspect-square w-[82%] place-items-center rounded-full bg-ll-note-sage">
-          <LambMark className="w-[78%]" />
+        <div className="mx-auto grid aspect-square w-[82%] place-items-center rounded-full bg-ll-brand-sage-ink/40">
+          <LambMark tone="white" className="w-[78%]" />
         </div>
       </FloatLoop>
 
@@ -168,7 +183,7 @@ function HeroBoard() {
 function TwoKindsOfCare() {
   const { openWaitlist } = useWaitlist()
   return (
-    <section id="care" className="scroll-mt-20 bg-ll-cream py-20 lg:py-28">
+    <section id="care" className="scroll-mt-20 bg-ll-sand py-20 lg:py-28">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <SectionTitle kicker="two kinds of help" center>
           One trusted circle, whenever you need it
@@ -248,16 +263,19 @@ const VETTING = [
 
 function HowWeVet() {
   return (
-    <section id="trust" className="scroll-mt-20 py-20 lg:py-28">
+    // Solid brand terra, like the terra logo card. Ink text (5.9:1).
+    <section id="trust" className="scroll-mt-20 bg-ll-brand-terra py-20 lg:py-28">
       <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
-          <SectionTitle kicker="how we vet">Who gets into our circle</SectionTitle>
-          <p className="mt-6 max-w-md text-lg leading-relaxed text-ll-warm-gray">
+          <SectionTitle kicker="how we vet" onColor>
+            Who gets into our circle
+          </SectionTitle>
+          <p className="mt-6 max-w-md text-lg leading-relaxed text-ll-ink">
             We would rather have a small circle we know well than a long list of strangers. Our
             nannies come from Westmont College and Santa Barbara’s church community, and nobody
             appears to families until they’ve passed every step.
           </p>
-          <p className="mt-6 inline-block -rotate-1 rounded-2xl bg-ll-note-blush px-4 py-2 font-display text-2xl leading-tight text-ll-ink">
+          <p className="mt-6 inline-block -rotate-1 rounded-2xl bg-ll-note-butter px-4 py-2 font-display text-2xl leading-tight text-ll-ink">
             Reviews after every visit come straight to us.
           </p>
         </div>
@@ -313,7 +331,7 @@ function HowItWorks() {
     },
   ]
   return (
-    <section id="how" className="scroll-mt-20 bg-ll-cream py-20 lg:py-28">
+    <section id="how" className="scroll-mt-20 bg-ll-sand py-20 lg:py-28">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <SectionTitle kicker="how it works" center>
           Three small steps
@@ -337,7 +355,7 @@ function HowItWorks() {
 function ForNannies() {
   const { openWaitlist } = useWaitlist()
   return (
-    <section id="nannies" className="scroll-mt-20 py-20 lg:py-28">
+    <section id="nannies" className="scroll-mt-20 bg-ll-sage-wash py-20 lg:py-28">
       <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 sm:px-8 lg:grid-cols-2">
         <div className="order-2 lg:order-1">
           <StickyNote tone="blush" rotate={-1.5} as="article" className="mx-auto max-w-md">
@@ -375,7 +393,7 @@ function ForNannies() {
 
 function WhoWeAre() {
   return (
-    <section id="about" className="scroll-mt-20 bg-ll-cream py-20 lg:py-28">
+    <section id="about" className="scroll-mt-20 bg-ll-note-blush py-20 lg:py-28">
       <div className="mx-auto max-w-3xl px-5 text-center sm:px-8">
         <LambMark tone="terra" className="mx-auto mb-5 h-16 w-32" />
         <SectionTitle kicker="who we are" center>
@@ -400,7 +418,7 @@ function WhoWeAre() {
 function BottomCTA() {
   const { openWaitlist, openContact } = useWaitlist()
   return (
-    <section className="py-20 lg:py-28">
+    <section className="bg-ll-brand-terra py-20 lg:py-28">
       <div className="mx-auto max-w-3xl px-5 sm:px-8">
         <StickyNote tone="butter" rotate={-1} as="div" className="text-center sm:!p-12">
           <h2 className="font-display text-[clamp(2.6rem,6vw,3.6rem)] leading-[0.95] text-ll-ink">

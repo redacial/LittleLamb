@@ -36,19 +36,20 @@ function LandingNav() {
   const { openWaitlist } = useWaitlist()
   const btnHover = useButtonHover()
   return (
-    <header className="sticky top-0 z-30 border-b-1.5 border-ll-cream-dark/70 bg-ll-paper/90 backdrop-blur">
+    // Sage bar with the white logo, matching the brand kit's sage card. Links are ink (6.0:1).
+    <header className="sticky top-0 z-30 border-b-1.5 border-ll-ink/10 bg-ll-brand-sage/95 backdrop-blur">
       <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-8">
         <a href="#top" aria-label="Little Lamb Nannies home" className="rounded-full">
           {/* The full lamb + wordmark doesn't fit beside the button on a phone. */}
-          <Logo size="sm" mark={false} className="sm:hidden" />
-          <Logo size="md" className="hidden sm:inline-flex" />
+          <Logo size="sm" mark={false} tone="white" className="sm:hidden" />
+          <Logo size="md" tone="white" className="hidden sm:inline-flex" />
         </a>
         <div className="flex items-center gap-5">
           {NAV_LINKS.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="hidden text-[0.95rem] font-medium text-ll-warm-gray hover:text-ll-ink lg:inline"
+              className="hidden text-[0.95rem] font-medium text-ll-ink hover:underline lg:inline"
             >
               {l.label}
             </a>

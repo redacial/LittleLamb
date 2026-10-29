@@ -39,6 +39,9 @@ export default {
         'll-note-butter':     '#FBEFC4',
         'll-note-sage':       '#E3EFE5',
         'll-note-blush':      '#F6E3DA',
+        // Section washes, so the page alternates colour bands instead of sitting on near-white
+        'll-sand':            '#F1E6D4',
+        'll-sage-wash':       '#CFE2D3',
         // Semantic booking states — map onto the palette above
         // confirmed = sage, pending = warm amber-terra, booked = periwinkle
         confirmed: '#8FAF8A',
