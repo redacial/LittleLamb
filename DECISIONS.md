@@ -605,3 +605,24 @@ reads `config/billing`; `useBillingConfig()` already exists. It was held for Dav
 it touches money *display*. **Decision (David, 2026-08-30): ship it now.** With billing off nothing
 is charged, so this is the *safest possible* window to correct the display — no risk of a
 charge/estimate mismatch during the change, and it's done before billing is ever turned on.
+
+### D73. New brand logo, and a warm sticky-note marketing page (2026-10-29)
+**Why:** David supplied the new brand kit: a sleeping-lamb line drawing with a handwritten
+"Little Lamb Nannies" wordmark, in sage, terra, ink and white (iCloud `Marketing/Brand/`). He also
+asked for the marketing page to feel family-oriented rather than like a developer startup:
+sticky notes, handwriting, and warm rounded shapes. The copy should lead with the two kinds of
+help: **last-minute care** (same-day and short-notice posts that go to the whole circle) and
+**ongoing care** (weekly recurring bookings with a familiar nanny).
+
+- **Logo:** transparent PNGs, cropped and resized into `public/brand/`. `Logo` and `LambMark` now
+  render those images, so the change reaches every app surface without touching call sites.
+  `withSubline` is deprecated and ignored, because the wordmark already says "Nannies".
+- **Favicon:** a white lamb on a sage rounded square, used by both builds.
+- **Tokens:** the brand kit's exact colours are added as *new* tokens (`ll-paper`, `ll-brand-*`,
+  `ll-note-*`) and used only on the landing page. The app's audited `ll-sage` / `ll-terra` scales
+  are unchanged, so no app contrast changes. The base brand hues fail AA under white text, so
+  buttons and links use the `-ink` shades.
+- **Copy rule:** every claim on the page maps to something the product does, and is commented next
+  to it in `LandingPage.tsx`. Pricing is still never shown.
+- **Not done:** the app's `src/pages/public/HomePage.tsx` (an older near-copy of the landing page,
+  not live) keeps the old layout.

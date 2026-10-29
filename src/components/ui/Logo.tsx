@@ -1,45 +1,63 @@
 import { cn } from '../../lib/cn'
 
+/** Brand artwork colourways, exported from the brand kit into public/brand/ (transparent PNGs). */
+export type LogoTone = 'sage' | 'terra' | 'ink' | 'white'
+
 interface LogoProps {
   className?: string
-  /** Show the "Nannies" subline under the wordmark. */
+  /**
+   * @deprecated The handwritten wordmark already reads "Little Lamb Nannies", so there is no
+   * separate subline any more. Still accepted so existing call sites keep compiling.
+   */
   withSubline?: boolean
+  /** Show the sleeping-lamb drawing beside the wordmark. */
   mark?: boolean
+  tone?: LogoTone
+  /**
+   * sm fits the 16rem app sidebar (about 213px wide); md is the marketing nav; lg is for
+   * footers and holding pages where the logo is the main visual.
+   */
+  size?: 'sm' | 'md' | 'lg'
 }
 
-/** Little Lamb wordmark. Caveat display "Little Lamb" with a small DM Mono "Nannies" subline. */
-export function Logo({ className, withSubline = true, mark = true }: LogoProps) {
+const SIZES = {
+  sm: { mark: 'h-7 w-[3.35rem]', word: 'h-[1.15rem]' },
+  md: { mark: 'h-9 w-[4.3rem]', word: 'h-6' },
+  lg: { mark: 'h-12 w-[5.7rem]', word: 'h-8' },
+} as const
+
+/** Little Lamb Nannies logo: the sleeping-lamb line drawing plus the handwritten wordmark. */
+export function Logo({ className, mark = true, tone = 'sage', size = 'sm' }: LogoProps) {
+  const s = SIZES[size]
   return (
-    <span className={cn('inline-flex items-center gap-2.5', className)}>
-      {mark && (
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-ll-sage-light border-1.5 border-ll-sage">
-          <LambMark className="h-6 w-6" />
-        </span>
-      )}
-      <span className="leading-none">
-        <span className="block font-display text-3xl font-bold tracking-tight text-ll-ink">
-          Little Lamb
-        </span>
-        {withSubline && (
-          <span className="block font-mono text-[0.6rem] font-medium uppercase tracking-[0.22em] text-ll-sage-deep">
-            Nannies
-          </span>
-        )}
-      </span>
+    <span className={cn('inline-flex items-center gap-1.5', className)}>
+      {mark && <LambMark tone={tone} className={s.mark} />}
+      <img
+        src={`/brand/wordmark-${tone}.png`}
+        alt="Little Lamb Nannies"
+        width={805}
+        height={96}
+        decoding="async"
+        className={cn('w-auto', s.word)}
+      />
     </span>
   )
 }
 
-export function LambMark({ className }: { className?: string }) {
+/**
+ * The sleeping lamb on its own, for decorative use. The artwork is wide (about 1.9:1), so it is
+ * contained, not stretched, inside whatever box the caller sizes.
+ */
+export function LambMark({ className, tone = 'sage' }: { className?: string; tone?: LogoTone }) {
   return (
-    <svg viewBox="0 0 64 64" className={className} fill="none" aria-hidden>
-      <ellipse cx="32" cy="36" rx="14" ry="11" fill="#fff" stroke="#8FAF8A" strokeWidth="2" />
-      <circle cx="22" cy="30" r="6" fill="#fff" stroke="#8FAF8A" strokeWidth="2" />
-      <circle cx="42" cy="30" r="6" fill="#fff" stroke="#8FAF8A" strokeWidth="2" />
-      <circle cx="32" cy="22" r="6.5" fill="#fff" stroke="#8FAF8A" strokeWidth="2" />
-      <ellipse cx="32" cy="40" rx="8" ry="7" fill="#2C2416" />
-      <circle cx="29" cy="39" r="1.3" fill="#F5F0E8" />
-      <circle cx="35" cy="39" r="1.3" fill="#F5F0E8" />
-    </svg>
+    <img
+      src={`/brand/lamb-${tone}.png`}
+      alt=""
+      aria-hidden
+      width={720}
+      height={378}
+      decoding="async"
+      className={cn('object-contain', className)}
+    />
   )
 }

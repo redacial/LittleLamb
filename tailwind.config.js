@@ -27,6 +27,18 @@ export default {
         'll-terra-soft': '#D4AA85',
         'll-terra':      '#C4956A',
         'll-terra-deep': '#9B6A3F',
+        // Brand kit (2026-10 logo): the exact colours in the lamb artwork, used by the
+        // marketing site. The two base hues fail AA under white text, so text and buttons use
+        // the -ink shades (white on brand-sage-ink 5.3:1, on brand-terra-ink 5.1:1).
+        'll-paper':           '#FAF6F0',
+        'll-brand-sage':      '#7BAE8A',
+        'll-brand-sage-ink':  '#4A7556',
+        'll-brand-terra':     '#D98E73',
+        'll-brand-terra-ink': '#A9573A',
+        // Sticky-note fills (ink and warm-gray text both clear AA on all three)
+        'll-note-butter':     '#FBEFC4',
+        'll-note-sage':       '#E3EFE5',
+        'll-note-blush':      '#F6E3DA',
         // Semantic booking states — map onto the palette above
         // confirmed = sage, pending = warm amber-terra, booked = periwinkle
         confirmed: '#8FAF8A',

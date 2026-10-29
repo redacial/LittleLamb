@@ -123,3 +123,4 @@ was built, and what's left. This is the human-readable memory of the project's e
   no pricing on camera) done; Step 2 footage capture in progress (demo avatar overlay, scout pass,
   19-clip Playwright recorder, uncommitted test-first calendar label fix). Then resumed: script, ChatGPT
   prompt, TTS and rough cut done; two calendar label bugs fixed test-first.
+- `2026-10-29-brand-and-landing-overhaul.md` — New brand logo app-wide + family-first sticky-note landing page (not deployed).
