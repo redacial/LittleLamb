@@ -18,6 +18,7 @@ import type { AvailabilityBlock, NannyProfile } from '../../types'
 // steps are hardcoded integers throughout, and renumbering them is where bugs hide.
 const STEPS = ['Photo & bio', 'Intro video', 'Badges', 'Availability', 'Your rate']
 const BIO_MAX = 500
+const FUN_FACT_MAX = 120
 
 export function NannySetupWizard() {
   const { user, profile } = useAuth()
@@ -36,6 +37,7 @@ export function NannySetupWizard() {
 
   const [photoURL, setPhotoURL] = useState<string | null>(null)
   const [bio, setBio] = useState('')
+  const [funFact, setFunFact] = useState('')
   const [yearsExperience, setYearsExperience] = useState('')
   const [videoURL, setVideoURL] = useState<string | null>(null)
   const [selfBadges, setSelfBadges] = useState<string[]>([])
@@ -47,6 +49,7 @@ export function NannySetupWizard() {
     if (!nanny) return
     setPhotoURL(nanny.photoURL ?? null)
     setBio(nanny.bio ?? '')
+    setFunFact(nanny.funFact ?? '')
     setYearsExperience(nanny.yearsExperience ?? '')
     setVideoURL(nanny.introVideoURL ?? null)
     setSelfBadges(nanny.selfBadges ?? [])
@@ -128,6 +131,7 @@ export function NannySetupWizard() {
       photoURL,
       bio: cleanText(bio, BIO_MAX),
       personalStatement: cleanText(bio, BIO_MAX),
+      funFact: cleanLine(funFact, FUN_FACT_MAX),
       yearsExperience: cleanLine(yearsExperience, 40),
       wizardStep: 1,
     })
@@ -230,6 +234,13 @@ export function NannySetupWizard() {
             maxLength={BIO_MAX}
             value={bio}
             onChange={(e) => setBio(e.target.value)}
+          />
+          <Input
+            label="Fun fact"
+            hint="One warm line families see first — e.g. “Tide-pool expert and snack diplomat”"
+            maxLength={FUN_FACT_MAX}
+            value={funFact}
+            onChange={(e) => setFunFact(e.target.value)}
           />
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <Button onClick={nextFromBio} loading={busy}>Continue</Button>

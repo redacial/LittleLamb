@@ -157,6 +157,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && uid() == nannyId && hasRole('nanny')
         && incoming().uid == nannyId
         && strMax('fullName', 80) && strMax('bio', 600) && strMax('personalStatement', 1000)
+        && strMax('funFact', 120)
         && rateRangeOk()
         && (!('verifiedBadges' in incoming()) || incoming().verifiedBadges.size() == 0);
 
@@ -164,6 +165,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && uid() == nannyId && hasRole('nanny')
         && incoming().uid == nannyId
         && strMax('fullName', 80) && strMax('bio', 600) && strMax('personalStatement', 1000)
+        && strMax('funFact', 120)
         && rateRangeOk()
         && (!('verifiedBadges' in incoming()) || incoming().verifiedBadges == existing().verifiedBadges);
 

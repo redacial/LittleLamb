@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useNanny } from '../../hooks/useNannies'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Card, CardLabel, Avatar, Badge, Button, RateDisclaimer } from '../../components/ui'
+import { IntroVideo } from '../../components/IntroVideo'
 import { formatRate } from '../../lib/rates'
 import { badgeLabel, badgeType } from '../../lib/badges'
 import { DAYS } from '../../components/onboarding/AvailabilityEditor'
@@ -62,7 +63,11 @@ export function NannyProfilePage() {
                 <Avatar name={nanny.fullName} src={nanny.photoURL} size="lg" />
                 <div>
                   <p className="font-display text-2xl text-ll-ink">{nanny.fullName}</p>
-                  <p className="text-sm text-ll-warm-gray">Santa Barbara</p>
+                  {nanny.funFact ? (
+                    <p className="text-sm font-medium text-ll-ink">{nanny.funFact}</p>
+                  ) : (
+                    <p className="text-sm text-ll-warm-gray">Santa Barbara</p>
+                  )}
                 </div>
               </div>
 
@@ -86,7 +91,7 @@ export function NannyProfilePage() {
               </div>
 
               {nanny.introVideoURL && (
-                <video src={nanny.introVideoURL} controls className="mt-4 w-full rounded-ll-input bg-ll-cream-dark" />
+                <IntroVideo src={nanny.introVideoURL} name={nanny.fullName} className="mt-4" />
               )}
             </Card>
 

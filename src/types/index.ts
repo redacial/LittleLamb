@@ -147,6 +147,13 @@ export interface NannyProfile {
   fullName?: string
   photoURL?: string | null
   bio: string
+  /**
+   * A short, warm one-liner shown over the photo on the directory card and at the top of the
+   * profile (e.g. "Tide-pool expert and snack diplomat"). This is the "personality at a glance"
+   * signal — kept to a single line so it reads as a caption, not a second bio. Optional: pre-
+   * existing nannies have none, and every reader tolerates its absence. See FUN_FACT_MAX.
+   */
+  funFact?: string
   introVideoURL?: string | null
   yearsExperience: string
   personalStatement: string

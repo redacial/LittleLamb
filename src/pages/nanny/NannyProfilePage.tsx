@@ -3,11 +3,11 @@ import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { useNannyProfile } from '../../hooks/useProfile'
 import { uploadProfilePhoto, uploadIntroVideo } from '../../lib/storage'
-import { cleanText } from '../../lib/sanitize'
+import { cleanText, cleanLine } from '../../lib/sanitize'
 import { SELF_BADGES, badgeLabel } from '../../lib/badges'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { AvailabilityEditor } from '../../components/onboarding/AvailabilityEditor'
-import { Card, CardLabel, Textarea, Button, Avatar, Badge, RateRangeInput } from '../../components/ui'
+import { Card, CardLabel, Input, Textarea, Button, Avatar, Badge, RateRangeInput } from '../../components/ui'
 import { parseRateDollars, validateRateValue, nannyFloorRange } from '../../lib/rates'
 import { ReferralCard } from '../../components/ReferralCard'
 import { cn } from '../../lib/cn'
@@ -15,6 +15,7 @@ import { useChipHover } from '../../lib/motion'
 import type { AvailabilityBlock } from '../../types'
 
 const BIO_MAX = 500
+const FUN_FACT_MAX = 120
 
 /** Nanny My Profile — editable. Verified badges shown read-only. Completeness indicator. */
 export function NannyOwnProfilePage() {
@@ -24,6 +25,7 @@ export function NannyOwnProfilePage() {
 
   const [photoURL, setPhotoURL] = useState<string | null>(null)
   const [bio, setBio] = useState('')
+  const [funFact, setFunFact] = useState('')
   const [videoURL, setVideoURL] = useState<string | null>(null)
   const [selfBadges, setSelfBadges] = useState<string[]>([])
   const [availability, setAvailability] = useState<AvailabilityBlock[]>([])
@@ -38,6 +40,7 @@ export function NannyOwnProfilePage() {
     if (!nanny) return
     setPhotoURL(nanny.photoURL ?? null)
     setBio(nanny.bio ?? '')
+    setFunFact(nanny.funFact ?? '')
     setVideoURL(nanny.introVideoURL ?? null)
     setSelfBadges(nanny.selfBadges ?? [])
     setAvailability(nanny.availability ?? [])
@@ -51,6 +54,7 @@ export function NannyOwnProfilePage() {
   const checks = [
     { label: 'Photo', done: !!photoURL },
     { label: 'Bio', done: bio.trim().length >= 20 },
+    { label: 'Fun fact', done: funFact.trim().length > 0 },
     { label: 'Intro video', done: !!videoURL },
     { label: 'Badges', done: selfBadges.length > 0 },
     { label: 'Availability', done: availability.length > 0 },
@@ -108,6 +112,7 @@ export function NannyOwnProfilePage() {
     try {
       await save({
         bio: cleanText(bio, BIO_MAX),
+        funFact: cleanLine(funFact, FUN_FACT_MAX),
         selfBadges,
         availability,
         // Only write when it parses — a cleared rate is left untouched rather than
@@ -179,8 +184,15 @@ export function NannyOwnProfilePage() {
             </label>
           </Card>
 
-          <Card>
+          <Card className="space-y-4">
             <Textarea label="Bio" maxLength={BIO_MAX} hint={`${bio.length}/${BIO_MAX}`} value={bio} onChange={(e) => { setBio(e.target.value); setSaved(false) }} />
+            <Input
+              label="Fun fact"
+              maxLength={FUN_FACT_MAX}
+              hint="The warm one-liner families see first, over your photo"
+              value={funFact}
+              onChange={(e) => { setFunFact(e.target.value); setSaved(false) }}
+            />
           </Card>
 
           <Card>

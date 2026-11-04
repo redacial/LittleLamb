@@ -626,3 +626,33 @@ help: **last-minute care** (same-day and short-notice posts that go to the whole
   to it in `LandingPage.tsx`. Pricing is still never shown.
 - **Not done:** the app's `src/pages/public/HomePage.tsx` (an older near-copy of the landing page,
   not live) keeps the old layout.
+
+### D74. Nanny profile overhaul — photo-first cards, fun fact, accessible intro video (2026-11-04)
+**Why:** David is about to fill in real nanny data and wants the nanny-facing experience to
+showcase each person with "maximum ease" — a scannable, warm, "Tinder-style" directory card
+(name + fun fact over the photo) and a full profile whose intro video starts as you read, so you
+hear the nanny's voice. UX research (NN/G text-over-image + marketplace-trust; W3C WCAG 1.4.2)
+shaped two deviations from the literal brief, both confirmed with David:
+
+- **Trust below the photo, not on it; "years of experience", not age.** The photo carries the
+  personality (name + a one-line `funFact` over a bottom gradient scrim, contrast-safe on any
+  upload). The background-check chip, experience and badges sit BELOW in a rigid, identical layout
+  on every card so families can compare — DESIGN_SYSTEM.md §Trust Signal Hierarchy and NN/G both
+  put vetting as the top signal. A raw caregiver age reads dating-app; experience reads
+  professional, so we did NOT add an age field. (David picked "Tinder-style, warm-professional".)
+- **Intro video autoplays MUTED + one-tap unmute, never auto-sound.** WCAG 1.4.2 forbids
+  auto-playing audio >3s without a stop/volume mechanism, and merely opening a profile is not a
+  user request for sound. `IntroVideo` autoplays muted + looping with native controls always on,
+  and a labelled "Tap to hear [FirstName]" button that unmutes from the start — a user-initiated
+  action, so compliant. (David picked "Autoplay muted + one-tap unmute".)
+
+**What changed:**
+- New `funFact?: string` on `NannyProfile` (≤120 chars), guarded in `firestore.rules`
+  (`strMax('funFact', 120)` on nanny create+update). Optional; every reader tolerates absence.
+- New `src/components/NannyCard.tsx` (the directory card) and `src/components/IntroVideo.tsx`
+  (the accessible video), both unit-tested first (test proven to fail before the code existed).
+  `NanniesDirectory` now renders `NannyCard`; the shared `NannyProfilePage` renders `IntroVideo`
+  and the fun fact.
+- Fun-fact field added to the nanny setup wizard (Photo & bio step) and the nanny My Profile
+  editor (+ a "Fun fact" tick in the completeness indicator). Seed data gets a `funFact` on all
+  12 nannies.
