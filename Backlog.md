@@ -8,16 +8,25 @@ here as INCOMPLETE. Direction/feel to be hashed out with David before building. 
 DESIGN_SYSTEM.md first; build the calendar grid as ONE shared component (family + nanny). These
 supersede/absorb the older **F2** item below.
 
-### BK-1. Week-view calendar, click through weeks (not month-at-a-glance)
+### BK-1. Week-view calendar, click through weeks (not month-at-a-glance) ✅ DONE (2026-11-04)
 Google-Calendar-style **week view** as the default. Members page through weeks (prev/next) rather
 than seeing a whole month. Absorbs F2. (Month/Week toggle can remain per CLAUDE.md §6.1, but week
 is the primary view.)
+> **DONE:** new `src/components/calendar/WeekGrid.tsx` (time-axis × 7 day columns, LL design
+> language, reusable — props carry `availability` + `labelWith` for the future nanny view). The
+> family calendar defaults to Week with a Month/Week toggle; prev/next page by week in week view.
+> `MonthGrid` kept behind the toggle.
 
-### BK-2. Drag-to-create a booking on the time grid
+### BK-2. Drag-to-create a booking on the time grid ✅ DONE (2026-11-04)
 Instead of click-a-day → then pick times in a modal: the user **drags down the time column** to
 define the slot directly. Rules: **minimum 1 hour**, snap to **15-minute intervals** (e.g. drag
 3:00–4:15). On release, a popover/modal opens **pre-filled with the dragged times**, and further
 editing happens from there.
+> **DONE:** drag down a day column in `WeekGrid` → on release the snapped slot (15-min, min 1h)
+> opens the existing booking modal pre-filled with the times (`src/lib/time.ts` owns the snap +
+> min-duration math, tested first). Time inputs now `step={900}`. Keyboard a11y path: a per-day
+> "+" button opens the modal with the default window (drag is pointer-only). All booking LOGIC
+> (createBooking, routing, rates, recurring) untouched — presentation only.
 
 ### BK-3. Suggested time bubbles for "Book a nanny"
 When booking a specific nanny, offer **suggested time bubbles** (tappable quick-picks) to book into,
@@ -32,6 +41,17 @@ repeat bookings are near-one-tap. (Family already has bookings history to derive
 In the booking view's notes box, **pre-fill with the family's saved/profile notes** so the family
 sees what's already conveyed to the nanny, then adds booking-specific notes ON TOP — no duplicating
 what's already on file.
+
+### BK-6. Nanny-selection card picker with recommendation bubbling (DEFERRED — David, 2026-11-04)
+Replace the booking modal's plain nanny `<Select>` dropdown with a **card view**: tappable nanny
+cards that either (a) assign the nanny to the booking, or (b) open a **secondary modal showing the
+full nanny bio** before choosing. **Once matchmaking logic is engrained, the most-recommended
+nannies should bubble to the top** of the card list. Deferred this session because that ranking
+needs matchmaking logic that doesn't exist yet; an interim heuristic (availability overlap for the
+dragged slot via `isWithinAvailability` + rate overlap via `rangesOverlap`, both already imported
+into `FamilyCalendarPage`) can sort it until then. Reuse/extend `src/components/NannyCard.tsx`.
+Related: BK-3 (suggested time bubbles) and BK-4 (remember last nanny) feed the same "fast repeat
+booking" goal.
 
 ### ONB-1. ⭐ IMPORTANT — TurboTax-style guided onboarding (INCOMPLETE — more to come)
 Rework onboarding into a **thorough, detailed, guided flow with easy select-options that work like

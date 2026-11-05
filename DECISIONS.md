@@ -689,3 +689,39 @@ hand-off from waitlist to real app.
   used this same language, so it needed no change.
 - Verified: typecheck + ESLint clean on changed files; both `build` (app) and `build:landing`
   succeed.
+
+### D76. Family calendar → Google-Calendar-style week view + drag-to-create (2026-11-04)
+**Why:** executes the deferred booking design pass (Backlog BK-1/BK-2, scoped for v1 in D71).
+David wants the family calendar to feel like Google Calendar: a **week view as default** where you
+**drag down a day column** to define a time slot, which opens a popover pre-filled with those times
+— all in Little Lamb colours/feel, not Google's. Confirmed with David this session: Week+Month
+toggle (week default); build this pass for the **family** calendar only but as a **shared,
+reusable grid**; keep the current nanny `<Select>` dropdown for now and **defer** the
+recommendation-sorted nanny card picker (Task 3 / BK-6) because the matchmaking logic that would
+drive "most-recommended bubbling" doesn't exist yet.
+
+**Hard line held — presentation only.** None of the booking business logic changed:
+`createBooking`, `resolveBookingStatus`, `resolveRecurring`, rate matching, and the 25h
+job-board routing (`canBook`/`MIN_LEAD_HOURS`) are untouched. The week grid merely feeds the same
+`start`/`end`/`nannyId`/`notes`/`recurring` state into the same `confirm()` path, so the three
+money/notification bugs this project has already shipped can't recur through a UI rewrite.
+
+**What changed:**
+- New `src/lib/time.ts` (+ test, written first): `hhmmToMinutes`/`minutesToHHMM`/`snapTo15`/
+  `resolveSlot` — the 15-minute snap and 1-hour minimum live in ONE place so the drag UI, manual
+  time-input edits, and tests can't disagree. (Booking *business* rules stay in `bookingRules.ts`.)
+- New `src/components/calendar/WeekGrid.tsx` (+ test, written first): time-axis (6am–10pm, 15-min
+  rows) × 7 day columns; pointer-drag down a column → `onCreateSlot(date, start, end)`; past-day
+  columns inert (mirrors `MonthGrid`); per-day keyboard "+" button as the pointer-free a11y path;
+  booking blocks reuse `MonthGrid`'s glyph+colour+aria status convention (WCAG 1.4.1); optional
+  `availability` prop shades the selected nanny's "usually free" bands (a cue, never a block).
+  Props carry `availability` + `labelWith` so the nanny availability-editor view can reuse the
+  same grid later (Backlog's "ONE shared component").
+- `src/pages/family/FamilyCalendarPage.tsx`: `view` state (default `week`) + Week/Month segmented
+  toggle; prev/next pages by week in week view, by month in month view; renders `WeekGrid` or
+  `MonthGrid`; wires `onCreateSlot` into the existing modal (now the drag-filled event popover);
+  time inputs `step={900}`.
+- Deferred to **BK-6**: nanny card picker + secondary bio modal + recommendation bubbling.
+- Verified: `time` (8) + `WeekGrid` (8) + `FamilyCalendarPage` (14) green; typecheck + ESLint clean
+  on changed files; `npm run build` (app) succeeds. Full suite + visual `npm run demo` pass pending
+  (David runs the demo).

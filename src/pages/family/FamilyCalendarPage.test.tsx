@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { ToastProvider } from '../../components/ui/Toast'
@@ -68,8 +68,10 @@ vi.mock('../../context/AuthContext', () => ({
 }))
 
 /**
- * Open the booking modal on a given day. MonthGrid renders each day as a button labelled
- * with the day-of-month, so we navigate to September 2026 and click the right number.
+ * Open the booking modal on a given day. The page now defaults to the WEEK view, so this helper
+ * first switches to the Month view (whose day-number buttons these existing specs navigate by),
+ * then steps the month header to the target month and clicks the day. The week-view drag path has
+ * its own specs below.
  */
 async function openBookingModal(user: ReturnType<typeof userEvent.setup>, isoDate: string) {
   render(
@@ -79,6 +81,9 @@ async function openBookingModal(user: ReturnType<typeof userEvent.setup>, isoDat
       </ToastProvider>
     </MemoryRouter>,
   )
+
+  // Switch to the month grid so the day-number navigation below applies.
+  await user.click(screen.getByRole('button', { name: /^month$/i }))
 
   const target = new Date(`${isoDate}T00:00:00`)
   // Step the month header forward from "today" until we land on the target month.
@@ -262,5 +267,70 @@ describe('FamilyCalendarPage — the confirmation toast (F3)', () => {
     // Out-of-hours must NOT read as confirmed — it goes to the job board, not to Priya directly.
     expect(await screen.findByText(/posted to our nannies/i)).toBeInTheDocument()
     expect(screen.queryByText(/all set/i)).toBeNull()
+  })
+})
+
+// BK-1/BK-2: the calendar now defaults to a Google-Calendar-style WEEK view, and a drag down a
+// day column opens the booking modal pre-filled with the dragged times. The business logic
+// (createBooking + routing) is unchanged; these specs pin the new presentation wiring.
+describe('FamilyCalendarPage — week view (BK-1/BK-2)', () => {
+  beforeEach(() => {
+    createBooking.mockClear()
+    vi.setSystemTime(new Date('2026-08-16T09:00:00'))
+  })
+
+  function renderPage() {
+    render(
+      <MemoryRouter>
+        <ToastProvider>
+          <FamilyCalendarPage />
+        </ToastProvider>
+      </MemoryRouter>,
+    )
+  }
+
+  it('defaults to the week view (the week grid, not the month grid)', () => {
+    renderPage()
+    // The week grid's legend carries a "Tip: drag down a day…" the month grid never renders.
+    expect(screen.getByText(/tip: drag down a day/i)).toBeInTheDocument()
+  })
+
+  it('a drag on a day column opens the booking modal pre-filled with the dragged times', async () => {
+    renderPage()
+
+    // Find a future day column and drag 15:00→17:00 within it. Pick any slot cell whose date is
+    // comfortably in the future (the shown week always contains today..+6; use the last column).
+    const slots = Array.from(document.querySelectorAll('[data-slot-date]')) as HTMLElement[]
+    const futureDate = slots[slots.length - 1].getAttribute('data-slot-date')!
+    const start = document.querySelector(`[data-slot-date="${futureDate}"][data-slot-min="900"]`)!
+    const end = document.querySelector(`[data-slot-date="${futureDate}"][data-slot-min="1020"]`)!
+
+    fireEvent.pointerDown(start)
+    fireEvent.pointerEnter(end)
+    fireEvent.pointerUp(end)
+
+    // Modal opens with the dragged times in the Start/End inputs.
+    const startInput = (await screen.findByLabelText('Start')) as HTMLInputElement
+    const endInput = screen.getByLabelText('End') as HTMLInputElement
+    expect(startInput.value).toBe('15:00')
+    expect(endInput.value).toBe('17:00')
+  })
+
+  it('the time inputs snap to 15-minute steps', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const btn = document.querySelector('[data-new-booking]') as HTMLElement
+    await user.click(btn)
+    const startInput = (await screen.findByLabelText('Start')) as HTMLInputElement
+    expect(startInput.step).toBe('900')
+  })
+
+  it('toggling to Month shows the month grid', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: /^month$/i }))
+    // Month header "August 2026" pattern appears only in the month view.
+    expect(screen.getByText(/^[A-Z][a-z]+ \d{4}$/)).toBeInTheDocument()
+    expect(screen.queryByText(/tip: drag down a day/i)).toBeNull()
   })
 })

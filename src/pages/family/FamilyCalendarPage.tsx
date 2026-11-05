@@ -6,8 +6,10 @@ import { useFamilyProfile } from '../../hooks/useProfile'
 import { useNannyDirectory } from '../../hooks/useNannies'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { MonthGrid } from '../../components/calendar/MonthGrid'
+import { WeekGrid } from '../../components/calendar/WeekGrid'
 import { Modal, Button, Input, Textarea, Select, Avatar, StatusPill, useToast } from '../../components/ui'
 import { formatDate, formatTimeRange } from '../../lib/format'
+import { cn } from '../../lib/cn'
 import { rangesOverlap, overlapWindow, formatRate, resolveBookingStatus } from '../../lib/rates'
 import { resolveRecurring } from '../../lib/recurring'
 import { RateDisclaimer } from '../../components/ui'
@@ -26,6 +28,11 @@ export function FamilyCalendarPage() {
   const today = todayISO(now)
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
+
+  // Week view is the primary view (BK-1); Month stays available behind a toggle (CLAUDE.md §6.1).
+  const [view, setView] = useState<'week' | 'month'>('week')
+  // The Sunday that begins the shown week. Starts on the week containing today.
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(now))
 
   const [pickedDay, setPickedDay] = useState<string | null>(null)
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
@@ -79,6 +86,12 @@ export function FamilyCalendarPage() {
     const d = new Date(year, month + delta, 1)
     setYear(d.getFullYear())
     setMonth(d.getMonth())
+  }
+
+  function changeWeek(delta: number) {
+    const [y, m, d] = weekStart.split('-').map(Number)
+    const next = new Date(y, (m ?? 1) - 1, (d ?? 1) + delta * 7)
+    setWeekStart(ymd(next))
   }
 
   async function confirm() {
@@ -173,38 +186,72 @@ export function FamilyCalendarPage() {
     <>
       <PageHeader
         title="Calendar"
-        subtitle="Tap a day to book. Green is confirmed, amber is awaiting your nanny."
+        subtitle={
+          view === 'week'
+            ? 'Drag down a day to pick a time. Green is confirmed, amber is awaiting a nanny.'
+            : 'Tap a day to book. Green is confirmed, amber is awaiting a nanny.'
+        }
         action={
-          <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" onClick={() => changeMonth(-1)} aria-label="Previous month">
-              <ChevronLeft />
-            </Button>
-            <span className="min-w-36 text-center font-display text-display-sm leading-none text-ll-ink">
-              {new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </span>
-            <Button variant="ghost" size="sm" onClick={() => changeMonth(1)} aria-label="Next month">
-              <ChevronRight />
-            </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <ViewToggle view={view} onChange={setView} />
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => (view === 'week' ? changeWeek(-1) : changeMonth(-1))}
+                aria-label={view === 'week' ? 'Previous week' : 'Previous month'}
+              >
+                <ChevronLeft />
+              </Button>
+              <span className="min-w-36 text-center font-display text-display-sm leading-none text-ll-ink">
+                {view === 'week'
+                  ? weekRangeLabel(weekStart)
+                  : new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => (view === 'week' ? changeWeek(1) : changeMonth(1))}
+                aria-label={view === 'week' ? 'Next week' : 'Next month'}
+              >
+                <ChevronRight />
+              </Button>
+            </div>
           </div>
         }
       />
       <PageBody>
-        <MonthGrid
-          year={year}
-          month={month}
-          today={today}
-          bookings={bookings}
-          onPickDay={(d) => setPickedDay(d)}
-          onPickBooking={(b) => setViewBooking(b)}
-        />
+        {view === 'week' ? (
+          <WeekGrid
+            weekStart={weekStart}
+            today={today}
+            bookings={bookings}
+            availability={selectedNanny?.availability}
+            onCreateSlot={(d, s, e) => {
+              setStart(s)
+              setEnd(e)
+              setPickedDay(d)
+            }}
+            onPickBooking={(b) => setViewBooking(b)}
+          />
+        ) : (
+          <MonthGrid
+            year={year}
+            month={month}
+            today={today}
+            bookings={bookings}
+            onPickDay={(d) => setPickedDay(d)}
+            onPickBooking={(b) => setViewBooking(b)}
+          />
+        )}
 
 
         {/* New booking modal */}
         <Modal open={!!pickedDay} onClose={closeBookingModal} title={pickedDay ? `Book for ${formatDate(pickedDay)}` : ''}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Start" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
-              <Input label="End" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+              <Input label="Start" type="time" step={900} value={start} onChange={(e) => setStart(e.target.value)} />
+              <Input label="End" type="time" step={900} value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
             <Select label="Nanny" value={nannyId} onChange={(e) => setNannyId(e.target.value)}>
               <option value="">No preference (find a match)</option>
@@ -307,6 +354,53 @@ export function FamilyCalendarPage() {
         </Modal>
       </PageBody>
     </>
+  )
+}
+
+/** Local date → "YYYY-MM-DD" (local, not UTC — matches todayISO). */
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** The Sunday that begins the week containing `d`. */
+function startOfWeek(d: Date): string {
+  const s = new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay())
+  return ymd(s)
+}
+
+/** "Aug 23 – 29" or "Aug 30 – Sep 5" for the week beginning weekStart. */
+function weekRangeLabel(weekStart: string): string {
+  const [y, m, d] = weekStart.split('-').map(Number)
+  const start = new Date(y, (m ?? 1) - 1, d ?? 1)
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6)
+  const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const endStr =
+    start.getMonth() === end.getMonth()
+      ? String(end.getDate())
+      : end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return `${startStr} – ${endStr}`
+}
+
+/** Segmented Week/Month toggle in the Little Lamb pill style. */
+function ViewToggle({ view, onChange }: { view: 'week' | 'month'; onChange: (v: 'week' | 'month') => void }) {
+  return (
+    <div className="inline-flex rounded-full border-1.5 border-ll-cream-dark bg-white p-0.5" role="group" aria-label="Calendar view">
+      {(['week', 'month'] as const).map((v) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(v)}
+          aria-pressed={view === v}
+          className={cn(
+            'rounded-full px-3 py-1 text-label font-medium capitalize transition-colors',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ll-sage',
+            view === v ? 'bg-ll-sage text-ll-sage-deep' : 'text-ll-warm-gray hover:text-ll-ink',
+          )}
+        >
+          {v}
+        </button>
+      ))}
+    </div>
   )
 }
 
