@@ -14,16 +14,22 @@ import { FamilyProfilePage } from './FamilyProfilePage'
 // ---------------------------------------------------------------------------
 
 // vi.hoisted so the spies exist before the hoisted vi.mock factories run.
-const { save, uploadProfilePhoto } = vi.hoisted(() => ({
+// `profile` is hoisted as ONE stable object and returned by reference on every call. The real
+// useFamilyProfile backs `profile` with useState (set by onSnapshot), so its identity is stable
+// across renders. A factory that returned a fresh `{ children: [] }` each call instead made
+// FamilyProfilePage's `useEffect(…, [family])` re-run every render (setChildren(new []) →
+// re-render → new family → …), an infinite render loop that hung the whole `vitest run`.
+const { save, uploadProfilePhoto, familyProfile } = vi.hoisted(() => ({
   save: vi.fn(async () => {}),
   uploadProfilePhoto: vi.fn(async () => 'https://cdn/photo.jpg'),
+  familyProfile: { photoURL: null, children: [] },
 }))
 
 vi.mock('../../lib/storage', () => ({ uploadProfilePhoto }))
 
 vi.mock('../../hooks/useProfile', () => ({
   useFamilyProfile: () => ({
-    profile: { photoURL: null, children: [] },
+    profile: familyProfile,
     loading: false,
     save,
   }),

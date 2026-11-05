@@ -1,9 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { ToastProvider } from '../../components/ui/Toast'
 import { FamilyCalendarPage } from './FamilyCalendarPage'
+
+// These suites freeze the clock with vi.setSystemTime (so the 25h/same-day routing is
+// deterministic). Vitest does NOT restore it automatically, and a frozen Date leaks into
+// whatever test FILE runs next in the same worker — which hung the full `vitest run` (a later
+// component that loops relative to "now" spins forever against a stale clock). Restore real
+// timers when this file is done so the mocked clock never escapes it.
+afterAll(() => {
+  vi.useRealTimers()
+})
 
 // Recurring bookings were unreachable dead code: `recurring: true` appeared NOWHERE in src/,
 // because neither createBooking call site ever passed the flag and no UI could set it. The

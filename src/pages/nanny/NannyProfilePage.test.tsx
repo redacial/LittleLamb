@@ -20,17 +20,22 @@ import { NannyOwnProfilePage } from './NannyProfilePage'
 // ---------------------------------------------------------------------------
 
 // vi.hoisted so the spies exist before the hoisted vi.mock factories run.
-const { save, uploadProfilePhoto, uploadIntroVideo } = vi.hoisted(() => ({
+// `nannyProfile` is hoisted as ONE stable object and returned by reference every call. The real
+// useNannyProfile backs `profile` with useState (set by onSnapshot), so its identity is stable
+// across renders; a fresh object each call made NannyProfilePage's useEffect(…, [nanny]) re-run
+// forever (setAvailability(new []) → re-render → new nanny → …), hanging the full `vitest run`.
+const { save, uploadProfilePhoto, uploadIntroVideo, nannyProfile } = vi.hoisted(() => ({
   save: vi.fn(async () => {}),
   uploadProfilePhoto: vi.fn(async () => 'https://cdn/photo.jpg'),
   uploadIntroVideo: vi.fn(async () => 'https://cdn/video.mp4'),
+  nannyProfile: { photoURL: null, bio: 'A bio long enough to count.', selfBadges: [], availability: [], verifiedBadges: [] },
 }))
 
 vi.mock('../../lib/storage', () => ({ uploadProfilePhoto, uploadIntroVideo }))
 
 vi.mock('../../hooks/useProfile', () => ({
   useNannyProfile: () => ({
-    profile: { photoURL: null, bio: 'A bio long enough to count.', selfBadges: [], availability: [], verifiedBadges: [] },
+    profile: nannyProfile,
     loading: false,
     save,
   }),
@@ -70,7 +75,9 @@ describe('NannyProfilePage — a failed upload must say so', () => {
     uploadIntroVideo.mockRejectedValueOnce(new Error('Video must be under 1 minute.'))
     render(<NannyOwnProfilePage />)
 
-    await userEvent.upload(fileInputFor(/intro video/i), videoFile)
+    // Match the upload control specifically ("Add/Replace intro video"): the completeness
+    // indicator also renders a plain "Intro video" item, so a bare /intro video/ is ambiguous.
+    await userEvent.upload(fileInputFor(/(add|replace) intro video/i), videoFile)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/under 1 minute/i)
   })
