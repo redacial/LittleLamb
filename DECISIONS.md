@@ -656,3 +656,36 @@ shaped two deviations from the literal brief, both confirmed with David:
 - Fun-fact field added to the nanny setup wizard (Photo & bio step) and the nanny My Profile
   editor (+ a "Fun fact" tick in the completeness indicator). Seed data gets a `funFact` on all
   12 nannies.
+
+### D75. Landing page re-skinned to the app's design language — sticky notes retired (2026-11-04)
+**Why:** The sticky-note / colour-blocked-band marketing page from D73 read as a separate,
+"fun creative" microsite, not as the front door of the actual product. David asked that the
+public page match the app's design — readable first, still warm and playful. Making the public
+site and the (unfinished) app look like one product also lowers the trust cost of the eventual
+hand-off from waitlist to real app.
+
+**What changed (landing only — no app-behaviour change):**
+- `src/landing/pages/LandingPage.tsx` and `src/landing/components/LandingShell.tsx` rewritten in
+  the app's own vocabulary (the same DESIGN_SYSTEM.md tokens the app's `HomePage`/`PublicShell`
+  use): cream page, blurred cream nav with the sage logo (not a solid sage bar with the white
+  logo), `eyebrow` mono kickers, Caveat `display-*` headings over readable DM-Sans `ll-warm-gray`
+  body, `rounded-ll-card` cards on `ll-cream-dark/60` with warm `shadow-soft`/`shadow-pop-*` and a
+  subtle tilt on hover, `Blob`/`Grain`/`DrawnUnderline`/`FloatLoop`/`Sparkle` accents, and the
+  periwinkle `trust-chip` as the recurring vetting motif.
+- **Retired the sticky-note aesthetic outright:** removed the `.sticky-note`/`.sticky-tape` CSS
+  from `index.css` and the landing-only tokens from `tailwind.config.js` (`ll-paper`,
+  `ll-brand-*`, `ll-note-*`, `ll-sand`, `ll-sage-wash`) — all now unreferenced. `landing.html`
+  `theme-color` moved from paper `#FAF6F0` to app cream `#F5F0E8`. The `white` logo tone is no
+  longer used anywhere.
+- **Kept everything that matters:** all section content (tonight/weekly dual pitch, two kinds of
+  care, how-we-vet, how-it-works, for-nannies, who-we-are, bottom CTA), the single-page anchor
+  nav, and the waitlist/contact modal (`WaitlistModal` was already on the app's component library,
+  so it was untouched). Every claim still maps to something the product does, commented inline;
+  pricing is still never shown.
+- **Supersedes D73's token note.** The brand hex values still live in the logo artwork
+  (`public/brand/*`); they are just no longer Tailwind tokens. The app's audited `ll-sage` /
+  `ll-terra` scales are unchanged.
+- **Not done:** the app's `src/pages/public/HomePage.tsx` (an older near-copy, not live) already
+  used this same language, so it needed no change.
+- Verified: typecheck + ESLint clean on changed files; both `build` (app) and `build:landing`
+  succeed.
