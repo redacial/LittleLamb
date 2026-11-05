@@ -142,6 +142,34 @@ describe('storage reads — profile photos are not readable by every signed-in a
   })
 })
 
+describe('storage reads — a signed-in caller with NO users/{uid} doc', () => {
+  // Regression for the "Null value error" at storage.rules L38: callerUser() did
+  // `firestore.get(...).data` with no existence check, so a signed-in account that has no
+  // users/{uid} doc yet (e.g. an auth account created mid-signup, before its user doc is
+  // written) made isApprovedMember() THROW instead of evaluate false. A thrown rule denies,
+  // so it was safe — but a rule that errors on a reachable real state is fragile and must be
+  // made to return a clean false. These assert the behaviour, not the implementation:
+  //   - a no-doc caller reading SOMEONE ELSE's file is denied (not an error, still a deny), and
+  //   - a no-doc caller reading their OWN file still succeeds (owner half never needs the doc).
+  // NOTE: assertFails() treats both PERMISSION_DENIED and an evaluation error as "fails", so a
+  // deny and a throw look identical from the client. The real proof that the throw is gone is
+  // the storage-emulator debug log having no "Null value error" at L38 — checked out-of-band in
+  // the main session after this rule change. The OWNER-half success below is the test that would
+  // break if a naive fix (e.g. requiring the doc for all reads) regressed onboarding.
+  const NO_DOC = 'userNoDoc' // authenticated, but no users/{uid} seeded in beforeEach
+  const NO_DOC_OWN_PHOTO = `profile-photos/${NO_DOC}/photo.jpg`
+
+  it('DENIES a no-doc caller reading another user’s photo (clean deny, no crash)', async () => {
+    await seedFile(FAM_PHOTO, 'image/jpeg')
+    await assertFails(storageAs(NO_DOC).ref(FAM_PHOTO).getDownloadURL())
+  })
+
+  it('ALLOWS a no-doc caller reading their OWN photo — owner half must not depend on the user doc', async () => {
+    await seedFile(NO_DOC_OWN_PHOTO, 'image/jpeg')
+    await assertSucceeds(storageAs(NO_DOC).ref(NO_DOC_OWN_PHOTO).getDownloadURL())
+  })
+})
+
 describe('storage reads — the OWNER half (onboarding must keep working)', () => {
   it('ALLOWS a PENDING nanny to read her OWN photo — wizard preview before approval', async () => {
     await seedFile(PENDING_PHOTO, 'image/jpeg')

@@ -34,14 +34,25 @@ service firebase.storage {
      * The lookup is guarded by isSignedIn() so an anonymous request short-circuits and never
      * pays for a read.
      */
-    function callerUser() {
-      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    function callerDocPath() {
+      return /databases/(default)/documents/users/$(request.auth.uid);
     }
-    // NOTE: callerUser() is referenced twice below, but the rules engine evaluates and caches
-    // an identical document lookup once per request, so this stays at ONE billed read. Written
-    // as a single `in` test anyway to keep that guarantee obvious rather than implicit.
+    function callerUser() {
+      return firestore.get(callerDocPath()).data;
+    }
+    // callerUser() / firestore.exists() all hit the SAME document path, which the rules engine
+    // evaluates and caches once per request — so this stays at ONE billed read despite the
+    // exists() guard plus the two field reads below.
+    //
+    // The exists() guard is load-bearing: a signed-in account can legitimately have NO
+    // users/{uid} doc for a moment (the auth account is created in the signup form before its
+    // Firestore user doc is written). Without the guard, firestore.get(...).data on a missing
+    // doc returns null and `.data`/`.get(...)` THREW — "Null value error" at this line. A thrown
+    // rule safe-fails to deny, so it was not a security hole, but it is a reachable real state
+    // and a rule that errors instead of returning a clean false is fragile. Guarded now.
     function isApprovedMember() {
       return isSignedIn()
+        && firestore.exists(callerDocPath())
         && (callerUser().get('approved', false) == true
             || callerUser().get('role', '') == 'admin');
     }
