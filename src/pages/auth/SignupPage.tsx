@@ -157,6 +157,17 @@ export function SignupPage() {
         </Button>
       </form>
 
+      <p className="mt-4 text-center text-xs text-ll-warm-gray">
+        By creating an account you agree to our{' '}
+        <Link
+          to="/privacy"
+          className="font-semibold text-ll-sage-deep underline-offset-2 hover:underline"
+        >
+          Privacy Policy
+        </Link>
+        .
+      </p>
+
       <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-ll-warm-gray">
         <span className="h-px flex-1 bg-ll-ink/10" />
         or

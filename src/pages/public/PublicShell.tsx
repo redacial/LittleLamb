@@ -83,9 +83,17 @@ export function PublicFooter() {
         />
       </div>
       <div className="border-t-1.5 border-ll-cream-dark">
-        <p className="mx-auto max-w-6xl px-5 py-5 font-mono text-mono-sm text-ll-warm-gray sm:px-8">
-          littlelambnannies.com · Santa Barbara, CA
-        </p>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-5 py-5 sm:px-8">
+          <p className="font-mono text-mono-sm text-ll-warm-gray">
+            littlelambnannies.com · Santa Barbara, CA
+          </p>
+          <Link
+            to="/privacy"
+            className="font-mono text-mono-sm text-ll-warm-gray underline-offset-2 hover:text-ll-ink hover:underline"
+          >
+            Privacy Policy
+          </Link>
+        </div>
       </div>
     </footer>
   )
