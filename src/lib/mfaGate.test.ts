@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // The mandatory-MFA gate decides, for every signed-in user, whether they can enter the app or
 // must first verify email / enrol a factor. A wrong answer here is a security control failing
@@ -12,7 +12,7 @@ vi.mock('firebase/auth', () => ({
   multiFactor: (u: { _factors?: unknown[] }) => ({ enrolledFactors: u?._factors ?? [] }),
 }))
 
-import { mfaGateRedirect, MFA_VERIFY_EMAIL_ROUTE, MFA_ENROLL_ROUTE } from './mfaGate'
+import { mfaGateRedirect, mfaRequired, MFA_VERIFY_EMAIL_ROUTE, MFA_ENROLL_ROUTE } from './mfaGate'
 
 function user(opts: { emailVerified: boolean; factors: unknown[] }) {
   return {
@@ -21,7 +21,43 @@ function user(opts: { emailVerified: boolean; factors: unknown[] }) {
   } as never
 }
 
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
+
+describe('mfaRequired — secure-by-default flag (demo can opt OUT, real builds cannot forget)', () => {
+  it('is ON when the flag is unset (the real staging/prod case)', () => {
+    vi.stubEnv('VITE_REQUIRE_MFA', undefined as never)
+    expect(mfaRequired()).toBe(true)
+  })
+
+  it('is ON for any value other than the literal "false" (no accidental disable)', () => {
+    vi.stubEnv('VITE_REQUIRE_MFA', 'true')
+    expect(mfaRequired()).toBe(true)
+    vi.stubEnv('VITE_REQUIRE_MFA', 'no')
+    expect(mfaRequired()).toBe(true)
+  })
+
+  it('is OFF only for the explicit literal "false" (the demo opt-out)', () => {
+    vi.stubEnv('VITE_REQUIRE_MFA', 'false')
+    expect(mfaRequired()).toBe(false)
+  })
+})
+
+describe('mfaGateRedirect — when MFA is disabled (demo)', () => {
+  it('never redirects, even for an unverified, factor-less user', () => {
+    vi.stubEnv('VITE_REQUIRE_MFA', 'false')
+    expect(mfaGateRedirect(user({ emailVerified: false, factors: [] }))).toBeNull()
+  })
+})
+
 describe('mfaGateRedirect', () => {
+  // These assert the ENFORCED-MFA behaviour. `.env` sets VITE_REQUIRE_MFA=false for local/demo,
+  // and Vitest loads it, so each test here pins the flag ON to test the real staging/prod gate.
+  beforeEach(() => {
+    vi.stubEnv('VITE_REQUIRE_MFA', 'true')
+  })
+
   it('sends an UNVERIFIED-email user to verify first (enrollment is impossible before then)', () => {
     expect(mfaGateRedirect(user({ emailVerified: false, factors: [] }))).toBe(MFA_VERIFY_EMAIL_ROUTE)
   })
