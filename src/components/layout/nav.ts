@@ -50,6 +50,7 @@ export const ADMIN_NAV: NavItem[] = [
   { to: '/admin/nannies', label: 'Nannies', icon: 'nannies' },
   { to: '/admin/families', label: 'Families', icon: 'families' },
   { to: '/admin/bookings', label: 'Bookings', icon: 'bookings' },
+  { to: '/admin/waitlist', label: 'Waitlist', icon: 'board' },
   { to: '/admin/billing', label: 'Billing & Accounting', icon: 'billing' },
   { to: '/admin/settings', label: 'Settings', icon: 'settings' },
   // No My Profile — admin has no public-facing profile (spec).

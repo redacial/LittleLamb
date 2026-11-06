@@ -183,6 +183,42 @@ const mapUser = (d: QueryDocumentSnapshot<DocumentData>) => d.data() as UserDoc
 const mapBooking = (d: QueryDocumentSnapshot<DocumentData>) =>
   ({ id: d.id, ...(d.data() as object) }) as Booking
 
+/**
+ * A pre-launch waitlist / contact submission from the public landing site. Written
+ * public-create-only (firestore.rules match /waitlist); admin-readable. The shape mirrors what
+ * the landing form writes (src/landing/waitlist.ts) — redeclared here rather than imported so
+ * the admin app never depends on the separate landing build.
+ */
+export interface WaitlistEntry {
+  id: string
+  kind: 'waitlist' | 'contact'
+  role: 'family' | 'nanny'
+  name: string
+  email: string
+  phone?: string
+  message?: string
+  source?: string
+  status?: string
+  createdAt?: { toDate: () => Date } | null
+}
+
+const mapWaitlist = (d: QueryDocumentSnapshot<DocumentData>): WaitlistEntry => ({
+  id: d.id,
+  ...(d.data() as Omit<WaitlistEntry, 'id'>),
+})
+
+/**
+ * Live waitlist + contact submissions for the admin Waitlist page. Newest first — the most
+ * recent person to raise their hand is the one Lucy & David most likely want to reach.
+ */
+export function useWaitlist(): GrowingList<WaitlistEntry> {
+  const buildQuery = useCallback(
+    (n: number) => query(collection(db, 'waitlist'), orderBy('createdAt', 'desc'), limit(n)),
+    [],
+  )
+  return useGrowingCollection(buildQuery, mapWaitlist, ADMIN_PAGE_SIZE)
+}
+
 /** Live failed-payment alerts for the admin dashboard/billing page. */
 export function useBillingAlerts(): GrowingList<BillingAlert> {
   // Newest first: a failed payment from today matters more than one from last quarter.

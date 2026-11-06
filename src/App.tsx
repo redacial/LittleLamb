@@ -78,6 +78,9 @@ const AdminPeoplePage = lazy(() =>
 const AdminBookingsPage = lazy(() =>
   import('./pages/admin/AdminBookingsPage').then((m) => ({ default: m.AdminBookingsPage })),
 )
+const AdminWaitlistPage = lazy(() =>
+  import('./pages/admin/AdminWaitlistPage').then((m) => ({ default: m.AdminWaitlistPage })),
+)
 const AdminBillingPage = lazy(() =>
   import('./pages/admin/AdminBillingPage').then((m) => ({ default: m.AdminBillingPage })),
 )
@@ -174,6 +177,7 @@ export function App() {
               <Route path="/admin/nannies" element={<AdminPeoplePage role="nanny" />} />
               <Route path="/admin/families" element={<AdminPeoplePage role="family" />} />
               <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+              <Route path="/admin/waitlist" element={<AdminWaitlistPage />} />
               <Route path="/admin/billing" element={<AdminBillingPage />} />
               <Route path="/admin/settings" element={<AdminSettingsPage />} />
             </Route>
