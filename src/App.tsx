@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastProvider } from './components/ui/Toast'
 import {
   RequireAuth,
+  RequireMfa,
   RequireRole,
   RequireApprovedAndOnboarded,
   FullScreenLoader,
@@ -19,6 +20,8 @@ import { ApplicationPage } from './pages/public/ApplicationPage'
 import { FamilyHoldingPage } from './pages/onboarding/FamilyHoldingPage'
 import { NannyHoldingPage } from './pages/onboarding/NannyHoldingPage'
 import { DeclinedPage } from './pages/onboarding/DeclinedPage'
+import { MfaVerifyEmailPage } from './pages/auth/MfaVerifyEmailPage'
+import { MfaEnrollPage } from './pages/auth/MfaEnrollPage'
 
 // Everything behind auth is code-split. Public routes above stay eager: they are the first
 // paint for real visitors, so pushing them into a lazy chunk would only add a round trip.
@@ -86,8 +89,10 @@ const AdminSettingsPage = lazy(() =>
 
 /**
  * Route tree. Guard order is the SPA equivalent of layered middleware (checklist §2):
- *   RequireAuth → RequireRole → RequireApprovedAndOnboarded → AppLayout
+ *   RequireAuth → RequireMfa → RequireRole → RequireApprovedAndOnboarded → AppLayout
  * Authorization is always decided from the server-trusted user profile, never a client claim.
+ * RequireMfa enforces mandatory TOTP two-factor for every signed-in user; the /mfa/* pages it
+ * redirects to sit inside RequireAuth but outside RequireMfa so the redirect can't loop.
  * Holding pages and setup wizards sit inside the role gate but outside the approved+onboarded
  * gate, so pending/unfinished users can reach them but not the app shell.
  *
@@ -114,6 +119,13 @@ export function App() {
         <Route path="/signup" element={<SignupPage />} />
 
         <Route element={<RequireAuth />}>
+          {/* Mandatory-MFA pages live inside auth but OUTSIDE RequireMfa, else the gate's
+              own redirect target would be gated and loop. Every other private route is
+              wrapped by RequireMfa below. */}
+          <Route path="/mfa/verify-email" element={<MfaVerifyEmailPage />} />
+          <Route path="/mfa/enroll" element={<MfaEnrollPage />} />
+
+          <Route element={<RequireMfa />}>
           {/* ---- Family ---- */}
           <Route element={<RequireRole roles={['family']} />}>
             <Route path="/family/pending" element={<FamilyHoldingPage />} />
@@ -164,6 +176,7 @@ export function App() {
               <Route path="/admin/settings" element={<AdminSettingsPage />} />
             </Route>
           </Route>
+          </Route>{/* /RequireMfa */}
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

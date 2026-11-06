@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { homeRouteFor } from '../lib/routing'
+import { mfaGateRedirect } from '../lib/mfaGate'
 import type { Role } from '../types'
 import { Logo } from './ui'
 
@@ -24,6 +25,30 @@ export function RequireAuth() {
   const location = useLocation()
   if (loading) return <FullScreenLoader />
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />
+  return <Outlet />
+}
+
+/**
+ * Mandatory multi-factor gate. Little Lamb requires TOTP MFA for EVERY signed-in user, so this
+ * sits inside RequireAuth and in front of the role/approval gates: a user who has not verified
+ * their email, or has not enrolled a second factor, is redirected to do so before any app
+ * surface loads. The /mfa/* pages themselves are mounted OUTSIDE this guard (but inside
+ * RequireAuth), otherwise the redirect would loop.
+ *
+ * This is a client-side convenience gate for UX; it is NOT the security boundary — a determined
+ * client could bypass the SPA. Real enforcement is that MFA-gated backends check the
+ * second-factor claim (`request.auth.token.firebase.sign_in_second_factor`) / a blocking
+ * function. Documented so this guard is never mistaken for the boundary (mirrors §2 of the
+ * security audit for the auth guards).
+ */
+export function RequireMfa() {
+  const { user, loading } = useAuth()
+  const location = useLocation()
+  if (loading) return <FullScreenLoader />
+  const redirect = mfaGateRedirect(user)
+  if (redirect && redirect !== location.pathname) {
+    return <Navigate to={redirect} replace state={{ from: location }} />
+  }
   return <Outlet />
 }
 
