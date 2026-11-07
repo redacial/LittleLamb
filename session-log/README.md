@@ -124,3 +124,8 @@ was built, and what's left. This is the human-readable memory of the project's e
   19-clip Playwright recorder, uncommitted test-first calendar label fix). Then resumed: script, ChatGPT
   prompt, TTS and rough cut done; two calendar label bugs fixed test-first.
 - `2026-10-29-brand-and-landing-overhaul.md` — New brand logo app-wide + family-first sticky-note landing page (not deployed).
+- `2026-11-06-beta-security-mfa-waitlist.md` — Beta security pass. storage-rules null-fix; **mandatory
+  TOTP MFA for all users** (behind `VITE_REQUIRE_MFA`, OFF for the local demo); public privacy policy
+  + signup consent; **admin Waitlist page**. Verified waitlist→hello@ email and pre-approval wizard
+  already built. **Beta target = staging; staging is on SPARK and David can't upgrade to Blaze yet —
+  that's the critical path.** Local `npm run demo` (MFA off) is running for a Lucy walkthrough. 459 green, nothing pushed.
