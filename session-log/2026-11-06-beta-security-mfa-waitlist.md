@@ -64,9 +64,35 @@ where **Lucy + real testers** enter real data. Decided to beta on **staging**
 - Automated email delivery (Cloud Functions / Resend), PITR + backups, App Check enforcement.
 - A persistent cloud account Lucy logs into from her own device.
 
+## 🚀 DEPLOYED LIVE (2026-11-09) — no-functions beta on staging
+The app is **live and publishable**: **https://littlelamb-sb-staging-app.web.app**. Real users
+can sign up now (email/password works immediately). Decided (2026-11-09): ship a Spark/no-Blaze
+beta so David can make accounts + test + patch, with Blaze DEFERRED not dropped.
+
+- `feat(beta)` commit a002c7b: BetaNotice (VITE_BETA_NO_EMAIL=true in .env.staging) + MFA off
+  (VITE_REQUIRE_MFA=false). Verified the app needs no functions at runtime (only billing calls a
+  fn, already gated off; notifications write undelivered mail docs; wizard payment step has a
+  no-Stripe fallback; nothing gates the dashboard on payment). 463 tests green.
+- Deploy done: `deploy:rules:staging` + `deploy:indexes:staging` (rules/indexes live — Spark-OK),
+  then `deploy:app:staging`. First app deploy FAILED ("could not find site
+  littlelamb-sb-staging-app") — the staging `-app` hosting site didn't exist. Fixed:
+  `firebase hosting:sites:create littlelamb-sb-staging-app` + `firebase target:apply hosting app
+  littlelamb-sb-staging-app`, then redeploy succeeded.
+
+**Still TODO on the live deploy:**
+- **Google sign-in:** add `littlelamb-sb-staging-app.web.app` to Firebase console → Authentication
+  → Settings → Authorized domains, or Google login throws `auth/unauthorized-domain`. (Email/pw
+  works without it.) — DAVID, not yet done.
+- **No emails** (no functions): approvals/confirmations/waitlist→hello@ don't send; users see
+  live in-app status (BetaNotice explains this). This is expected until Blaze.
+- To patch: edit → `npm run deploy:app:staging` → live. Data persists (real staging, not demo).
+
 ## Next steps (precise handoff)
-1. **Blaze upgrade on staging is the critical path.** David couldn't do it this session. Until
-   then, staging beta is blocked; only the local demo works. Recommended: upgrade + set a budget
+0. **Add the Google authorized domain** (above) — only remaining step for full sign-in on the
+   live app.
+1. **Blaze upgrade on staging** unlocks the deferred half: email delivery, MFA, PITR/backups,
+   App Check. NOT blocking the beta anymore — the app is live without it. When ready: upgrade +
+   set a budget
    alert (~$5/mo) right after. A **launch-concierge** agent has the full annotated console queue
    (Blaze → PITR+delete-protection → Identity Platform → TOTP+authorized domains → App Check key
    → Resend domain verify → monitor 24–48h then enforce → alerts). Each step has a plain-English
