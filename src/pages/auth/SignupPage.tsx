@@ -15,7 +15,7 @@ import { useReferralCapture, clearCapturedReferral } from '../../hooks/useReferr
 import { AuthShell } from '../../components/auth/AuthShell'
 import { RoleToggle, type SignupRole } from '../../components/auth/RoleToggle'
 import { GoogleButton } from '../../components/auth/GoogleButton'
-import { Button, Input } from '../../components/ui'
+import { Button, Input, BetaNotice } from '../../components/ui'
 
 /**
  * Account creation. The full application questionnaires (neighborhood, children, experience,
@@ -110,6 +110,10 @@ export function SignupPage() {
           You were referred — welcome! We'll note who sent you.
         </p>
       )}
+
+      <div className="mt-4">
+        <BetaNotice context="signup" />
+      </div>
 
       <div className="mt-6">
         <RoleToggle value={role} onChange={setRole} />

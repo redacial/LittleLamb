@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { useCalendlyConfig } from '../../hooks/useAdmin'
 import { signOut } from '../../lib/auth'
-import { Logo, Button, Card } from '../../components/ui'
+import { Logo, Button, Card, BetaNotice, betaNoEmail } from '../../components/ui'
 import { useSpringIn } from '../../lib/motion'
 import { cn } from '../../lib/cn'
 import type { NannyStage } from '../../types'
@@ -73,8 +73,11 @@ export function NannyHoldingPage() {
           We’ve got your application, {profile?.fullName?.split(' ')[0] ?? 'there'}
         </h1>
         <p className="mt-3 text-ll-warm-gray">
-          Here’s where you are in our review. We’ll email you at each step.
+          Here’s where you are in our review.{!betaNoEmail && ' We’ll email you at each step.'}
         </p>
+        <div className="mt-5">
+          <BetaNotice context="holding" />
+        </div>
 
         <motion.div className="mt-8" {...springIn}>
           <Card tone="peri">
