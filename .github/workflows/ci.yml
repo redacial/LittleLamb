@@ -28,14 +28,21 @@ jobs:
   build-and-test:
     name: Build and test
     runs-on: ubuntu-latest
+    # Little Lamb is a Santa Barbara business: todayISO/hoursUntil in src/lib/bookingRules.ts
+    # key off LOCAL wall-clock time on purpose (an evening same-day booking must read as
+    # today, not tomorrow-in-UTC). The suite asserts that Pacific behaviour, so the test
+    # process must run in Pacific — otherwise UTC runners shift every time by 7-8h. Also
+    # pinned in the `test` npm script; this job-level env is the belt-and-suspenders copy.
+    env:
+      TZ: America/Los_Angeles
     steps:
       - uses: actions/checkout@v4
 
-      # Node 20: functions/package.json pins engines.node "20" and firebase.json pins
-      # the nodejs20 runtime. Local dev happens to be on 22, but 20 is what deploys.
+      # Node 22: functions/package.json pins engines.node "22" and firebase.json pins the
+      # nodejs22 runtime (nodejs20 was decommissioned 2026-10-30). This is what deploys.
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
           # This repo is THREE independent npm projects, not a workspace — root,
           # functions/ and firestore-tests/ each have their own lockfile + node_modules.
@@ -92,7 +99,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
           cache-dependency-path: |
             package-lock.json
