@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { LandingShell } from '../components/LandingShell'
 import { useWaitlist } from '../components/waitlistContext'
+import { applyUrl } from '../appUrl'
 import { LambMark } from '../../components/ui/Logo'
 import { Blob, DrawnUnderline, FloatLoop, Grain, Sparkle, StickerBadge } from '../../components/theme'
 import { useButtonHover, useTiltHover } from '../../lib/motion'
@@ -37,17 +38,27 @@ export function LandingPage() {
 
 /* ------------------------------------------------------------------ Shared bits */
 
-function PrimaryButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+// Renders a <button> (onClick) by default, or an <a> when `as="a"` + href is given — the
+// launch CTAs link cross-origin into the app, which must be a real anchor, not a button.
+type PrimaryButtonProps =
+  | { children: ReactNode; onClick: () => void; as?: never; href?: never }
+  | { children: ReactNode; as: 'a'; href: string; onClick?: never }
+
+function PrimaryButton(props: PrimaryButtonProps) {
   const btnHover = useButtonHover()
+  const className =
+    'inline-flex h-12 items-center rounded-full bg-ll-terra-deep px-7 text-base font-medium text-white shadow-pop-terra transition-colors hover:bg-ll-ink'
   return (
     <motion.div {...btnHover} className="inline-block">
-      <button
-        type="button"
-        onClick={onClick}
-        className="inline-flex h-12 items-center rounded-full bg-ll-terra-deep px-7 text-base font-medium text-white shadow-pop-terra transition-colors hover:bg-ll-ink"
-      >
-        {children}
-      </button>
+      {props.as === 'a' ? (
+        <a href={props.href} className={className}>
+          {props.children}
+        </a>
+      ) : (
+        <button type="button" onClick={props.onClick} className={className}>
+          {props.children}
+        </button>
+      )}
     </motion.div>
   )
 }
@@ -72,7 +83,6 @@ function SectionHeading({
 /* ------------------------------------------------------------------------- Hero */
 
 function Hero() {
-  const { openWaitlist } = useWaitlist()
   const rise = 'motion-safe:animate-spring-in'
   const delay = (i: number) => ({ animationDelay: `${i * 70}ms` })
 
@@ -87,7 +97,7 @@ function Hero() {
         <div>
           <p className={cn('eyebrow inline-flex items-center gap-2', rise)} style={delay(0)}>
             <Sparkle className="h-4 w-4 text-ll-terra" />
-            Opening soon in Santa Barbara
+            Now serving Santa Barbara families
           </p>
           <h1
             className={cn('mt-4 font-display text-display-xl leading-[0.92] text-ll-ink', rise)}
@@ -108,20 +118,19 @@ function Hero() {
           </p>
 
           <div className={cn('mt-8 flex flex-wrap items-center gap-4', rise)} style={delay(3)}>
-            <PrimaryButton onClick={() => openWaitlist({ role: 'family' })}>
-              Join the family waitlist
+            <PrimaryButton as="a" href={applyUrl('family')}>
+              Get started
             </PrimaryButton>
-            <button
-              type="button"
-              onClick={() => openWaitlist({ role: 'nanny' })}
+            <a
+              href={applyUrl('nanny')}
               className="text-label font-medium text-ll-sage-deep underline-offset-4 hover:underline"
             >
-              Are you a nanny? Join here →
-            </button>
+              Are you a nanny? Apply here →
+            </a>
           </div>
 
           <p className={cn('mt-4 text-sm text-ll-warm-gray', rise)} style={delay(4)}>
-            Free to join the list. No commitment.
+            Free to join. Create your account and book in minutes.
           </p>
 
           {/* Credential chips — the same periwinkle trust motif the app leads with. Every line
@@ -201,7 +210,6 @@ function TrustStrip() {
 /* ------------------------------------------------------------- Two kinds of care */
 
 function TwoKindsOfCare() {
-  const { openWaitlist } = useWaitlist()
   return (
     <section id="care" className="scroll-mt-20 py-16 lg:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
@@ -240,8 +248,8 @@ function TwoKindsOfCare() {
         </div>
 
         <div className="mt-12 text-center">
-          <PrimaryButton onClick={() => openWaitlist({ role: 'family' })}>
-            Save our family a spot
+          <PrimaryButton as="a" href={applyUrl('family')}>
+            Get started
           </PrimaryButton>
         </div>
       </div>
@@ -426,7 +434,6 @@ function StepCard({
 /* --------------------------------------------------------------------- For nannies */
 
 function ForNannies() {
-  const { openWaitlist } = useWaitlist()
   return (
     <section id="nannies" className="relative scroll-mt-20 overflow-hidden bg-ll-cream-dark/30 py-16 lg:py-24">
       <Blob tone="sage" className="left-[-6%] bottom-1/4 h-64 w-64" />
@@ -440,8 +447,8 @@ function ForNannies() {
             and the work fits around your classes and your life.
           </p>
           <div className="mt-8">
-            <PrimaryButton onClick={() => openWaitlist({ role: 'nanny' })}>
-              Join the nanny waitlist
+            <PrimaryButton as="a" href={applyUrl('nanny')}>
+              Apply to join
             </PrimaryButton>
           </div>
         </div>
@@ -492,7 +499,7 @@ function WhoWeAre() {
 /* ---------------------------------------------------------------------- Bottom CTA */
 
 function BottomCTA() {
-  const { openWaitlist, openContact } = useWaitlist()
+  const { openContact } = useWaitlist()
   return (
     <section className="relative overflow-hidden border-t-1.5 border-ll-cream-dark">
       <Grain />
@@ -503,14 +510,14 @@ function BottomCTA() {
           </span>
         </FloatLoop>
         <h2 className="mx-auto max-w-2xl font-display text-display-lg text-ll-ink">
-          Save your spot
+          Ready when you are
         </h2>
         <p className="mx-auto mt-4 max-w-md text-body-lg text-ll-warm-gray">
-          We’re opening to Santa Barbara families soon. Join the waitlist and we’ll write to you
-          when it’s your turn.
+          Little Lamb is open to Santa Barbara families. Create your account and find trusted,
+          vetted care — it’s free to join.
         </p>
         <div className="mt-8">
-          <PrimaryButton onClick={() => openWaitlist()}>Join the waitlist</PrimaryButton>
+          <PrimaryButton as="a" href={applyUrl('family')}>Get started</PrimaryButton>
         </div>
         <p className="mt-4 text-sm text-ll-warm-gray">
           Questions?{' '}

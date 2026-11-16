@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Logo } from '../../components/ui/Logo'
 import { useButtonHover } from '../../lib/motion'
 import { useWaitlist } from './waitlistContext'
+import { applyUrl, loginUrl } from '../appUrl'
 
 /**
  * Chrome for the pre-launch landing site. Deliberately mirrors the app's PublicShell visual
@@ -36,7 +37,6 @@ const NAV_LINKS = [
 ]
 
 function LandingNav() {
-  const { openWaitlist } = useWaitlist()
   const btnHover = useButtonHover()
   return (
     <header className="sticky top-0 z-30 border-b-1.5 border-ll-cream-dark bg-ll-cream/90 backdrop-blur">
@@ -54,14 +54,19 @@ function LandingNav() {
               {l.label}
             </a>
           ))}
+          <a
+            href={loginUrl()}
+            className="hidden text-label font-medium text-ll-warm-gray hover:text-ll-ink sm:inline"
+          >
+            Log in
+          </a>
           <motion.div {...btnHover} className="inline-block">
-            <button
-              type="button"
-              onClick={() => openWaitlist()}
+            <a
+              href={applyUrl('family')}
               className="inline-flex h-10 items-center rounded-full bg-ll-terra-deep px-5 text-label font-medium text-white transition-colors hover:bg-ll-ink"
             >
-              Join the waitlist
-            </button>
+              Get started
+            </a>
           </motion.div>
         </div>
       </nav>
@@ -70,7 +75,7 @@ function LandingNav() {
 }
 
 function LandingFooter() {
-  const { openWaitlist, openContact } = useWaitlist()
+  const { openContact } = useWaitlist()
   return (
     <footer className="border-t-1.5 border-ll-cream-dark bg-ll-cream-dark/40">
       <div className="mx-auto grid max-w-6xl gap-8 px-5 py-12 sm:grid-cols-[1.5fr_1fr_1fr] sm:px-8">
@@ -86,14 +91,14 @@ function LandingFooter() {
           items={[
             { label: 'Last-minute care', href: '#care' },
             { label: 'How we vet nannies', href: '#trust' },
-            { label: 'Join the waitlist', onClick: () => openWaitlist({ role: 'family' }) },
+            { label: 'Get started', href: applyUrl('family') },
           ]}
         />
         <FooterCol
           title="Nannies"
           items={[
             { label: 'Why join', href: '#nannies' },
-            { label: 'Join the waitlist', onClick: () => openWaitlist({ role: 'nanny' }) },
+            { label: 'Apply to join', href: applyUrl('nanny') },
           ]}
         />
       </div>
