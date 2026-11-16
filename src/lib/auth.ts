@@ -79,17 +79,36 @@ interface CreateAccountInput extends ApplicationAnswers {
 }
 
 /**
+ * The approval fields a brand-new account starts with, by role.
+ *
+ * Launch decision (2026-11-16): FAMILIES are auto-approved — a family is a free, paying
+ * audience, not a trust surface, so the moment they sign up they are on the service with no
+ * admin step (approved=true, status=approved, no application stage).
+ *
+ * NANNIES remain vetted: a nanny is exactly the trust surface parents rely on ("every nanny is
+ * background-checked and admin-approved"), so a nanny self-signup must stay approved=false /
+ * status=pending and only an admin may flip it (enforced in firestore.rules). This split is a
+ * security invariant — do not auto-approve nannies.
+ */
+export function initialApproval(role: Role): {
+  approved: boolean
+  status: UserDoc['status']
+  stage: NannyStage | undefined
+} {
+  if (role === 'family') return { approved: true, status: 'approved', stage: undefined }
+  return { approved: false, status: 'pending', stage: 'application_received' }
+}
+
+/**
  * Creates an auth user + the canonical users/{uid} document. The user doc is the single
- * source of truth for role and approval — both are written server-trusted defaults here
- * (approved=false, status=pending) and can only be flipped to approved by an admin via
- * rules. Families and nannies both start unapproved per the flow docs.
+ * source of truth for role and approval. Families start approved; nannies start pending and
+ * can only be approved by an admin via rules (see initialApproval).
  */
 export async function createAccount(input: CreateAccountInput): Promise<UserDoc> {
   const cred = await createUserWithEmailAndPassword(auth, input.email, input.password)
   await updateProfile(cred.user, { displayName: input.fullName })
 
-  const stage: NannyStage | undefined =
-    input.role === 'nanny' ? 'application_received' : undefined
+  const { approved, status, stage } = initialApproval(input.role)
 
   const userDoc: UserDoc = {
     uid: cred.user.uid,
@@ -97,8 +116,8 @@ export async function createAccount(input: CreateAccountInput): Promise<UserDoc>
     email: input.email,
     fullName: input.fullName,
     phone: input.phone,
-    approved: false,
-    status: 'pending',
+    approved,
+    status,
     wizardComplete: false,
     stage,
     referredBy: input.referredBy ?? null,
@@ -140,15 +159,15 @@ export async function signInWithGoogle(
   const existing = await fetchUserDoc(cred.user.uid)
   if (existing) return existing
 
-  const stage: NannyStage | undefined = role === 'nanny' ? 'application_received' : undefined
+  const { approved, status, stage } = initialApproval(role)
   const userDoc: UserDoc = {
     uid: cred.user.uid,
     role,
     email: cred.user.email ?? '',
     fullName: cred.user.displayName ?? 'New member',
     phone: '',
-    approved: false,
-    status: 'pending',
+    approved,
+    status,
     wizardComplete: false,
     stage,
     referredBy: attribution?.referredBy ?? null,

@@ -162,3 +162,48 @@ describe('signInWithGoogle — the application survives a Google signup too', ()
     expect((written.notes as string).length).toBe(1000)
   })
 })
+
+// Launch decision (2026-11-16): families are a free, auto-approved audience — the moment a
+// family signs up they are on the service, no admin step. Nannies are STILL vetted: a nanny is
+// the trust surface parents rely on ("every nanny is background-checked and admin-approved"),
+// so nanny signup must remain approved=false / status=pending, gated behind admin approval.
+// This is a security invariant — the nanny-not-auto-approved assertions below must never flip.
+describe('createAccount — family auto-approval at signup', () => {
+  it('writes an approved, active family (no admin step)', async () => {
+    await createAccount({ ...base, role: 'family', children: 'One kid, age 4' })
+
+    const written = writtenDoc()
+    expect(written.approved).toBe(true)
+    expect(written.status).toBe('approved')
+    // A family has no application stage — that concept is nanny-only.
+    expect('stage' in written).toBe(false)
+  })
+
+  it('does NOT auto-approve a nanny — nannies stay pending for admin review', async () => {
+    await createAccount({ ...base, role: 'nanny', yearsExperience: '5' })
+
+    const written = writtenDoc()
+    expect(written.approved).toBe(false)
+    expect(written.status).toBe('pending')
+    expect(written.stage).toBe('application_received')
+  })
+})
+
+describe('signInWithGoogle — family auto-approval on first-time Google signup', () => {
+  it('auto-approves a first-time Google family', async () => {
+    await signInWithGoogle('family')
+
+    const written = writtenDoc()
+    expect(written.approved).toBe(true)
+    expect(written.status).toBe('approved')
+  })
+
+  it('does NOT auto-approve a first-time Google nanny', async () => {
+    await signInWithGoogle('nanny')
+
+    const written = writtenDoc()
+    expect(written.approved).toBe(false)
+    expect(written.status).toBe('pending')
+    expect(written.stage).toBe('application_received')
+  })
+})

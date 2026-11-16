@@ -78,12 +78,27 @@ service cloud.firestore {
       allow get: if isSignedIn() && (uid() == userId || isAdmin());
       allow list: if isAdmin();
 
+      // Approval state a new account may self-create with, by role (launch 2026-11-16):
+      //   - FAMILY: auto-approved — may create approved=true/status=approved. Families are a
+      //     free audience, not a trust surface.
+      //   - NANNY: still vetted — may ONLY create approved=false/status=pending. A nanny is the
+      //     trust surface parents rely on, so self-approval is forbidden; only an admin flips it
+      //     (allow update: if isAdmin()). This is a security invariant.
+      // Mixed states (e.g. approved=true but status=pending) are rejected either way.
+      function selfApprovalOk() {
+        return (incoming().role == 'family'
+                 && incoming().approved == true
+                 && incoming().status == 'approved')
+            || (incoming().role == 'nanny'
+                 && incoming().approved == false
+                 && incoming().status == 'pending');
+      }
+
       allow create: if isSignedIn()
         && uid() == userId
         && incoming().uid == userId
         && incoming().role in ['family', 'nanny']     // cannot self-create an admin
-        && incoming().approved == false                // cannot self-approve
-        && incoming().status == 'pending'
+        && selfApprovalOk()                            // family auto-approved; nanny stays pending
         && incoming().wizardComplete == false
         && strMax('fullName', 80) && strMax('email', 254) && strMax('phone', 32)
         && applicationFieldsOk();

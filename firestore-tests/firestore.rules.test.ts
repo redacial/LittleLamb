@@ -436,16 +436,24 @@ describe('bookings — a nanny cannot cancel, only claim', () => {
 describe('users — application fields', () => {
   const NEW = 'applicant1'
 
-  /** A minimal valid self-created pending user doc, plus whatever the case is testing. */
+  /**
+   * A minimal valid self-created user doc, plus whatever the case is testing. The approval
+   * fields follow the launch rule (initialApproval in src/lib/auth.ts): a family self-creates
+   * approved+active, a nanny self-creates pending. A case may still override any field via extra.
+   */
   function pendingUser(extra: Record<string, unknown>) {
+    const role = (extra.role as string) ?? 'family'
+    const approval =
+      role === 'family'
+        ? { approved: true, status: 'approved' }
+        : { approved: false, status: 'pending' }
     return {
       uid: NEW,
       role: 'family',
       email: 'a@example.com',
       fullName: 'Dana Whitfield',
       phone: '805-555-0142',
-      approved: false,
-      status: 'pending',
+      ...approval,
       wizardComplete: false,
       ...extra,
     }
@@ -515,6 +523,89 @@ describe('users — application fields', () => {
         approved: true,
         status: 'approved',
         notes: 'X'.repeat(1001),
+      }),
+    )
+  })
+})
+
+// Launch decision (2026-11-16): families are auto-approved at signup; nannies are NOT. The
+// create rule must let a FAMILY self-create approved=true/status=approved, while a NANNY may
+// still only self-create approved=false/status=pending. The nanny-cannot-self-approve case is
+// a security invariant — a stranger must never list themselves as a vetted nanny.
+describe('users — family auto-approval at create', () => {
+  const NEW = 'applicant2'
+
+  it('lets a FAMILY self-create as approved + active', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(NEW), 'users', NEW), {
+        uid: NEW,
+        role: 'family',
+        email: 'f@example.com',
+        fullName: 'Dana Whitfield',
+        phone: '805-555-0142',
+        approved: true,
+        status: 'approved',
+        wizardComplete: false,
+      }),
+    )
+  })
+
+  it('REJECTS a NANNY self-creating as approved (must stay pending for admin review)', async () => {
+    await assertFails(
+      setDoc(doc(as(NEW), 'users', NEW), {
+        uid: NEW,
+        role: 'nanny',
+        email: 'n@example.com',
+        fullName: 'Pat Vetting',
+        phone: '805-555-0199',
+        approved: true,
+        status: 'approved',
+        wizardComplete: false,
+      }),
+    )
+  })
+
+  it('REJECTS a nanny self-creating as approved=false but status=approved (no mixed bypass)', async () => {
+    await assertFails(
+      setDoc(doc(as(NEW), 'users', NEW), {
+        uid: NEW,
+        role: 'nanny',
+        email: 'n@example.com',
+        fullName: 'Pat Vetting',
+        phone: '805-555-0199',
+        approved: false,
+        status: 'approved',
+        wizardComplete: false,
+      }),
+    )
+  })
+
+  it('still lets a NANNY self-create as pending (the vetted path)', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(NEW), 'users', NEW), {
+        uid: NEW,
+        role: 'nanny',
+        email: 'n@example.com',
+        fullName: 'Pat Vetting',
+        phone: '805-555-0199',
+        approved: false,
+        status: 'pending',
+        wizardComplete: false,
+      }),
+    )
+  })
+
+  it('REJECTS a family self-creating approved=true but status still pending (must be consistent)', async () => {
+    await assertFails(
+      setDoc(doc(as(NEW), 'users', NEW), {
+        uid: NEW,
+        role: 'family',
+        email: 'f@example.com',
+        fullName: 'Dana Whitfield',
+        phone: '805-555-0142',
+        approved: true,
+        status: 'pending',
+        wizardComplete: false,
       }),
     )
   })
