@@ -17,6 +17,17 @@ const billing = {
 }
 const bookingsRef = { current: [] as Partial<Booking>[] }
 
+// stripeEnabled is the free-launch gate: when it's false (billing off), the page shows a
+// "Little Lamb is free" panel instead of any pricing. The pricing-correctness tests below
+// therefore run with it forced TRUE — that is the billing-live world they were written to
+// protect (the 100x cents/dollars bug). A dedicated test covers the billing-off free panel.
+const stripeOn = { current: true }
+vi.mock('../../hooks/useBilling', () => ({
+  get stripeEnabled() {
+    return stripeOn.current
+  },
+}))
+
 vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: { uid: 'f1' }, profile: { fullName: 'The Ito Family' }, loading: false }),
 }))
@@ -38,10 +49,28 @@ const confirmed = (n: number) => Array.from({ length: n }, () => ({ status: 'con
 beforeEach(() => {
   printInvoice.mockClear()
   bookingsRef.current = []
+  // Default to billing-ON for the pricing-correctness suite below. The free-launch test flips
+  // it off explicitly.
+  stripeOn.current = true
   billing.current = {
     config: { subscriptionCents: 2500, perBookingCents: 100, enabled: false },
     loading: false,
   }
+})
+
+describe('FamilyBillingPage — free-launch (billing off)', () => {
+  it('shows a free-service panel and NO pricing when billing is off', () => {
+    stripeOn.current = false
+    billing.current.config = { subscriptionCents: 2500, perBookingCents: 100, enabled: false }
+    render(<FamilyBillingPage />)
+
+    // Presents Little Lamb as free, and none of the pricing/charge copy is on the page.
+    expect(screen.getAllByText(/free/i).length).toBeGreaterThan(0)
+    expect(screen.queryByText('$25.00')).not.toBeInTheDocument()
+    expect(screen.queryByText(/per quarter|per confirmed booking|auto-charged|estimated next bill/i)).not.toBeInTheDocument()
+    // No "download this quarter" invoice button either — there is no bill.
+    expect(screen.queryByRole('button', { name: /download this quarter/i })).not.toBeInTheDocument()
+  })
 })
 
 describe('FamilyBillingPage — rates come from config/billing', () => {

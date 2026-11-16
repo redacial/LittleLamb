@@ -1,6 +1,7 @@
 import { useAuth } from '../../context/AuthContext'
 import { useMyBookings } from '../../hooks/useBookings'
 import { useBillingConfig } from '../../hooks/useAdmin'
+import { stripeEnabled } from '../../hooks/useBilling'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Card, CardLabel, Button } from '../../components/ui'
 import { SummaryCard } from '../../components/SummaryCard'
@@ -20,6 +21,31 @@ export function FamilyBillingPage() {
   const { config, loading: ratesLoading } = useBillingConfig()
   const subscription = config.subscriptionCents / 100
   const perBooking = config.perBookingCents / 100
+
+  // Free-launch guard. Little Lamb launches FREE (billing off), and the Billing nav tab is
+  // hidden then (see navFor). A family can still reach this URL directly, so show a plain
+  // free-service panel instead of any pricing — never quote "$25/quarter" to someone who will
+  // not be charged. The pricing view below returns when billing is switched on.
+  if (!stripeEnabled) {
+    return (
+      <>
+        <PageHeader title="Billing" subtitle="You're all set." />
+        <PageBody>
+          <Card tone="peri">
+            <div className="flex items-center justify-between gap-3">
+              <CardLabel className="mb-0">Little Lamb is free</CardLabel>
+              <span className="trust-chip">No charge</span>
+            </div>
+            <p className="mt-3 text-sm text-ll-ink">
+              Little Lamb is <span className="font-bold text-ll-sage-deep">free</span> for families
+              during our beta. There's nothing to pay and no invoices to track — just book the care
+              you need.
+            </p>
+          </Card>
+        </PageBody>
+      </>
+    )
+  }
 
   const confirmedThisQuarter = bookings.filter((b) => b.status === 'confirmed').length
   const estimate = subscription + confirmedThisQuarter * perBooking

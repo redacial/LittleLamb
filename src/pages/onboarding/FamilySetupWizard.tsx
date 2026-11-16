@@ -13,13 +13,16 @@ import { uploadProfilePhoto } from '../../lib/storage'
 import { cleanLine, cleanText } from '../../lib/sanitize'
 import { WizardShell } from '../../components/onboarding/WizardShell'
 import { PaymentStep } from '../../components/onboarding/PaymentStep'
+import { stripeEnabled } from '../../hooks/useBilling'
 import { useSpring } from '../../lib/motion'
 import { Button, Input, Textarea, Avatar, RateRangeInput, YesNo } from '../../components/ui'
 import { formatAge } from '../../lib/format'
 import { validateRateValue } from '../../lib/rates'
 import type { Child, FamilyProfile } from '../../types'
 
-const STEPS = ['Family profile', 'Contact', 'Payment']
+// The final step is a card capture only when billing is live. Little Lamb launches FREE, so it
+// reads as a simple "all set" confirmation and the step is labelled accordingly.
+const STEPS = ['Family profile', 'Contact', stripeEnabled ? 'Payment' : 'All set']
 
 export function FamilySetupWizard() {
   const { user, profile } = useAuth()
@@ -313,11 +316,13 @@ export function FamilySetupWizard() {
           exit={{ opacity: 0, x: -12 }}
           transition={stepTransition}
         >
-          <h1 className="text-display-md">Add a payment card</h1>
-          <p className="text-ll-warm-gray">
-            Your card is stored securely with Stripe for quarterly billing — $25 per quarter plus
-            $1 per confirmed booking. You won’t be charged today.
-          </p>
+          <h1 className="text-display-md">{stripeEnabled ? 'Add a payment card' : 'You’re almost there'}</h1>
+          {stripeEnabled && (
+            <p className="text-ll-warm-gray">
+              Your card is stored securely with Stripe for quarterly billing — $25 per quarter plus
+              $1 per confirmed booking. You won’t be charged today.
+            </p>
+          )}
           <PaymentStep onComplete={finish} saving={busy} />
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">

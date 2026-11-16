@@ -89,7 +89,9 @@ describe('FamilySetupWizard — resuming an abandoned wizard (bug A)', () => {
   })
 
   it('reopens on the step the family left off on, not back at screen one', async () => {
-    // She got as far as Payment last time and closed the tab.
+    // She got as far as the final step last time and closed the tab. (Billing is off in the
+    // test env — the free-launch posture — so the final step reads "You're almost there"
+    // rather than "Add a payment card".)
     stored.current = {
       uid: 'fam-1',
       homeAddress: '12 Ocean Rd',
@@ -99,7 +101,7 @@ describe('FamilySetupWizard — resuming an abandoned wizard (bug A)', () => {
     }
     show()
 
-    expect(await screen.findByRole('heading', { name: /add a payment card/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /almost there/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /tell us about your family/i })).not.toBeInTheDocument()
   })
 

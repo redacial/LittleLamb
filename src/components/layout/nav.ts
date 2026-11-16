@@ -56,8 +56,23 @@ export const ADMIN_NAV: NavItem[] = [
   // No My Profile — admin has no public-facing profile (spec).
 ]
 
-export function navFor(role: Role): NavItem[] {
+import { stripeEnabled } from '../../hooks/useBilling'
+
+export interface NavOptions {
+  /**
+   * Whether billing is live in the UI. Little Lamb launches FREE (billing off), and a family
+   * that is never charged must not see a "Billing" tab. Defaults to the real launch gate
+   * (stripeEnabled = publishable key present AND VITE_BILLING_LIVE === 'true'); tests inject it.
+   * Only the family-facing Billing tab is gated — admin's "Billing & Accounting" is an
+   * operational/accounting view and always shown.
+   */
+  billingEnabled?: boolean
+}
+
+export function navFor(role: Role, opts: NavOptions = {}): NavItem[] {
+  const billingEnabled = opts.billingEnabled ?? stripeEnabled
   if (role === 'admin') return ADMIN_NAV
   if (role === 'nanny') return NANNY_NAV
-  return FAMILY_NAV
+  if (billingEnabled) return FAMILY_NAV
+  return FAMILY_NAV.filter((item) => item.to !== '/family/billing')
 }

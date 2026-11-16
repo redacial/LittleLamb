@@ -17,7 +17,7 @@ import {
 } from '../../hooks/useBilling'
 
 interface Props {
-  /** Called once a card is saved (real) or the fallback is acknowledged. */
+  /** Called once a card is saved (real Stripe path) or the free-service step is finished. */
   onComplete: () => void
   saving: boolean
 }
@@ -67,7 +67,6 @@ export function PaymentStep({ onComplete, saving }: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [stripeJs, setStripeJs] = useState<Awaited<ReturnType<typeof getStripeJs>>>(null)
   const [initError, setInitError] = useState<string | null>(null)
-  const [acknowledged, setAcknowledged] = useState(false)
 
   useEffect(() => {
     if (!stripeEnabled) return
@@ -87,26 +86,20 @@ export function PaymentStep({ onComplete, saving }: Props) {
     }
   }, [])
 
-  // Fallback path: Stripe not configured yet (local dev / before Blaze go-live).
+  // Free-service branch: billing is off (VITE_BILLING_LIVE unset) — local dev AND the current
+  // free launch. Little Lamb is free to families during the beta, so there is no card to add and
+  // nothing to acknowledge. (When billing is later switched on, stripeEnabled becomes true and the
+  // real Stripe card capture below renders instead.)
   if (!stripeEnabled) {
     return (
       <div className="space-y-4">
-        <div className="rounded-ll-card border-1.5 border-dashed border-ll-warm-gray bg-white p-5">
+        <div className="rounded-ll-card border-1.5 border-dashed border-ll-sage bg-ll-sage/5 p-5">
           <p className="text-sm text-ll-warm-gray">
-            Secure card capture activates at launch. Your card will be added then; you won’t be
-            charged today. Continue to finish setting up your account.
+            Little Lamb is <span className="font-bold text-ll-sage-deep">free</span> for families
+            during our beta — there’s nothing to pay and no card to add. You’re ready to go.
           </p>
-          <label className="mt-4 flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={acknowledged}
-              onChange={(e) => setAcknowledged(e.target.checked)}
-              className="h-4 w-4 rounded accent-ll-sage"
-            />
-            I understand I’ll add a card at launch
-          </label>
         </div>
-        <Button onClick={onComplete} loading={saving} disabled={!acknowledged}>
+        <Button onClick={onComplete} loading={saving}>
           Finish setup
         </Button>
       </div>
