@@ -6,6 +6,7 @@ import { Card, CardLabel, Avatar, Badge, Button, RateDisclaimer } from '../../co
 import { IntroVideo } from '../../components/IntroVideo'
 import { formatRate } from '../../lib/rates'
 import { badgeLabel, badgeType } from '../../lib/badges'
+import { optionLabel, experienceLabel } from '../../lib/nannyProfileOptions'
 import { DAYS } from '../../components/onboarding/AvailabilityEditor'
 import { to12h } from '../../lib/format'
 
@@ -42,11 +43,24 @@ export function NannyProfilePage() {
   if (loading) return <PageBody><p className="text-ll-warm-gray">Loading…</p></PageBody>
   if (!nanny) return <PageBody><p>Profile not found.</p></PageBody>
 
+  // Prefer the selected experience band (new onboarding); fall back to legacy free-text years.
+  const experienceText = nanny.experienceBand
+    ? experienceLabel(nanny.experienceBand)
+    : nanny.yearsExperience
+    ? `${nanny.yearsExperience} years`
+    : ''
+  const aboutGroups: { label: string; ids: string[] }[] = [
+    { label: 'Great with', ids: nanny.specialties ?? [] },
+    { label: 'Activities', ids: nanny.activities ?? [] },
+    { label: 'Approach', ids: nanny.approaches ?? [] },
+    { label: 'Languages', ids: nanny.languages ?? [] },
+  ].filter((g) => g.ids.length > 0)
+
   return (
     <>
       <PageHeader
         title={nanny.fullName}
-        subtitle={nanny.yearsExperience ? `${nanny.yearsExperience} years of experience` : undefined}
+        subtitle={experienceText ? `${experienceText} of experience` : undefined}
         action={
           canBook ? (
             <Link to={`/family/calendar?nanny=${nanny.uid}`}>
@@ -85,8 +99,8 @@ export function NannyProfilePage() {
                   </svg>
                   Admin interviewed
                 </span>
-                {nanny.yearsExperience && (
-                  <span className="trust-chip">{nanny.yearsExperience} yrs experience</span>
+                {experienceText && (
+                  <span className="trust-chip">{experienceText} experience</span>
                 )}
               </div>
 
@@ -112,10 +126,32 @@ export function NannyProfilePage() {
           </div>
 
           <div className="space-y-6">
-            <Card>
-              <CardLabel>About</CardLabel>
-              <p className="mt-1 whitespace-pre-line text-ll-ink">{nanny.bio}</p>
-            </Card>
+            {nanny.bio && (
+              <Card>
+                <CardLabel>About</CardLabel>
+                <p className="mt-1 whitespace-pre-line text-ll-ink">{nanny.bio}</p>
+              </Card>
+            )}
+
+            {aboutGroups.length > 0 && (
+              <Card className="space-y-3">
+                {aboutGroups.map((g) => (
+                  <div key={g.label}>
+                    <CardLabel>{g.label}</CardLabel>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {g.ids.map((cid) => (
+                        <span
+                          key={cid}
+                          className="rounded-full border-1.5 border-ll-sage bg-ll-sage-light px-3 py-1 font-mono text-mono-sm font-medium text-ll-sage-deep"
+                        >
+                          {optionLabel(cid)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </Card>
+            )}
 
             {nanny.rateRange && (
               <Card>

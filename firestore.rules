@@ -32,6 +32,26 @@ service cloud.firestore {
       return !(field in incoming()) || (incoming()[field] is string && incoming()[field].size() <= n);
     }
 
+    // Array size guard — absent is allowed (optional field), else it must be a list no bigger
+    // than n. Used for the nanny "about me" selection arrays so a client can't write an absurd
+    // number of elements. Caps the SIZE only; the ids themselves are display-looked-up, not
+    // trusted, so their content doesn't need validation here.
+    function arrMax(field, n) {
+      return !(field in incoming()) || (incoming()[field] is list && incoming()[field].size() <= n);
+    }
+
+    // The 2026-11 nanny "about me" selections. Each catalog in src/lib/nannyProfileOptions.ts is
+    // small, so 30 is generous headroom; the selected-id strings cap at 40. All optional.
+    function nannyAboutMeOk() {
+      return arrMax('specialties', 30)
+        && arrMax('activities', 30)
+        && arrMax('approaches', 30)
+        && arrMax('languages', 30)
+        && arrMax('interests', 30)
+        && strMax('experienceBand', 40)
+        && strMax('funFactPrompt', 40);
+    }
+
     // ---- pay rates -----------------------------------------------------------
     // Hourly rate ranges, in integer CENTS. Cents (not floats) keep these comparisons
     // exact. Cap mirrors RATE_MAX_CENTS in src/lib/rates.ts ($500/hr) so a compromised
@@ -173,6 +193,7 @@ service cloud.firestore {
         && incoming().uid == nannyId
         && strMax('fullName', 80) && strMax('bio', 600) && strMax('personalStatement', 1000)
         && strMax('funFact', 120)
+        && nannyAboutMeOk()
         && rateRangeOk()
         && (!('verifiedBadges' in incoming()) || incoming().verifiedBadges.size() == 0);
 
@@ -181,6 +202,7 @@ service cloud.firestore {
         && incoming().uid == nannyId
         && strMax('fullName', 80) && strMax('bio', 600) && strMax('personalStatement', 1000)
         && strMax('funFact', 120)
+        && nannyAboutMeOk()
         && rateRangeOk()
         && (!('verifiedBadges' in incoming()) || incoming().verifiedBadges == existing().verifiedBadges);
 

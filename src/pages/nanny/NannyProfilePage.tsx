@@ -5,8 +5,18 @@ import { useNannyProfile } from '../../hooks/useProfile'
 import { uploadProfilePhoto, uploadIntroVideo } from '../../lib/storage'
 import { cleanText, cleanLine } from '../../lib/sanitize'
 import { SELF_BADGES, badgeLabel } from '../../lib/badges'
+import {
+  EXPERIENCE_BANDS,
+  SPECIALTIES,
+  ACTIVITIES,
+  APPROACHES,
+  LANGUAGES,
+  INTERESTS,
+  FUN_FACT_PROMPTS,
+} from '../../lib/nannyProfileOptions'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { AvailabilityEditor } from '../../components/onboarding/AvailabilityEditor'
+import { ChipGroup } from '../../components/onboarding/ChipGroup'
 import { Card, CardLabel, Input, Textarea, Button, Avatar, Badge, RateRangeInput } from '../../components/ui'
 import { parseRateDollars, validateRateValue, nannyFloorRange } from '../../lib/rates'
 import { ReferralCard } from '../../components/ReferralCard'
@@ -26,8 +36,15 @@ export function NannyOwnProfilePage() {
   const [photoURL, setPhotoURL] = useState<string | null>(null)
   const [bio, setBio] = useState('')
   const [funFact, setFunFact] = useState('')
+  const [funFactPrompt, setFunFactPrompt] = useState<string[]>([])
+  const [experienceBand, setExperienceBand] = useState<string[]>([])
   const [videoURL, setVideoURL] = useState<string | null>(null)
   const [selfBadges, setSelfBadges] = useState<string[]>([])
+  const [specialties, setSpecialties] = useState<string[]>([])
+  const [activities, setActivities] = useState<string[]>([])
+  const [approaches, setApproaches] = useState<string[]>([])
+  const [languages, setLanguages] = useState<string[]>([])
+  const [interests, setInterests] = useState<string[]>([])
   const [availability, setAvailability] = useState<AvailabilityBlock[]>([])
   // A nanny stores a single FLOOR (the least they'll accept), held internally as {floor, RATE_MAX}.
   const [rate, setRate] = useState('')
@@ -41,8 +58,15 @@ export function NannyOwnProfilePage() {
     setPhotoURL(nanny.photoURL ?? null)
     setBio(nanny.bio ?? '')
     setFunFact(nanny.funFact ?? '')
+    setFunFactPrompt(nanny.funFactPrompt ? [nanny.funFactPrompt] : [])
+    setExperienceBand(nanny.experienceBand ? [nanny.experienceBand] : [])
     setVideoURL(nanny.introVideoURL ?? null)
     setSelfBadges(nanny.selfBadges ?? [])
+    setSpecialties(nanny.specialties ?? [])
+    setActivities(nanny.activities ?? [])
+    setApproaches(nanny.approaches ?? [])
+    setLanguages(nanny.languages ?? [])
+    setInterests(nanny.interests ?? [])
     setAvailability(nanny.availability ?? [])
     if (nanny.rateRange) {
       // The floor is the bottom of the stored range.
@@ -53,8 +77,9 @@ export function NannyOwnProfilePage() {
   // Profile completeness — quiet nudge (My Profile only, never the dashboard) per spec.
   const checks = [
     { label: 'Photo', done: !!photoURL },
-    { label: 'Bio', done: bio.trim().length >= 20 },
-    { label: 'Fun fact', done: funFact.trim().length > 0 },
+    { label: 'Experience', done: experienceBand.length > 0 },
+    { label: 'About you', done: specialties.length + activities.length + approaches.length + languages.length > 0 },
+    { label: 'Fun fact', done: funFact.trim().length > 0 || interests.length > 0 },
     { label: 'Intro video', done: !!videoURL },
     { label: 'Badges', done: selfBadges.length > 0 },
     { label: 'Availability', done: availability.length > 0 },
@@ -113,6 +138,13 @@ export function NannyOwnProfilePage() {
       await save({
         bio: cleanText(bio, BIO_MAX),
         funFact: cleanLine(funFact, FUN_FACT_MAX),
+        funFactPrompt: funFactPrompt[0] ?? '',
+        experienceBand: experienceBand[0] ?? '',
+        specialties,
+        activities,
+        approaches,
+        languages,
+        interests,
         selfBadges,
         availability,
         // Only write when it parses — a cleared rate is left untouched rather than
@@ -184,15 +216,59 @@ export function NannyOwnProfilePage() {
             </label>
           </Card>
 
-          <Card className="space-y-4">
-            <Textarea label="Bio" maxLength={BIO_MAX} hint={`${bio.length}/${BIO_MAX}`} value={bio} onChange={(e) => { setBio(e.target.value); setSaved(false) }} />
-            <Input
-              label="Fun fact"
-              maxLength={FUN_FACT_MAX}
-              hint="The warm one-liner families see first, over your photo"
-              value={funFact}
-              onChange={(e) => { setFunFact(e.target.value); setSaved(false) }}
-            />
+          <Card className="space-y-5">
+            <div>
+              <CardLabel>Experience</CardLabel>
+              <div className="mt-2">
+                <ChipGroup options={EXPERIENCE_BANDS} value={experienceBand} onChange={(v) => { setExperienceBand(v); setSaved(false) }} />
+              </div>
+            </div>
+            <div>
+              <CardLabel>Bio</CardLabel>
+              <div className="mt-2">
+                <Textarea label="" aria-label="Bio" maxLength={BIO_MAX} hint={`${bio.length}/${BIO_MAX} — optional`} value={bio} onChange={(e) => { setBio(e.target.value); setSaved(false) }} />
+              </div>
+            </div>
+            <div>
+              <CardLabel>Fun fact</CardLabel>
+              <p className="mb-2 mt-1 text-sm text-ll-warm-gray">Pick a prompt and finish the line — optional, but it helps families get to know you.</p>
+              <ChipGroup options={FUN_FACT_PROMPTS.map((p) => ({ id: p.id, label: p.label }))} value={funFactPrompt} onChange={(v) => { setFunFactPrompt(v); setSaved(false) }} idPrefix="prompt-" />
+              {funFactPrompt[0] && (
+                <div className="mt-3">
+                  <Input
+                    label={FUN_FACT_PROMPTS.find((p) => p.id === funFactPrompt[0])?.lead ?? 'My answer'}
+                    placeholder={FUN_FACT_PROMPTS.find((p) => p.id === funFactPrompt[0])?.placeholder}
+                    maxLength={FUN_FACT_MAX}
+                    value={funFact}
+                    onChange={(e) => { setFunFact(e.target.value); setSaved(false) }}
+                  />
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card className="space-y-5">
+            <CardLabel>About you</CardLabel>
+            <div>
+              <p className="label mb-2 text-ll-ink">I’m great with</p>
+              <ChipGroup options={SPECIALTIES} value={specialties} onChange={(v) => { setSpecialties(v); setSaved(false) }} multiple idPrefix="spec-" />
+            </div>
+            <div>
+              <p className="label mb-2 text-ll-ink">Activities I bring</p>
+              <ChipGroup options={ACTIVITIES} value={activities} onChange={(v) => { setActivities(v); setSaved(false) }} multiple idPrefix="act-" />
+            </div>
+            <div>
+              <p className="label mb-2 text-ll-ink">My approach</p>
+              <ChipGroup options={APPROACHES} value={approaches} onChange={(v) => { setApproaches(v); setSaved(false) }} multiple idPrefix="appr-" />
+            </div>
+            <div>
+              <p className="label mb-2 text-ll-ink">Languages I speak</p>
+              <ChipGroup options={LANGUAGES} value={languages} onChange={(v) => { setLanguages(v); setSaved(false) }} multiple idPrefix="lang-" />
+            </div>
+            <div>
+              <p className="label mb-2 text-ll-ink">A few things you love</p>
+              <ChipGroup options={INTERESTS} value={interests} onChange={(v) => { setInterests(v); setSaved(false) }} multiple idPrefix="interest-" />
+            </div>
           </Card>
 
           <Card>

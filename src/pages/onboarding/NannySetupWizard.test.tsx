@@ -86,7 +86,7 @@ describe('NannySetupWizard — resuming an abandoned wizard (bug A)', () => {
   it('starts at the beginning for a profile saved before wizardStep existed', async () => {
     stored.current = { uid: 'nanny-1', bio: 'Hello there' } // no wizardStep
     show()
-    expect(await screen.findByRole('heading', { name: /your photo & bio/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /your photo & experience/i })).toBeInTheDocument()
   })
 })
 
@@ -120,6 +120,98 @@ describe('NannySetupWizard — the rate on the final step (bug C: don’t lose a
     await waitFor(() => expect(save).toHaveBeenCalled())
     // Nanny floor: {2500, 50000}.
     expect(savedDoc().rateRange).toEqual({ minCents: 2500, maxCents: 50000 })
+  })
+})
+
+// Care.com-style onboarding (2026-11): selection-first. Step 0 captures an experience BAND (a
+// tapped chip, not typed years) and an OPTIONAL bio; the "about you" step captures specialties /
+// activities / approach / languages as chip groups, all optional. These tests pin the written doc.
+describe('NannySetupWizard — selection-first step 0 (experience band + optional bio)', () => {
+  it('persists the tapped experience band, not a typed number', async () => {
+    const user = userEvent.setup()
+    stored.current = { uid: 'nanny-1', photoURL: 'https://example.test/photo.jpg' }
+    show()
+    // Pick an experience band chip.
+    await user.click(await screen.findByRole('button', { name: '3–5 years' }))
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => expect(save).toHaveBeenCalled())
+    expect(savedDoc().experienceBand).toBe('3_5')
+  })
+
+  it('lets a nanny continue with NO bio (bio is now optional)', async () => {
+    const user = userEvent.setup()
+    // Photo present, no bio at all.
+    stored.current = { uid: 'nanny-1', photoURL: 'https://example.test/photo.jpg' }
+    show()
+    await user.click(await screen.findByRole('button', { name: /continue/i }))
+
+    // It advanced — no "please write a bio" error, and the step was recorded.
+    await waitFor(() => expect(save).toHaveBeenCalled())
+    expect(savedDoc().wizardStep).toBe(1)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('still requires a photo before continuing', async () => {
+    const user = userEvent.setup()
+    stored.current = { uid: 'nanny-1' } // no photo
+    show()
+    await user.click(await screen.findByRole('button', { name: /continue/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/photo/i)
+    expect(savedDoc().wizardStep).toBeUndefined()
+  })
+
+  it('persists an optional bio when one is written', async () => {
+    const user = userEvent.setup()
+    stored.current = { uid: 'nanny-1', photoURL: 'https://example.test/photo.jpg' }
+    show()
+    await user.type(await screen.findByLabelText(/bio/i), 'I love tide-pools.')
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => expect(save).toHaveBeenCalled())
+    expect(savedDoc().bio).toBe('I love tide-pools.')
+  })
+})
+
+describe('NannySetupWizard — the "about you" chip groups', () => {
+  /** A nanny sitting on the about-you step (step 2) with photo + video done. */
+  const atAboutStep: Partial<NannyProfile> = {
+    uid: 'nanny-1',
+    photoURL: 'https://example.test/photo.jpg',
+    introVideoURL: 'https://example.test/video.mp4',
+    wizardStep: 2,
+  }
+
+  it('persists selected specialties, activities, approach and languages', async () => {
+    const user = userEvent.setup()
+    stored.current = atAboutStep
+    show()
+    await user.click(await screen.findByRole('button', { name: 'Newborns' }))
+    await user.click(screen.getByRole('button', { name: 'Arts & crafts' }))
+    await user.click(screen.getByRole('button', { name: 'Gentle & nurturing' }))
+    await user.click(screen.getByRole('button', { name: 'Spanish' }))
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => expect(save).toHaveBeenCalled())
+    const doc = savedDoc()
+    expect(doc.specialties).toContain('newborns')
+    expect(doc.activities).toContain('arts_crafts')
+    expect(doc.approaches).toContain('nurturing')
+    expect(doc.languages).toContain('spanish')
+  })
+
+  it('lets a nanny continue the about-you step with nothing selected (all optional)', async () => {
+    const user = userEvent.setup()
+    stored.current = atAboutStep
+    show()
+    // Confirm we're on the about-you step before acting.
+    await screen.findByRole('heading', { name: /tell families about you/i })
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => expect(save).toHaveBeenCalled())
+    expect(savedDoc().wizardStep).toBe(3)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })
 

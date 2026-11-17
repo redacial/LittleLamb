@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { NannyProfilePage } from './NannyProfilePage'
@@ -78,5 +78,38 @@ describe('NannyProfilePage — booking CTAs', () => {
     expect(screen.queryByRole('button', { name: /request outside hours/i })).not.toBeInTheDocument()
     // Positive control: the profile itself still rendered for the nanny.
     expect(screen.getAllByText(/maya brooks/i).length).toBeGreaterThan(0)
+  })
+})
+
+describe('NannyProfilePage — Care.com-style selections', () => {
+  it('renders the experience band label, not the raw id', () => {
+    nannyState.current = {
+      nanny: { ...NANNY, experienceBand: '3_5' } as DirectoryNanny,
+      loading: false,
+    }
+    renderPage(FAMILY)
+    expect(screen.getAllByText(/3–5 years/i).length).toBeGreaterThan(0)
+  })
+
+  it('renders specialties / activities / approach / languages as readable labels', () => {
+    nannyState.current = {
+      nanny: {
+        ...NANNY,
+        specialties: ['newborns'],
+        activities: ['beach'],
+        approaches: ['nurturing'],
+        languages: ['spanish'],
+      } as DirectoryNanny,
+      loading: false,
+    }
+    renderPage(FAMILY)
+    expect(screen.getByText('Newborns')).toBeInTheDocument()
+    expect(screen.getByText('Beach & tide-pools')).toBeInTheDocument()
+    expect(screen.getByText('Gentle & nurturing')).toBeInTheDocument()
+    expect(screen.getByText('Spanish')).toBeInTheDocument()
+  })
+
+  afterEach(() => {
+    nannyState.current = { nanny: NANNY, loading: false }
   })
 })

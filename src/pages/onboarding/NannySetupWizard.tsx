@@ -6,7 +6,17 @@ import { useNannyProfile, completeWizard, resumeStep, ratePatchValue } from '../
 import { uploadProfilePhoto, uploadIntroVideo } from '../../lib/storage'
 import { cleanText, cleanLine } from '../../lib/sanitize'
 import { SELF_BADGES } from '../../lib/badges'
+import {
+  EXPERIENCE_BANDS,
+  SPECIALTIES,
+  ACTIVITIES,
+  APPROACHES,
+  LANGUAGES,
+  INTERESTS,
+  FUN_FACT_PROMPTS,
+} from '../../lib/nannyProfileOptions'
 import { WizardShell } from '../../components/onboarding/WizardShell'
+import { ChipGroup } from '../../components/onboarding/ChipGroup'
 import { AvailabilityEditor } from '../../components/onboarding/AvailabilityEditor'
 import { useSpring, useChipHover } from '../../lib/motion'
 import { Button, Input, Textarea, Avatar, Badge, RateRangeInput } from '../../components/ui'
@@ -38,9 +48,15 @@ export function NannySetupWizard() {
   const [photoURL, setPhotoURL] = useState<string | null>(null)
   const [bio, setBio] = useState('')
   const [funFact, setFunFact] = useState('')
-  const [yearsExperience, setYearsExperience] = useState('')
+  const [funFactPrompt, setFunFactPrompt] = useState<string[]>([])
+  const [experienceBand, setExperienceBand] = useState<string[]>([])
   const [videoURL, setVideoURL] = useState<string | null>(null)
   const [selfBadges, setSelfBadges] = useState<string[]>([])
+  const [specialties, setSpecialties] = useState<string[]>([])
+  const [activities, setActivities] = useState<string[]>([])
+  const [approaches, setApproaches] = useState<string[]>([])
+  const [languages, setLanguages] = useState<string[]>([])
+  const [interests, setInterests] = useState<string[]>([])
   const [availability, setAvailability] = useState<AvailabilityBlock[]>([])
   // A single dollar string — the nanny's floor (least they'll accept). See ratePatchValue.
   const [rate, setRate] = useState('')
@@ -50,9 +66,15 @@ export function NannySetupWizard() {
     setPhotoURL(nanny.photoURL ?? null)
     setBio(nanny.bio ?? '')
     setFunFact(nanny.funFact ?? '')
-    setYearsExperience(nanny.yearsExperience ?? '')
+    setFunFactPrompt(nanny.funFactPrompt ? [nanny.funFactPrompt] : [])
+    setExperienceBand(nanny.experienceBand ? [nanny.experienceBand] : [])
     setVideoURL(nanny.introVideoURL ?? null)
     setSelfBadges(nanny.selfBadges ?? [])
+    setSpecialties(nanny.specialties ?? [])
+    setActivities(nanny.activities ?? [])
+    setApproaches(nanny.approaches ?? [])
+    setLanguages(nanny.languages ?? [])
+    setInterests(nanny.interests ?? [])
     setAvailability(nanny.availability ?? [])
     if (nanny.rateRange) {
       // Her floor is the bottom of the stored range.
@@ -124,15 +146,22 @@ export function NannySetupWizard() {
   }
 
   async function nextFromBio() {
+    // Photo stays required (families need a real face per the design system); everything else on
+    // this step is optional now — experience band, bio, and the fun fact are all tap-or-skip.
     if (!photoURL) return setError('Please add a profile photo.')
-    if (bio.trim().length < 20) return setError('Please write at least a short bio.')
+    const cleanBio = cleanText(bio, BIO_MAX)
     const ok = await persist({
       fullName: profile?.fullName ?? '',
       photoURL,
-      bio: cleanText(bio, BIO_MAX),
-      personalStatement: cleanText(bio, BIO_MAX),
+      bio: cleanBio,
+      personalStatement: cleanBio,
+      // experienceBand is the new selection; keep yearsExperience written (empty) so any legacy
+      // reader that still looks at it gets a defined value rather than undefined.
+      experienceBand: experienceBand[0] ?? '',
+      yearsExperience: nanny?.yearsExperience ?? '',
       funFact: cleanLine(funFact, FUN_FACT_MAX),
-      yearsExperience: cleanLine(yearsExperience, 40),
+      funFactPrompt: funFactPrompt[0] ?? '',
+      interests,
       wizardStep: 1,
     })
     if (ok) setStep(1)
@@ -146,7 +175,15 @@ export function NannySetupWizard() {
   }
 
   async function nextFromBadges() {
-    const ok = await persist({ selfBadges, wizardStep: 3 })
+    // The "about you" step — all selections optional, so there's never a validation gate here.
+    const ok = await persist({
+      specialties,
+      activities,
+      approaches,
+      languages,
+      selfBadges,
+      wizardStep: 3,
+    })
     if (ok) setStep(3)
   }
 
@@ -214,7 +251,7 @@ export function NannySetupWizard() {
           exit={{ opacity: 0, x: -12 }}
           transition={stepTransition}
         >
-          <h1 className="text-display-md">Your photo & bio</h1>
+          <h1 className="text-display-md">Your photo & experience</h1>
           <div className="flex items-center gap-4">
             <Avatar name={profile?.fullName ?? 'Nanny'} src={photoURL} size="lg" />
             <label className="cursor-pointer text-sm font-bold text-ll-sage-deep hover:underline">
@@ -222,26 +259,47 @@ export function NannySetupWizard() {
               <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />
             </label>
           </div>
-          <Input
-            label="Years of childcare experience"
-            placeholder="e.g. 5"
-            value={yearsExperience}
-            onChange={(e) => setYearsExperience(e.target.value)}
-          />
-          <Textarea
-            label="Bio"
-            hint={`${bio.length}/${BIO_MAX} — share your experience and approach to childcare`}
-            maxLength={BIO_MAX}
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-          />
-          <Input
-            label="Fun fact"
-            hint="One warm line families see first — e.g. “Tide-pool expert and snack diplomat”"
-            maxLength={FUN_FACT_MAX}
-            value={funFact}
-            onChange={(e) => setFunFact(e.target.value)}
-          />
+
+          <div>
+            <p className="label mb-2 text-ll-ink">How long have you cared for children?</p>
+            <ChipGroup options={EXPERIENCE_BANDS} value={experienceBand} onChange={setExperienceBand} />
+          </div>
+
+          <div>
+            <p className="label mb-1 text-ll-ink">A little about you</p>
+            <p className="mb-2 text-sm text-ll-warm-gray">Optional — a sentence or two helps families get to know you.</p>
+            <Textarea
+              label=""
+              aria-label="Bio"
+              hint={`${bio.length}/${BIO_MAX}`}
+              maxLength={BIO_MAX}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <p className="label mb-1 text-ll-ink">Add a fun fact</p>
+            <p className="mb-2 text-sm text-ll-warm-gray">Optional, but it helps families get to know you. Pick a prompt, then finish the line.</p>
+            <ChipGroup options={FUN_FACT_PROMPTS.map((p) => ({ id: p.id, label: p.label }))} value={funFactPrompt} onChange={setFunFactPrompt} idPrefix="prompt-" />
+            {funFactPrompt[0] && (
+              <div className="mt-3">
+                <Input
+                  label={FUN_FACT_PROMPTS.find((p) => p.id === funFactPrompt[0])?.lead ?? 'My answer'}
+                  placeholder={FUN_FACT_PROMPTS.find((p) => p.id === funFactPrompt[0])?.placeholder}
+                  maxLength={FUN_FACT_MAX}
+                  value={funFact}
+                  onChange={(e) => setFunFact(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <p className="label mb-2 text-ll-ink">A few things you love</p>
+            <ChipGroup options={INTERESTS} value={interests} onChange={setInterests} multiple idPrefix="interest-" />
+          </div>
+
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <Button onClick={nextFromBio} loading={busy}>Continue</Button>
         </motion.div>
@@ -289,11 +347,33 @@ export function NannySetupWizard() {
           exit={{ opacity: 0, x: -12 }}
           transition={stepTransition}
         >
-          <h1 className="text-display-md">Select your badges</h1>
+          <h1 className="text-display-md">Tell families about you</h1>
           <p className="text-ll-warm-gray">
-            Pick the traits that describe you. Certifications like CPR and First Aid are verified
-            and added by our team after your interview.
+            Tap whatever fits — it helps families find their match. Everything here is optional.
           </p>
+
+          <div>
+            <p className="label mb-2 text-ll-ink">I’m great with</p>
+            <ChipGroup options={SPECIALTIES} value={specialties} onChange={setSpecialties} multiple idPrefix="spec-" />
+          </div>
+          <div>
+            <p className="label mb-2 text-ll-ink">Activities I bring</p>
+            <ChipGroup options={ACTIVITIES} value={activities} onChange={setActivities} multiple idPrefix="act-" />
+          </div>
+          <div>
+            <p className="label mb-2 text-ll-ink">My approach</p>
+            <ChipGroup options={APPROACHES} value={approaches} onChange={setApproaches} multiple idPrefix="appr-" />
+          </div>
+          <div>
+            <p className="label mb-2 text-ll-ink">Languages I speak</p>
+            <ChipGroup options={LANGUAGES} value={languages} onChange={setLanguages} multiple idPrefix="lang-" />
+          </div>
+
+          <div>
+            <p className="label mb-2 text-ll-ink">Badges</p>
+            <p className="mb-2 text-sm text-ll-warm-gray">
+              Certifications like CPR and First Aid are verified and added by our team after your interview.
+            </p>
           <div className="flex flex-wrap gap-2">
             {SELF_BADGES.map((b) => {
               const on = selfBadges.includes(b.id)
@@ -316,12 +396,13 @@ export function NannySetupWizard() {
               )
             })}
           </div>
-          <div>
-            <p className="eyebrow mb-2">Verified by Little Lamb after your interview</p>
-            <div className="flex flex-wrap gap-2 opacity-70">
-              <Badge label="CPR Certified" type="verified" />
-              <Badge label="First Aid Certified" type="verified" />
-              <Badge label="Background Checked" type="verified" />
+            <div className="mt-3">
+              <p className="eyebrow mb-2">Verified by Little Lamb after your interview</p>
+              <div className="flex flex-wrap gap-2 opacity-70">
+                <Badge label="CPR Certified" type="verified" />
+                <Badge label="First Aid Certified" type="verified" />
+                <Badge label="Background Checked" type="verified" />
+              </div>
             </div>
           </div>
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}

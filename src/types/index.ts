@@ -155,8 +155,32 @@ export interface NannyProfile {
    */
   funFact?: string
   introVideoURL?: string | null
+  /**
+   * Free-text years of experience (legacy). Kept for backward compatibility: pre-2026-11 nannies
+   * have this. New signups set `experienceBand` instead (a selected range). Readers should prefer
+   * experienceBand and fall back to this. See src/lib/nannyProfileOptions.ts.
+   */
   yearsExperience: string
+  /**
+   * Selected experience band id (e.g. '3_5'), from EXPERIENCE_BANDS. The Care.com-style
+   * replacement for the typed yearsExperience — single-select, no free text. Optional so
+   * existing profiles (which only have yearsExperience) stay valid.
+   */
+  experienceBand?: string
   personalStatement: string
+  /**
+   * "About me" selections (2026-11 onboarding), each a list of option ids from the catalogs in
+   * src/lib/nannyProfileOptions.ts. All optional — a profile built before this, or a nanny who
+   * skipped them, simply has none. These power the chip rows families read on the profile.
+   */
+  specialties?: string[]
+  activities?: string[]
+  approaches?: string[]
+  languages?: string[]
+  /** Fun-fact prompt id chosen (FUN_FACT_PROMPTS), paired with the optional funFact answer text. */
+  funFactPrompt?: string
+  /** Quick-pick interest ids (INTERESTS) shown alongside the fun fact. Optional. */
+  interests?: string[]
   selfBadges: string[]
   verifiedBadges: string[]
   availability: AvailabilityBlock[]

@@ -279,6 +279,50 @@ describe('rate ranges', () => {
   })
 })
 
+// The 2026-11 Care.com-style onboarding adds selection arrays to the nanny profile
+// (specialties, activities, approaches, languages, interests) and two selected-id strings
+// (experienceBand, funFactPrompt). The catalogs are small, so the rules cap each array's SIZE
+// to block a client writing an absurd number of elements, and cap the selected-id strings.
+describe('nannies — about-me selection caps', () => {
+  it('accepts normal about-me selections', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(NANNY), 'nannies', NANNY), {
+        uid: NANNY,
+        bio: 'hi',
+        experienceBand: '3_5',
+        specialties: ['newborns', 'toddlers'],
+        activities: ['beach', 'reading'],
+        approaches: ['nurturing'],
+        languages: ['english', 'spanish'],
+        funFactPrompt: 'superpower',
+        interests: ['baking', 'crafts'],
+      }),
+    )
+  })
+
+  it('rejects an oversized selection array', async () => {
+    const huge = Array.from({ length: 60 }, (_, i) => `x${i}`)
+    await assertFails(
+      setDoc(doc(as(NANNY), 'nannies', NANNY), { uid: NANNY, specialties: huge }),
+    )
+  })
+
+  it('rejects an over-long experienceBand / funFactPrompt id', async () => {
+    await assertFails(
+      setDoc(doc(as(NANNY), 'nannies', NANNY), { uid: NANNY, experienceBand: 'z'.repeat(50) }),
+    )
+    await assertFails(
+      setDoc(doc(as(NANNY), 'nannies', NANNY), { uid: NANNY, funFactPrompt: 'z'.repeat(50) }),
+    )
+  })
+
+  it('still allows a profile with none of these fields (back-compat)', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(NANNY), 'nannies', NANNY), { uid: NANNY, bio: 'hi' }),
+    )
+  })
+})
+
 // ---- mail createdBy (per-user send quota depends on it) ---------------------
 // The quota in onMailCreated meters by createdBy, so if that field could be omitted or
 // forged the cap would be trivially evadable.

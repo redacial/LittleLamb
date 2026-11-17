@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Badge, Button } from './ui'
 import { badgeType, badgeLabel } from '../lib/badges'
+import { experienceLabel } from '../lib/nannyProfileOptions'
 import { formatRate, rangesOverlap } from '../lib/rates'
 import { useTiltHover } from '../lib/motion'
 import { cn } from '../lib/cn'
@@ -37,6 +38,12 @@ export function NannyCard({ nanny, profileBase, canBook, budget }: NannyCardProp
   const hover = useTiltHover()
   const href = `${profileBase}/nannies/${nanny.uid}`
   const badges = [...nanny.verifiedBadges, ...nanny.selfBadges].slice(0, 4)
+  // Prefer the selected experience band (new onboarding); fall back to legacy free-text years.
+  const experienceText = nanny.experienceBand
+    ? experienceLabel(nanny.experienceBand)
+    : nanny.yearsExperience
+    ? `${nanny.yearsExperience} yrs`
+    : ''
   // Soft signal, never a filter: an out-of-budget nanny stays listed and bookable, just labelled,
   // so families keep full visibility of supply.
   const outOfBudget = canBook && !!budget && !rangesOverlap(budget, nanny.rateRange)
@@ -86,8 +93,8 @@ export function NannyCard({ nanny, profileBase, canBook, budget }: NannyCardProp
             </svg>
             Background checked
           </span>
-          {nanny.yearsExperience && (
-            <span className="trust-chip">{nanny.yearsExperience} yrs experience</span>
+          {experienceText && (
+            <span className="trust-chip">{experienceText} experience</span>
           )}
         </div>
 
@@ -110,9 +117,11 @@ export function NannyCard({ nanny, profileBase, canBook, budget }: NannyCardProp
           </div>
         )}
 
-        <p className={cn('mt-3 line-clamp-2 text-sm text-ll-warm-gray', badges.length === 0 && 'mt-2')}>
-          {nanny.bio}
-        </p>
+        {nanny.bio && (
+          <p className={cn('mt-3 line-clamp-2 text-sm text-ll-warm-gray', badges.length === 0 && 'mt-2')}>
+            {nanny.bio}
+          </p>
+        )}
 
         <div className="mt-4 flex gap-2 pt-1">
           <Link to={href} className="flex-1" tabIndex={-1}>
