@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Badge, Button } from './ui'
 import { badgeType, badgeLabel } from '../lib/badges'
 import { experienceLabel } from '../lib/nannyProfileOptions'
+import { composeFunFact } from '../lib/funFact'
 import { formatRate, rangesOverlap } from '../lib/rates'
 import { useTiltHover } from '../lib/motion'
 import { cn } from '../lib/cn'
@@ -76,9 +77,9 @@ export function NannyCard({ nanny, profileBase, canBook, budget }: NannyCardProp
           <p className="font-display text-2xl leading-tight text-white drop-shadow-sm">
             {nanny.fullName}
           </p>
-          {nanny.funFact && (
+          {composeFunFact(nanny.funFactPrompt, nanny.funFact) && (
             <p className="mt-0.5 line-clamp-2 text-sm font-medium text-white/95 drop-shadow-sm">
-              {nanny.funFact}
+              {composeFunFact(nanny.funFactPrompt, nanny.funFact)}
             </p>
           )}
         </div>

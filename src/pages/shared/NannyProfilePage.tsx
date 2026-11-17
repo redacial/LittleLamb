@@ -7,6 +7,7 @@ import { IntroVideo } from '../../components/IntroVideo'
 import { formatRate } from '../../lib/rates'
 import { badgeLabel, badgeType } from '../../lib/badges'
 import { optionLabel, experienceLabel } from '../../lib/nannyProfileOptions'
+import { composeFunFact } from '../../lib/funFact'
 import { DAYS } from '../../components/onboarding/AvailabilityEditor'
 import { to12h } from '../../lib/format'
 
@@ -77,8 +78,10 @@ export function NannyProfilePage() {
                 <Avatar name={nanny.fullName} src={nanny.photoURL} size="lg" />
                 <div>
                   <p className="font-display text-2xl text-ll-ink">{nanny.fullName}</p>
-                  {nanny.funFact ? (
-                    <p className="text-sm font-medium text-ll-ink">{nanny.funFact}</p>
+                  {composeFunFact(nanny.funFactPrompt, nanny.funFact) ? (
+                    <p className="text-sm font-medium text-ll-ink">
+                      {composeFunFact(nanny.funFactPrompt, nanny.funFact)}
+                    </p>
                   ) : (
                     <p className="text-sm text-ll-warm-gray">Santa Barbara</p>
                   )}
