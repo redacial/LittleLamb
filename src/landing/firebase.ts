@@ -10,7 +10,7 @@
 // security rule). These identifiers are public by design; access is enforced by Firestore
 // security rules (see the `waitlist` collection rules), not by hiding them.
 import { initializeApp, type FirebaseOptions } from 'firebase/app'
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check'
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 
 function requireEnv(key: string): string {
@@ -46,7 +46,7 @@ export const app = initializeApp(firebaseConfig)
 const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY
 if (appCheckSiteKey) {
   initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(appCheckSiteKey),
+    provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
     isTokenAutoRefreshEnabled: true,
   })
 } else if (import.meta.env.PROD) {
