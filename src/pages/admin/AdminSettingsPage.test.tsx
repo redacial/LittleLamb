@@ -5,20 +5,17 @@ import { AdminSettingsPage } from './AdminSettingsPage'
 import { DEFAULT_POLICIES } from '../../lib/policies'
 import { SELF_BADGES, VERIFIED_BADGES } from '../../lib/badges'
 
-// Both of these tabs were DEAD CHROME: inputs with a defaultValue and a Save button with no
-// onClick. They looked editable, so Lucy would type, click Save, and lose the change with no
-// error — worse than the tab not existing. The Calendly tab additionally held a SECOND
-// hardcoded copy of the URL that NannyHoldingPage hardcoded separately, so the two could
-// drift with nothing to catch it.
+// The Policies tab was DEAD CHROME before this: inputs with a defaultValue and a Save button with
+// no onClick. It looked editable, so Lucy would type, click Save, and lose the change with no
+// error — worse than the tab not existing. (The Calendly tab was removed entirely in D77 — Little
+// Lamb does not schedule interviews.)
 
-const saveCalendly = vi.fn(async () => {})
 const savePolicies = vi.fn(async () => {})
 
 // The real hooks hold their config in useState, so the object identity is STABLE across
 // renders. The cards depend on that: they sync the config into a draft with
 // `useEffect(..., [config])`, and a mock that returned a fresh literal each render would
 // refire that effect on every keystroke and wipe what admin typed. Mirror the real shape.
-const calendly = { current: { url: '' } }
 const policies = { current: DEFAULT_POLICIES }
 // Same stability requirement, and it BITES here: BadgeCatalogCard syncs this into a draft with
 // `useEffect(..., [badges])`. Returning `[...SELF_BADGES, ...VERIFIED_BADGES]` inline from the
@@ -28,7 +25,6 @@ const policies = { current: DEFAULT_POLICIES }
 const BADGE_CATALOG = [...SELF_BADGES, ...VERIFIED_BADGES]
 
 vi.mock('../../hooks/useAdmin', () => ({
-  useCalendlyConfig: () => ({ config: calendly.current, loading: false, save: saveCalendly }),
   usePolicies: () => ({ policies: policies.current, loading: false, save: savePolicies }),
   useBillingConfig: () => ({
     config: { subscriptionCents: 2500, perBookingCents: 100, enabled: false },
@@ -45,57 +41,12 @@ vi.mock('../../hooks/useAdmin', () => ({
 }))
 
 beforeEach(() => {
-  saveCalendly.mockClear()
   savePolicies.mockClear()
-  calendly.current = { url: '' }
   policies.current = DEFAULT_POLICIES
 })
 
 const openTab = (name: RegExp) => userEvent.click(screen.getByRole('tab', { name }))
 
-describe('AdminSettingsPage — Calendly tab', () => {
-  it('shows the configured link rather than a hardcoded placeholder', async () => {
-    calendly.current = { url: 'https://calendly.com/lucy-littlelamb/30min' }
-
-    render(<AdminSettingsPage />)
-    await openTab(/calendly/i)
-
-    expect(screen.getByLabelText(/calendly link/i)).toHaveValue(
-      'https://calendly.com/lucy-littlelamb/30min',
-    )
-  })
-
-  it('starts EMPTY when nothing is configured — never a dead placeholder URL', async () => {
-    // The old defaultValue pre-filled a 404ing URL, which reads as "already set up".
-    render(<AdminSettingsPage />)
-    await openTab(/calendly/i)
-
-    expect(screen.getByLabelText(/calendly link/i)).toHaveValue('')
-  })
-
-  it('saves what admin types', async () => {
-    render(<AdminSettingsPage />)
-    await openTab(/calendly/i)
-
-    await userEvent.type(
-      screen.getByLabelText(/calendly link/i),
-      'https://calendly.com/lucy-littlelamb/30min',
-    )
-    await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
-
-    expect(saveCalendly).toHaveBeenCalledWith({ url: 'https://calendly.com/lucy-littlelamb/30min' })
-  })
-
-  it('trims the pasted link before saving', async () => {
-    render(<AdminSettingsPage />)
-    await openTab(/calendly/i)
-
-    await userEvent.type(screen.getByLabelText(/calendly link/i), '  https://calendly.com/x  ')
-    await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
-
-    expect(saveCalendly).toHaveBeenCalledWith({ url: 'https://calendly.com/x' })
-  })
-})
 
 describe('AdminSettingsPage — Policies tab', () => {
   it('loads the current policy text into the editors', async () => {

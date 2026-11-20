@@ -4,7 +4,7 @@ import { Tabs } from '../../components/Tabs'
 import { Card, CardLabel, Input, Textarea, Button } from '../../components/ui'
 import { badgeIdFromLabel, type BadgeDef } from '../../lib/badges'
 import { Badge, Select } from '../../components/ui'
-import { useBillingConfig, useBadgeCatalog, useCalendlyConfig, usePolicies } from '../../hooks/useAdmin'
+import { useBillingConfig, useBadgeCatalog, usePolicies } from '../../hooks/useAdmin'
 import type { Policies } from '../../lib/policies'
 
 /**
@@ -34,12 +34,11 @@ export function AdminSettingsPage() {
     <>
       <PageHeader title="Settings" subtitle="Configure how the platform behaves." />
       <PageBody>
-        <Tabs tabs={['Badges', 'Policies', 'Billing', 'Calendly', 'Emails']}>
+        <Tabs tabs={['Badges', 'Policies', 'Billing', 'Emails']}>
           {(active) => {
             if (active === 'Badges') return <BadgeCatalogCard />
             if (active === 'Policies') return <PoliciesCard />
             if (active === 'Billing') return <BillingConfigCard />
-            if (active === 'Calendly') return <CalendlyCard />
 
             return <EmailCopyNote />
           }}
@@ -91,51 +90,10 @@ function EmailCopyNote() {
  * same hardcoded string, free to drift from this one. Both now read config/calendly, and
  * an empty value here means the holding page shows no button at all.
  */
-function CalendlyCard() {
-  const { config, loading, save } = useCalendlyConfig()
-  const [url, setUrl] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    setUrl(config.url)
-  }, [config])
-
-  async function onSave() {
-    setBusy(true)
-    setSaved(false)
-    setError(null)
-    try {
-      await save({ url: url.trim() })
-      setSaved(true)
-    } catch {
-      setError('Could not save the Calendly link. Check your connection and try again.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Card className="max-w-lg space-y-4">
-      <CardLabel>Calendly integration</CardLabel>
-      <p className="text-sm text-ll-warm-gray">
-        The interview scheduling link used in nanny status emails and on the holding page.
-      </p>
-      <Input
-        label="Calendly link"
-        placeholder="https://calendly.com/your-account/interview"
-        hint="Leave blank until your Calendly is live — nannies see no booking button while it's empty, rather than a broken link."
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        disabled={loading}
-      />
-      {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
-      {saved && <p className="text-sm font-semibold text-ll-sage-deep">Saved.</p>}
-      <Button onClick={onSave} loading={busy} disabled={loading}>Save</Button>
-    </Card>
-  )
-}
+/* Calendly tab removed (D77): it configured an interview-scheduling link, but Little Lamb is a
+   job-listing service and does not interview or approve sitters — the whole interview/stage flow
+   was removed in Phase 3. The `useCalendlyConfig` hook + config/calendly doc are now orphaned and
+   can be pruned from src/hooks/useAdmin.ts in a later cleanup. */
 
 /**
  * Editable policy copy (config/policies) — the three blocks rendered on the shared
