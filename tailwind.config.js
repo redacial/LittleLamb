@@ -27,6 +27,20 @@ export default {
         'll-terra-soft': '#D4AA85',
         'll-terra':      '#C4956A',
         'll-terra-deep': '#9B6A3F',
+        // Sticky-note design system (D76) — paper surfaces, saturated brand bands, and the
+        // three note-paper tints. Restored from the D73 brand kit; these drive the marketing
+        // pages and the warm paper surfaces app-wide. Brand hues fail AA under white text, so
+        // text on a brand band is ink; the -ink variants are the AA-safe text/accent shades.
+        'll-paper':           '#FAF6F0', // page paper, warmer than ll-cream
+        'll-brand-sage':      '#7BAE8A', // saturated sage band (hero)
+        'll-brand-sage-ink':  '#4A7556', // AA text/accents on paper or sage
+        'll-brand-terra':     '#D98E73', // saturated terra band (how-it-works)
+        'll-brand-terra-ink': '#A9573A', // AA text/accents, primary button fill
+        'll-note-butter':     '#FBEFC4', // sticky note — butter yellow
+        'll-note-sage':       '#E3EFE5', // sticky note — soft sage
+        'll-note-blush':      '#F6E3DA', // sticky note — warm blush
+        'll-sand':            '#F1E6D4', // section wash between paper sections
+        'll-sage-wash':       '#CFE2D3', // soft sage section wash
         // Semantic booking states — map onto the palette above
         // confirmed = sage, pending = warm amber-terra, booked = periwinkle
         confirmed: '#8FAF8A',

@@ -725,3 +725,50 @@ money/notification bugs this project has already shipped can't recur through a U
 - Verified: `time` (8) + `WeekGrid` (8) + `FamilyCalendarPage` (14) green; typecheck + ESLint clean
   on changed files; `npm run build` (app) succeeds. Full suite + visual `npm run demo` pass pending
   (David runs the demo).
+
+### D77. Sticky-note design restored as the primary system + legal-model realignment to a job-listing service (2026-11-19)
+**Why this matters — and why it reverses D75.** David asked to bring back the D73 "sticky-note"
+aesthetic (paper background, taped notes, handwriting, warm brand bands) as the app's PRIMARY
+design language, with the marketing HomePage leading and the app matching it. That alone reverses
+**D75** (2026-11-04), which had retired sticky notes in favour of the app's cream/blob language.
+D75's reasoning (one product, lower trust-handoff cost) still holds — so we satisfy it the other
+way: the whole app moves TO the sticky-note language, not the marketing page away from it.
+
+He then attached the **Little Lamb LLC business plan (Fall 2026)**, which makes this more than a
+re-skin. The business plan reclassifies Little Lamb as a **California job *listing* service, NOT an
+employment agency** — a legal distinction that keeps LL out of agency-only rules (e.g. mandatory
+TrustLine). The app today implements the OPPOSITE (agency) model in both copy AND logic, so the
+redesign must realign the product. **Binding copy rules** (from the business plan):
+- Forbidden words in user-facing copy: "vetted", "screened", "pre-screened", "agency",
+  "match/matchmaking", "introduce", "recommend" (as LL picking sitters).
+- LL must NOT claim to interview, meet, background-check, approve, or verify sitters. Families
+  choose/interview/vet/hire/pay sitters themselves. LL only REMOVES profiles that break the Terms.
+- Credentials (TrustLine, CPR, First Aid, references) → "self-reported, not verified by Little Lamb."
+- Model: families post jobs → browse → book & pay the sitter directly. Motto "It takes a village.
+  Find yours." Pricing: free for the first two bookings, then $150/year (sitters pay nothing).
+
+**David's scope decisions (2026-11-19):** full model realignment (copy AND the real
+approval/badge logic); noun usage is a "sitters & nannies" mix (keep `'nanny'` as the CODE
+identifier — role/route/type/collection — rename only user-facing prose); fix the old-pricing
+leaks AND state the new model; sticky-note full on public pages, paper+fonts+warmth on the app with
+dense data UI kept readable; make sticky-note THE design system.
+
+**Load-bearing facts that shape the safe path (no data migration in the main phases):**
+- The sitter-approval invariant (nannies stay pending for admin review) is real, rules-enforced,
+  and tested — this is the ONE genuine rules/auth reversal and is strictly test-first. The safe
+  realignment: sitters self-activate at signup like families; admin keeps remove/deactivate (the
+  business plan's own TOS-enforcement lever, reusing the existing `inactive`/`rejected` states).
+- `'unmatched'` is a persisted BookingStatus enum — the WORD changes in UI only, the enum stays.
+- `verifiedBadges` is a persisted, client-immutable array — "verified vs self-reported" collapses
+  as presentation/copy; the data and the immutability rule stay.
+
+**Phasing (see `.claude/plans/` + `session-log`):** 0 tokens/primitives, 1 legal copy + Terms page,
+2 HomePage re-skin (deploy), 3 sitter self-activation (test-first), 4 app shell + light-touch
+surfaces (deploy). Deferred as separate follow-ups: admin agency-tooling removal, dropping the
+`'verified'` BadgeType / badge-array migration, a persisted ToS-acceptance checkbox.
+
+**Foundation landed this commit (Phase 0):** restored the sticky-note Tailwind tokens (`ll-paper`,
+`ll-brand-sage/-ink`, `ll-brand-terra/-ink`, `ll-note-butter/-sage/-blush`, `ll-sand`,
+`ll-sage-wash`), the `.sticky-note`/`.sticky-tape` CSS, and a shared `<StickyNote>` + doodle
+primitives (`CheckDoodle`/`ArrowDoodle`/`HeartDoodle`) in `src/components/theme`. No existing page
+changed yet.

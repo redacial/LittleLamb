@@ -5,7 +5,7 @@
  */
 import { type ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { springSnappy } from '../../lib/motion'
+import { springSnappy, useTiltHover } from '../../lib/motion'
 import { cn } from '../../lib/cn'
 
 /* ------------------------------------------------------------------ Grain --- */
@@ -173,6 +173,87 @@ export function Sparkle({ className }: { className?: string }) {
         fill="currentColor"
         opacity="0.85"
       />
+    </svg>
+  )
+}
+
+/* -------------------------------------------------------------- StickyNote --- */
+export type NoteTone = 'butter' | 'sage' | 'blush'
+const NOTE_BG: Record<NoteTone, string> = {
+  butter: 'bg-ll-note-butter',
+  sage: 'bg-ll-note-sage',
+  blush: 'bg-ll-note-blush',
+}
+
+/**
+ * A taped paper note — the signature surface of the sticky-note design system (D76).
+ * `rotate` is a resting tilt; the note straightens a little on hover (useTiltHover).
+ * `tape` adds the washi-tape strip across the top edge. Render as div/li/article via `as`.
+ */
+export function StickyNote({
+  tone,
+  rotate = 0,
+  tape = true,
+  className,
+  children,
+  as = 'div',
+}: {
+  tone: NoteTone
+  rotate?: number
+  tape?: boolean
+  className?: string
+  children: ReactNode
+  as?: 'div' | 'li' | 'article'
+}) {
+  const tilt = useTiltHover()
+  const Tag = { div: motion.div, li: motion.li, article: motion.article }[as]
+  return (
+    <Tag
+      {...tilt}
+      style={{ rotate }}
+      className={cn('sticky-note', tape && 'sticky-tape', NOTE_BG[tone], className)}
+    >
+      {children}
+    </Tag>
+  )
+}
+
+/* ------------------------------------------------------------------ Doodles --- */
+/** Hand-drawn check — used in checklists and the "how it works" steps. */
+export function CheckDoodle({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden>
+      <path
+        d="M4 13.2c1.6 1.2 3 2.8 4.3 4.6C11 12.6 14.9 8.1 20.2 4.6"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+/** Hand-drawn arrow — a playful "this way" pointer beside secondary links. */
+export function ArrowDoodle({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 40 24" className={className} fill="none" aria-hidden>
+      <path
+        d="M2 14c8-4 18-5 33-2M28 6c3 2 6 4 8 6-3 1-6 3-8 6"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+/** Hand-drawn heart — a warm accent on eyebrow kickers and note lines. */
+export function HeartDoodle({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M12 20.5c-.4 0-7.9-4.6-8.9-9.6C2.4 7.4 4.6 4.5 7.6 4.5c2 0 3.4 1.2 4.4 2.7 1-1.5 2.4-2.7 4.4-2.7 3 0 5.2 2.9 4.5 6.4-1 5-8.5 9.6-8.9 9.6z" />
     </svg>
   )
 }

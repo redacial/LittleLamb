@@ -9,7 +9,7 @@
 | Dimension | Decision |
 |-----------|----------|
 | Primary feeling | Premium + playful. Trust-earned, never sterile. |
-| Tension | Boutique children's brand energy on the surface, serious vetting underneath. |
+| Tension | Boutique children's brand energy on the surface, a trustworthy local community underneath. (Little Lamb is a job-listing service — it does not vet, screen, or verify sitters; see D77 and the legal copy rules.) |
 | Reference | Hand-drawn illustration style — loose lines, flat dusty fills, cream bg, generous negative space. Think the loose cartoonish illustration style of a high-end children's brand. |
 | Chrome | Wobbly borders, oversized radius, illustrated empty states, illustrated accents on hover |
 | Motion | Bouncy spring physics everywhere — things feel alive, not corporate |
@@ -61,6 +61,30 @@ These are the canonical token names. Use these exact names in Tailwind and CSS c
 | Info / Trust | `ll-peri` / `ll-peri-light` |
 | CTA / Action | `ll-terra` |
 | Danger / Error | Use Tailwind `red-400` — the one exception to LL token exclusivity |
+
+### Sticky-note system (D77 — the primary marketing/paper language)
+Restored from the D73 brand kit; these drive the marketing pages and the warm paper surfaces
+app-wide. The saturated brand hues fail AA under white text, so **text on a brand band is always
+`ll-ink`**, and the `-ink` variants are the AA-safe text/accent shades (ink on `ll-brand-sage`
+≈ 6.0:1, ink on `ll-brand-terra` ≈ 5.9:1).
+
+| Token | Hex | Role |
+|-------|-----|------|
+| `ll-paper` | `#FAF6F0` | Page paper (warmer than `ll-cream`) |
+| `ll-brand-sage` | `#7BAE8A` | Saturated sage band (hero) — text is `ll-ink` |
+| `ll-brand-sage-ink` | `#4A7556` | AA-safe sage text/accents |
+| `ll-brand-terra` | `#D98E73` | Saturated terra band — text is `ll-ink` |
+| `ll-brand-terra-ink` | `#A9573A` | AA-safe terra text; primary button fill |
+| `ll-note-butter` | `#FBEFC4` | Sticky note — butter yellow |
+| `ll-note-sage` | `#E3EFE5` | Sticky note — soft sage |
+| `ll-note-blush` | `#F6E3DA` | Sticky note — warm blush |
+| `ll-sand` | `#F1E6D4` | Section wash between paper sections |
+| `ll-sage-wash` | `#CFE2D3` | Soft sage section wash |
+
+**Components (in `src/components/theme`):** `<StickyNote tone rotate tape as>` is the taped
+paper-note surface (`.sticky-note` + `.sticky-tape` in `index.css`); `<CheckDoodle>`,
+`<ArrowDoodle>`, `<HeartDoodle>` are the hand-drawn accents. Rotation is a resting tilt that
+straightens on hover (`useTiltHover`).
 
 ---
 
