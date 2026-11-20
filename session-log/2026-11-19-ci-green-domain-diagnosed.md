@@ -119,12 +119,29 @@ remove/deactivate — the business plan's own TOS lever; no data migration).
   littlelamb-sb-staging — they must be consistent or signup breaks. Apex 200 on the new build.
   Rules 66 / client 490 green, CI green.
 
-**Still to do (next):**
-- **Phase 4:** app shell + light-touch logged-in surfaces to paper (dense data UI stays readable).
-- **Deferred (Phase 5/6):** remove admin agency tooling (VerifiedBadgesModal write path, the
-  interview/stage controls in AdminPeoplePage, the Calendly card in AdminSettings); drop the
-  `'verified'` BadgeType / migrate badge arrays; persisted ToS-acceptance checkbox.
-- The abandoned `src/landing/*` still has the old vetting copy — not served, left as-is this pass.
+- **Phase 4** (`9aef073`, DEPLOYED): paper-washed the logged-in app shell. One `AppLayout` change
+  shifts page/sidebar/header/drawer bg → `ll-paper`, borders → `ll-sand`, active nav → `ll-note-sage`;
+  onboarding shells + dashboard hero borders too; "Book a nanny" → "Book a sitter". Dense data UI
+  (calendar/tables/forms) kept readable — paper + warm borders only, no literal sticky-notes.
+  490 tests green, build OK, apex 200 on the new build.
+
+**ALL FIVE PHASES (0–4) DONE & DEPLOYED.** littlelambnannies.com serves the sticky-note design with
+listing-service copy; sitters self-activate; the whole app is paper-washed.
+
+**Deferred follow-ups (separate projects, NOT blocking):**
+- **Admin agency tooling removal:** the VerifiedBadgesModal admin write path, the interview/stage
+  advance controls in AdminPeoplePage, the Calendly interview card + `useCalendlyConfig` in
+  AdminSettings, the `NannyStage`/`stage` type + `interview_scheduled` enum. Internal-only; still
+  renders agency framing to admins. `src/types/index.ts` still has the NannyStage union + the
+  `'interview_scheduled'` member.
+- **Billing-model project:** the per-booking fee math/config (`perBookingCents`, the
+  AdminBilling/Analytics revenue formula, `quarterlyCharge.ts`) still reflects the retired model;
+  billing is gated OFF so nothing shows, but flipping it on needs the "first two free + yearly"
+  math built. The FamilyBillingPage per-booking field is marked retired.
+- Drop the `'verified'` BadgeType / migrate `verifiedBadges`→`selfBadges` (a real data migration);
+  a persisted ToS-acceptance checkbox at signup.
+- The abandoned `src/landing/*` still has old vetting copy — not served, left as-is.
+- **`www.littlelambnannies.com`** still needs the Firebase re-verify click after the DNS TXT swap.
 
 ## Do not re-attempt
 - Don't add `TZ` only to one job and assume it covers the workflow — it does **not** inherit.
