@@ -128,12 +128,27 @@ remove/deactivate — the business plan's own TOS lever; no data migration).
 **ALL FIVE PHASES (0–4) DONE & DEPLOYED.** littlelambnannies.com serves the sticky-note design with
 listing-service copy; sitters self-activate; the whole app is paper-washed.
 
-**Deferred follow-ups (separate projects, NOT blocking):**
-- **Admin agency tooling removal:** the VerifiedBadgesModal admin write path, the interview/stage
-  advance controls in AdminPeoplePage, the Calendly interview card + `useCalendlyConfig` in
-  AdminSettings, the `NannyStage`/`stage` type + `interview_scheduled` enum. Internal-only; still
-  renders agency framing to admins. `src/types/index.ts` still has the NannyStage union + the
-  `'interview_scheduled'` member.
+**Deferred follow-ups — progress (2026-11-20):**
+- ✅ **Calendly tab removed** (`7bffd67`): dropped the Settings Calendly tab + CalendlyCard + its
+  test block. `useCalendlyConfig` hook + `config/calendly` doc now orphaned in `useAdmin.ts`
+  (prune later).
+- ✅ **`reinstate` fixed** (`23a4ccd`): now restores a removed member to approved+active (there is
+  no "pending" to return to). Matches `routing.test.ts:97`. NOTE: the hook write payload has no
+  direct unit test (useAdmin.ts has no harness) — covered only indirectly by the routing test.
+
+**Still deferred (separate projects, NOT blocking):**
+- **AdminPeoplePage interview/stage/approve rework (the big one):** `NANNY_STAGES`/`STAGE_LABEL`
+  (incl. "Interview scheduled"), the Advance button + `advanceStage`, the "post-interview pass"
+  wording, the `pending` tab, and the Approve path are all DEAD for new signups (no account is
+  ever pending now) but still present as internal admin chrome. A clean removal must also add a
+  proper **Deactivate** action on active members (today admin can only "Reject" a *pending* row;
+  there's no deactivate-an-active-member button) and rework ~6 test suites in
+  `AdminPeoplePage.test.tsx`. Not a live user-facing exposure (no sitter/family sees it), so lower
+  priority than the public copy already fixed. `src/types/index.ts` still has the `NannyStage`
+  union + `'interview_scheduled'`; `useAdmin.ts` still exports `advanceStage`.
+- **VerifiedBadgesModal:** admin still has a "Badges" modal that writes `verifiedBadges` (the
+  "verified by Little Lamb" concept). The Badge UI already renders these as self-reported (Phase 1),
+  so it's not a live false claim, but the admin-assignment affordance should go.
 - **Billing-model project:** the per-booking fee math/config (`perBookingCents`, the
   AdminBilling/Analytics revenue formula, `quarterlyCharge.ts`) still reflects the retired model;
   billing is gated OFF so nothing shows, but flipping it on needs the "first two free + yearly"
