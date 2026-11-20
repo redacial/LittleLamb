@@ -28,48 +28,67 @@ builds "yesterday" off the runner's local calendar day) by 8h. The test
 **Fix:** added the same `TZ: America/Los_Angeles` env block to the `rules-tests` job, with a
 comment explaining the non-inheritance. CI run `44645935396` = **success**.
 
-### 2. `littlelambnannies.com` still returns 404 — diagnosed; needs David in the console
-The apex now has a **valid SSL cert** (the ~24h issuance from last session completed:
-`ssl_verify_result: 0`) and reaches Firebase Hosting — but returns Firebase's **"Site Not
-Found"** page (`HTTP 404`, `x-served-by: cache-*`, `vary: x-fh-requested-host` — Hosting's
-fingerprint). That page is exactly what Firebase serves when a hostname resolves to its IPs but
-**no Hosting site has that custom domain attached**.
+### 2. Apex is LIVE; `www` redirect needs one DNS edit
+My first probe got a 404 "Site Not Found", which I wrongly read as "domain not attached." A
+console screenshot showed the opposite: on the `littlelamb-sb-staging-app` site,
+**`littlelambnannies.com` = Custom, Connected**. Re-probed with cache-busting →
+**HTTP 200, `<title>Little Lamb Nannies</title>`, `<div id="root">`**. The 404 was Firebase's
+edge still propagating the just-flipped connection (and a cached 404). **The apex cutover is
+DONE** — SSL valid, serving the app.
 
-DNS is fully correct and live on all resolvers:
-- apex `A` = `199.36.158.100` (Firebase) ✓
-- apex ownership `TXT` = `hosting-site=littlelamb-sb-staging-app` ✓
-- `www` also resolves to `199.36.158.100` ✓
+**Bare-`/` 404 aftershock (fixed by redeploy).** After the apex connected, the bare URL
+`https://littlelambnannies.com/` kept returning a **404 "Site Not Found"** while EVERY other
+path — `/login`, `/index.html`, even `/random-123`, and `/?anyquery` — returned 200, and the
+origin `.web.app/` was 200. So the app was fine; Firebase's edge (Fastly) had **cached a 404
+for the single key `/`** from before the domain connected, and that entry was stuck (`x-cache:
+HIT`, not aging out despite `max-age=0`). **Fix:** `npm run build:app:staging` +
+`firebase deploy --only hosting:app --project littlelamb-sb-staging` (new release `→` purges the
+edge cache). Verified: bare `/` now 200 with the app HTML. Lesson recorded in Do-not-re-attempt.
+Note the deploy CLI must be the authenticated `firestore-tests/node_modules/.bin/firebase` (no
+global `firebase` on PATH; the npm `deploy:*` scripts call bare `firebase`).
 
-So the gap is **not DNS** — it's that `littlelambnannies.com` is **not attached as a custom
-domain on the `littlelamb-sb-staging-app` Hosting site** inside Firebase. The "Verify" David
-clicked last session evidently did not complete the attachment (or it attached elsewhere and
-isn't live). This is a **console task only David can finish** (tried to confirm via the Hosting
-REST API with the CLI's token, but this `firebase-tools` build's internal `getAccessToken`
-signature fought back; not worth more reverse-engineering for a step David must do anyway).
+The remaining item is **`www.littlelambnannies.com` = "Needs setup"** (set as Redirect →
+apex). Diagnosed to a **single stale DNS record**:
+- `www` `A` = `199.36.158.100` ✓ (already correct)
+- `www` ownership `TXT` = **`hosting-site=littlelamb-sb`** ✗ — points at the OLD unused project,
+  so Firebase can't verify `www` on the `-app` site and won't issue its cert (HTTPS to `www`
+  currently fails cert validation; plain HTTP 301s, so Firebase is answering).
 
-The project has **3 Hosting sites**: `littlelamb-sb-staging` (default),
-`littlelamb-sb-staging-app` (**the app — the real one**), `littlelamb-sb-staging-landing`
-(abandoned). The domain must land on **`-app`**.
+**The fix is to swap that one TXT** to match the apex: `hosting-site=littlelamb-sb-staging-app`.
+No other `www` change needed (no `_acme-challenge` on `www` yet — Firebase adds/uses it after
+verification).
+
+Three Hosting sites exist: `littlelamb-sb-staging` (default), **`littlelamb-sb-staging-app`**
+(the app — the live one), `littlelamb-sb-staging-landing` (abandoned). Everything points at
+`-app`.
 
 ## Current state
 - **CI:** GREEN on `landing-page-prelaunch` HEAD (`fead06a`).
-- **App:** live + working at `https://littlelamb-sb-staging-app.web.app` (HTTP 200).
-- **Apex `littlelambnannies.com`:** SSL valid, but **404 "Site Not Found"** until the custom
-  domain is attached to the `-app` site in the Firebase console.
-- Tree clean, pushed.
+- **App:** live at `https://littlelamb-sb-staging-app.web.app` AND at the real domain
+  **`https://littlelambnannies.com` (HTTP 200 on bare `/` and all routes, serving the app, SSL
+  valid)** after a hosting redeploy flushed the stuck edge-cached 404. 🎉
+- **`www.littlelambnannies.com`:** "Needs setup" — one stale DNS TXT to swap (below).
+- Redeployed the app to `littlelamb-sb-staging-app` this session (hosting only; same committed
+  code, CI green). Tree clean, pushed.
 
-## Next steps (David — console; then me)
-1. **Attach the domain.** Firebase console → project `littlelamb-sb-staging` → **Hosting** →
-   site **`littlelamb-sb-staging-app`** → **Add custom domain** → `littlelambnannies.com`.
-   DNS is already in place, so verification should pass immediately; if Firebase shows A records,
-   they already match (`199.36.158.100`). Re-check: `curl -I https://littlelambnannies.com/`
-   should flip from 404 to 200.
-2. **Add `www`** as a second custom domain on the same `-app` site, set to **redirect to the
-   apex** (NOT apex→www — that direction broke it before).
+## Next steps
+1. **David — fix `www` (DNS, in Wix):** change the `www` host's TXT from
+   `hosting-site=littlelamb-sb` to **`hosting-site=littlelamb-sb-staging-app`** (mirror the
+   apex). Leave the `www` A record `199.36.158.100` as-is. Then click **re-verify** on the `www`
+   row in Firebase Hosting; it'll verify and issue the cert (can take up to ~24h). The apex works
+   regardless.
+2. **Then me — re-verify:** `curl -I https://www.littlelambnannies.com/` returns a 301 to the
+   apex with a valid cert.
 3. Then resume the **launch-concierge** queue: prove a real Resend send (waitlist form → lands
    at hello@), prune the inert `savePaymentMethod` function + placeholder Stripe secrets, and
    the App-Check-enforcement / MFA decisions (both deferred, not blocking).
 
 ## Do not re-attempt
 - Don't add `TZ` only to one job and assume it covers the workflow — it does **not** inherit.
-- Don't point the domain at `littlelamb-sb-staging` or `-landing`; it must be `-app`.
+- Don't point any domain at `littlelamb-sb-staging` or `-landing`; everything is `-app`.
+- Don't trust a single apex probe right after a Hosting change — the edge caches a 404 while the
+  connection propagates. Cache-bust and re-check before concluding it's broken.
+- If the bare `/` of a freshly-connected domain is stuck on a cached 404 while every other path
+  is 200, don't wait it out — **redeploy hosting** (`build:app:staging` +
+  `firebase deploy --only hosting:app --project littlelamb-sb-staging`), which rotates the
+  release and flushes the edge cache. Clears in ~1 min.
