@@ -482,22 +482,18 @@ describe('users — application fields', () => {
 
   /**
    * A minimal valid self-created user doc, plus whatever the case is testing. The approval
-   * fields follow the launch rule (initialApproval in src/lib/auth.ts): a family self-creates
-   * approved+active, a nanny self-creates pending. A case may still override any field via extra.
+   * fields follow the listing-service rule (initialApproval in src/lib/auth.ts; D77): BOTH roles
+   * self-create approved+active. A case may still override any field via extra.
    */
   function pendingUser(extra: Record<string, unknown>) {
-    const role = (extra.role as string) ?? 'family'
-    const approval =
-      role === 'family'
-        ? { approved: true, status: 'approved' }
-        : { approved: false, status: 'pending' }
     return {
       uid: NEW,
       role: 'family',
       email: 'a@example.com',
       fullName: 'Dana Whitfield',
       phone: '805-555-0142',
-      ...approval,
+      approved: true,
+      status: 'approved',
       wizardComplete: false,
       ...extra,
     }
@@ -572,11 +568,13 @@ describe('users — application fields', () => {
   })
 })
 
-// Launch decision (2026-11-16): families are auto-approved at signup; nannies are NOT. The
-// create rule must let a FAMILY self-create approved=true/status=approved, while a NANNY may
-// still only self-create approved=false/status=pending. The nanny-cannot-self-approve case is
-// a security invariant — a stranger must never list themselves as a vetted nanny.
-describe('users — family auto-approval at create', () => {
+// Listing-service model (D77, reverses the 2026-11-16 invariant): Little Lamb is a job-LISTING
+// service, not an agency — it does not approve, interview, or vet sitters. So BOTH families and
+// sitters (role 'nanny') self-activate at signup as approved=true/status=approved, exactly alike.
+// Admin keeps remove/deactivate (allow update: if isAdmin()) as the Terms-enforcement lever. The
+// only create guards that remain are: no self-created admin, no mixed approved/status states, and
+// wizardComplete must start false.
+describe('users — self-activation at create (both roles)', () => {
   const NEW = 'applicant2'
 
   it('lets a FAMILY self-create as approved + active', async () => {
@@ -594,13 +592,13 @@ describe('users — family auto-approval at create', () => {
     )
   })
 
-  it('REJECTS a NANNY self-creating as approved (must stay pending for admin review)', async () => {
-    await assertFails(
+  it('lets a SITTER (role nanny) self-create as approved + active (no admin approval gate)', async () => {
+    await assertSucceeds(
       setDoc(doc(as(NEW), 'users', NEW), {
         uid: NEW,
         role: 'nanny',
         email: 'n@example.com',
-        fullName: 'Pat Vetting',
+        fullName: 'Pat Sitter',
         phone: '805-555-0199',
         approved: true,
         status: 'approved',
@@ -609,13 +607,13 @@ describe('users — family auto-approval at create', () => {
     )
   })
 
-  it('REJECTS a nanny self-creating as approved=false but status=approved (no mixed bypass)', async () => {
+  it('REJECTS a sitter self-creating approved=false but status=approved (no mixed state)', async () => {
     await assertFails(
       setDoc(doc(as(NEW), 'users', NEW), {
         uid: NEW,
         role: 'nanny',
         email: 'n@example.com',
-        fullName: 'Pat Vetting',
+        fullName: 'Pat Sitter',
         phone: '805-555-0199',
         approved: false,
         status: 'approved',
@@ -624,15 +622,15 @@ describe('users — family auto-approval at create', () => {
     )
   })
 
-  it('still lets a NANNY self-create as pending (the vetted path)', async () => {
-    await assertSucceeds(
+  it('REJECTS a sitter self-creating approved=true but status=pending (no mixed state)', async () => {
+    await assertFails(
       setDoc(doc(as(NEW), 'users', NEW), {
         uid: NEW,
         role: 'nanny',
         email: 'n@example.com',
-        fullName: 'Pat Vetting',
+        fullName: 'Pat Sitter',
         phone: '805-555-0199',
-        approved: false,
+        approved: true,
         status: 'pending',
         wizardComplete: false,
       }),

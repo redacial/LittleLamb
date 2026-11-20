@@ -21,9 +21,9 @@ describe('DeclinedPage', () => {
     expect(screen.queryByText(/we.ll email you the moment/i)).not.toBeInTheDocument()
   })
 
-  it('says plainly that the application was not accepted', () => {
+  it('says plainly that the account was removed or closed', () => {
     show()
-    expect(screen.getByText(/not (moving forward|be moving forward|accepted)/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/removed|closed|no longer active/i).length).toBeGreaterThan(0)
   })
 
   it('offers a way to reach a human, since no automated email is coming', () => {

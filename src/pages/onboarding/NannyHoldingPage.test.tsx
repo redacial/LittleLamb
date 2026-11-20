@@ -1,6 +1,7 @@
-// Same bug as the family page: AuthContext's live snapshot flips `approved` the instant an
-// admin approves, but this page ignored it and kept showing the 4-step review tracker. With
-// platform email dark, an approved nanny had no way at all to learn the answer had arrived.
+// Listing-service model (D77): Little Lamb does not approve or interview sitters, so this page no
+// longer shows a review/interview tracker. A new sitter is active immediately and sees a warm
+// welcome into profile setup. These tests assert that there is NO review/interview copy and that
+// the way forward (continue to the profile wizard) is always present.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -10,16 +11,12 @@ const profile = {
   current: {
     fullName: 'Priya Raman',
     role: 'nanny',
-    status: 'pending',
-    approved: false,
-    stage: 'under_review',
+    status: 'approved',
+    approved: true,
   },
 }
 vi.mock('../../context/AuthContext', () => ({ useAuth: () => ({ profile: profile.current }) }))
 vi.mock('../../lib/auth', () => ({ signOut: vi.fn() }))
-vi.mock('../../hooks/useAdmin', () => ({
-  useCalendlyConfig: () => ({ config: { url: '' }, loading: false }),
-}))
 
 const show = () => render(<MemoryRouter><NannyHoldingPage /></MemoryRouter>)
 
@@ -27,35 +24,25 @@ beforeEach(() => {
   profile.current = {
     fullName: 'Priya Raman',
     role: 'nanny',
-    status: 'pending',
-    approved: false,
-    stage: 'under_review',
+    status: 'approved',
+    approved: true,
   }
 })
 
-describe('NannyHoldingPage — while pending', () => {
-  it('shows where she is in the review', () => {
+describe('NannyHoldingPage — listing-service welcome (no approval gate)', () => {
+  it('welcomes the sitter by name', () => {
     show()
-    expect(screen.getByText(/where you are in our review/i)).toBeInTheDocument()
-  })
-})
-
-describe('NannyHoldingPage — the moment approval lands', () => {
-  beforeEach(() => {
-    profile.current = { ...profile.current, status: 'approved', approved: true }
+    expect(screen.getByRole('heading', { name: /you.re in, priya/i })).toBeInTheDocument()
   })
 
-  it('stops showing the review tracker', () => {
+  it('shows NO review or interview tracker', () => {
     show()
     expect(screen.queryByText(/where you are in our review/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/interview/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/under review/i)).not.toBeInTheDocument()
   })
 
-  it('tells her she is approved, without a re-login', () => {
-    show()
-    expect(screen.getByRole('heading', { name: /you.re approved/i })).toBeInTheDocument()
-  })
-
-  it('gives her the way forward', () => {
+  it('gives her the way forward into profile setup', () => {
     show()
     expect(screen.getByRole('link', { name: /continue/i })).toBeInTheDocument()
   })

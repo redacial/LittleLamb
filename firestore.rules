@@ -98,20 +98,20 @@ service cloud.firestore {
       allow get: if isSignedIn() && (uid() == userId || isAdmin());
       allow list: if isAdmin();
 
-      // Approval state a new account may self-create with, by role (launch 2026-11-16):
-      //   - FAMILY: auto-approved — may create approved=true/status=approved. Families are a
-      //     free audience, not a trust surface.
-      //   - NANNY: still vetted — may ONLY create approved=false/status=pending. A nanny is the
-      //     trust surface parents rely on, so self-approval is forbidden; only an admin flips it
-      //     (allow update: if isAdmin()). This is a security invariant.
-      // Mixed states (e.g. approved=true but status=pending) are rejected either way.
+      // Approval state a new account may self-create with (D77, reverses the 2026-11-16 split):
+      // Little Lamb is a job-LISTING service, not an agency — it does not approve, interview, or
+      // vet sitters. So BOTH families and sitters (role 'nanny') self-activate as
+      // approved=true/status=approved. Admin keeps remove/deactivate (allow update: if isAdmin())
+      // as the Terms-enforcement lever. Mixed states (e.g. approved=true but status=pending) are
+      // still rejected, for consistency.
       function selfApprovalOk() {
-        return (incoming().role == 'family'
-                 && incoming().approved == true
-                 && incoming().status == 'approved')
-            || (incoming().role == 'nanny'
-                 && incoming().approved == false
-                 && incoming().status == 'pending');
+        // Listing-service model (D77): Little Lamb does not approve, interview, or vet sitters, so
+        // BOTH roles self-activate as approved+active. The only guard here is consistency — no
+        // mixed approved/status state. Admin remove/deactivate (allow update: if isAdmin()) is the
+        // Terms-enforcement lever. role=='admin' can't reach here (create requires role in
+        // ['family','nanny']).
+        return incoming().approved == true
+            && incoming().status == 'approved';
       }
 
       allow create: if isSignedIn()

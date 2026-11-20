@@ -79,30 +79,28 @@ interface CreateAccountInput extends ApplicationAnswers {
 }
 
 /**
- * The approval fields a brand-new account starts with, by role.
+ * The approval fields a brand-new account starts with.
  *
- * Launch decision (2026-11-16): FAMILIES are auto-approved — a family is a free, paying
- * audience, not a trust surface, so the moment they sign up they are on the service with no
- * admin step (approved=true, status=approved, no application stage).
- *
- * NANNIES remain vetted: a nanny is exactly the trust surface parents rely on ("every nanny is
- * background-checked and admin-approved"), so a nanny self-signup must stay approved=false /
- * status=pending and only an admin may flip it (enforced in firestore.rules). This split is a
- * security invariant — do not auto-approve nannies.
+ * Listing-service model (D77, reverses the 2026-11-16 split): Little Lamb is a job-LISTING
+ * service, not an agency — it does not approve, interview, or vet sitters. So BOTH families and
+ * sitters (role 'nanny') self-activate the moment they sign up (approved=true, status=approved,
+ * no application stage), and go straight to their setup wizard. Admin keeps remove/deactivate as
+ * the Terms-enforcement lever (a removed account becomes status 'inactive'/'rejected'). The
+ * approved+active state is enforced for both roles in firestore.rules (selfApprovalOk). The `role`
+ * argument is retained for signature stability; the result no longer depends on it.
  */
-export function initialApproval(role: Role): {
+export function initialApproval(_role: Role): {
   approved: boolean
   status: UserDoc['status']
   stage: NannyStage | undefined
 } {
-  if (role === 'family') return { approved: true, status: 'approved', stage: undefined }
-  return { approved: false, status: 'pending', stage: 'application_received' }
+  return { approved: true, status: 'approved', stage: undefined }
 }
 
 /**
  * Creates an auth user + the canonical users/{uid} document. The user doc is the single
- * source of truth for role and approval. Families start approved; nannies start pending and
- * can only be approved by an admin via rules (see initialApproval).
+ * source of truth for role and approval. Both families and sitters start approved + active and
+ * go straight to their setup wizard (see initialApproval, D77); admin can later deactivate.
  */
 export async function createAccount(input: CreateAccountInput): Promise<UserDoc> {
   const cred = await createUserWithEmailAndPassword(auth, input.email, input.password)

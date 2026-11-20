@@ -1,15 +1,14 @@
-// Shown to an applicant whose application was declined, or whose account was deactivated.
+// Shown to an account that an admin has removed or deactivated.
 //
-// WHY THIS EXISTS. homeRouteFor used to branch only on `approved`, and a rejected account is
-// also `approved: false` — so a declined applicant landed on the pending holding page, which
-// reads "We'll email you the moment you're approved." That was false for them, and the
-// rejection email that was meant to correct it cannot send while platform email is dark. The
-// result was a family Lucy had declined checking back indefinitely, then calling to ask why it
-// was taking so long.
+// Under the listing-service model (D77) Little Lamb does not review or decline applications —
+// everyone self-activates at signup. The only way an account reaches this page is admin
+// remove/deactivate (status 'rejected'/'inactive'), the Terms-enforcement lever. homeRouteFor
+// branches on status FIRST, so a removed account lands here rather than on a holding page that
+// promises access that isn't coming.
 //
-// So this page states the decision plainly and gives a human to reach, because there is no
-// automated message coming. It deliberately does NOT offer "Complete your profile" — inviting
-// someone into a wizard they can never finish is the same failure in a different costume.
+// This page states the removal plainly and gives a human to reach. It deliberately does NOT
+// offer "Complete your profile" — inviting someone into a wizard they can never finish is a
+// failure in a different costume.
 import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { signOut } from '../../lib/auth'
@@ -18,7 +17,9 @@ import { useSpringIn } from '../../lib/motion'
 
 const CONTACT = 'hello@littlelambnannies.com'
 
-export function DeclinedPage({ role }: { role: 'family' | 'nanny' }) {
+// `role` is still passed by both routes (family/nanny) but the copy no longer differs by role —
+// removal is removal. Kept in the signature for the route API; prefixed to satisfy lint.
+export function DeclinedPage({ role: _role }: { role: 'family' | 'nanny' }) {
   const { profile } = useAuth()
   const springIn = useSpringIn()
   // Deactivated is not the same as declined, and saying the wrong one is its own small insult.
@@ -32,20 +33,16 @@ export function DeclinedPage({ role }: { role: 'family' | 'nanny' }) {
         <Button variant="ghost" size="sm" onClick={() => signOut()}>Log out</Button>
       </header>
       <div className="mx-auto max-w-xl px-6 py-12">
-        <p className="eyebrow font-mono text-ll-warm-gray">
-          {deactivated ? 'Account closed' : 'Application update'}
-        </p>
+        <p className="eyebrow font-mono text-ll-warm-gray">Account closed</p>
         <h1 className="mt-2 text-display-md">
           {deactivated
             ? `${firstName}, your Little Lamb account is closed`
-            : `Thanks for applying, ${firstName} — we’re not moving forward`}
+            : `${firstName}, your Little Lamb account has been removed`}
         </h1>
         <p className="mt-3 text-ll-warm-gray">
           {deactivated
-            ? 'Your account is no longer active, so bookings and profiles are turned off.'
-            : role === 'nanny'
-              ? 'We reviewed your application and aren’t able to add you to the network right now. That decision is about fit and timing in Santa Barbara, and it isn’t a judgement of your work.'
-              : 'We reviewed your application and aren’t able to open the platform to your family right now. We keep the network small so every match gets real attention.'}
+            ? 'Your account is no longer active, so bookings and your profile are turned off.'
+            : 'Your account has been removed from Little Lamb under our Terms of Service, so bookings and your profile are turned off. If you think this was a mistake, get in touch below.'}
         </p>
         <motion.div className="mt-8" {...springIn}>
           <Card>

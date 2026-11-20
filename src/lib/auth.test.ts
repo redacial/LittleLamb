@@ -163,34 +163,33 @@ describe('signInWithGoogle — the application survives a Google signup too', ()
   })
 })
 
-// Launch decision (2026-11-16): families are a free, auto-approved audience — the moment a
-// family signs up they are on the service, no admin step. Nannies are STILL vetted: a nanny is
-// the trust surface parents rely on ("every nanny is background-checked and admin-approved"),
-// so nanny signup must remain approved=false / status=pending, gated behind admin approval.
-// This is a security invariant — the nanny-not-auto-approved assertions below must never flip.
-describe('createAccount — family auto-approval at signup', () => {
+// Listing-service model (D77, reverses the 2026-11-16 split): Little Lamb is a job-LISTING
+// service, not an agency — it does not approve, interview, or vet sitters. So BOTH families and
+// sitters (role 'nanny') self-activate the moment they sign up (approved=true, status=approved,
+// no application stage) and go straight to their setup wizard. Admin keeps remove/deactivate.
+describe('createAccount — self-activation at signup (both roles)', () => {
   it('writes an approved, active family (no admin step)', async () => {
     await createAccount({ ...base, role: 'family', children: 'One kid, age 4' })
 
     const written = writtenDoc()
     expect(written.approved).toBe(true)
     expect(written.status).toBe('approved')
-    // A family has no application stage — that concept is nanny-only.
+    // No application stage — that concept is retired with the approval gate.
     expect('stage' in written).toBe(false)
   })
 
-  it('does NOT auto-approve a nanny — nannies stay pending for admin review', async () => {
+  it('also writes an approved, active SITTER — no admin approval gate', async () => {
     await createAccount({ ...base, role: 'nanny', yearsExperience: '5' })
 
     const written = writtenDoc()
-    expect(written.approved).toBe(false)
-    expect(written.status).toBe('pending')
-    expect(written.stage).toBe('application_received')
+    expect(written.approved).toBe(true)
+    expect(written.status).toBe('approved')
+    expect('stage' in written).toBe(false)
   })
 })
 
-describe('signInWithGoogle — family auto-approval on first-time Google signup', () => {
-  it('auto-approves a first-time Google family', async () => {
+describe('signInWithGoogle — self-activation on first-time Google signup', () => {
+  it('activates a first-time Google family', async () => {
     await signInWithGoogle('family')
 
     const written = writtenDoc()
@@ -198,12 +197,12 @@ describe('signInWithGoogle — family auto-approval on first-time Google signup'
     expect(written.status).toBe('approved')
   })
 
-  it('does NOT auto-approve a first-time Google nanny', async () => {
+  it('activates a first-time Google SITTER too — no admin approval gate', async () => {
     await signInWithGoogle('nanny')
 
     const written = writtenDoc()
-    expect(written.approved).toBe(false)
-    expect(written.status).toBe('pending')
-    expect(written.stage).toBe('application_received')
+    expect(written.approved).toBe(true)
+    expect(written.status).toBe('approved')
+    expect('stage' in written).toBe(false)
   })
 })
