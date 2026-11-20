@@ -95,6 +95,15 @@ service cloud.firestore {
           && strMax('personalStatement', 1000);
       }
 
+      // Affirmative Terms-of-service acceptance (D77 / business plan). The client stamps this
+      // at signup with serverTimestamp(). Optional (pre-existing accounts have none), but if
+      // present it MUST be a real timestamp — a forged client cannot store an arbitrary string
+      // or number in the legal acceptance record.
+      function termsAcceptedAtOk() {
+        return !('termsAcceptedAt' in incoming())
+          || incoming().termsAcceptedAt is timestamp;
+      }
+
       allow get: if isSignedIn() && (uid() == userId || isAdmin());
       allow list: if isAdmin();
 
@@ -121,7 +130,8 @@ service cloud.firestore {
         && selfApprovalOk()                            // family auto-approved; nanny stays pending
         && incoming().wizardComplete == false
         && strMax('fullName', 80) && strMax('email', 254) && strMax('phone', 32)
-        && applicationFieldsOk();
+        && applicationFieldsOk()
+        && termsAcceptedAtOk();
 
       // Self updates: cannot touch role/approved/status (privilege fields).
       allow update: if isSignedIn() && uid() == userId
@@ -130,7 +140,8 @@ service cloud.firestore {
         && incoming().status == existing().status
         && incoming().uid == existing().uid
         && strMax('fullName', 80) && strMax('email', 254) && strMax('phone', 32)
-        && applicationFieldsOk();
+        && applicationFieldsOk()
+        && termsAcceptedAtOk();
 
       // Admin updates: full control (approve/reject, advance nanny stage, etc.).
       allow update: if isAdmin();

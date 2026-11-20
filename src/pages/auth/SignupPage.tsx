@@ -33,6 +33,7 @@ export function SignupPage() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -42,9 +43,24 @@ export function SignupPage() {
 
   if (user && profile) return <Navigate to={homeRouteFor(profile)} replace />
 
+  /**
+   * The Terms acknowledgment is a required, affirmative step (D77 / business plan): Little Lamb
+   * is a job-LISTING service, so a family must actively accept that THEY choose, vet, and hire
+   * sitters before any account is created. Both signup paths run this first, so neither
+   * createAccount nor signInWithGoogle fires without an acceptance to record.
+   */
+  function termsBlock(): boolean {
+    if (!agreedToTerms) {
+      setError('Please accept the Terms of Service to continue.')
+      return true
+    }
+    return false
+  }
+
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (termsBlock()) return
 
     const name = cleanLine(fullName, 80)
     const cleanedPhone = cleanPhone(phone)
@@ -74,6 +90,7 @@ export function SignupPage() {
 
   async function handleGoogle() {
     setError(null)
+    if (termsBlock()) return
     setBusy(true)
     try {
       await signInWithGoogle(role, {
@@ -151,6 +168,32 @@ export function SignupPage() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+        {/* Affirmative Terms acknowledgment (D77 / business plan). Little Lamb is a job
+            LISTING service, not an agency — the family actively accepts that THEY choose, vet,
+            and hire sitters. Required: both signup paths are gated on it. The label text after
+            "I'm responsible for choosing…" is the checkbox's accessible name. */}
+        <label className="flex cursor-pointer items-start gap-3 rounded-ll-input border-1.5 border-ll-sand bg-ll-cream/60 p-3">
+          <input
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0 rounded accent-ll-sage-deep"
+          />
+          <span className="text-sm text-ll-warm-gray">
+            {role === 'family'
+              ? 'I understand Little Lamb is a listing service, not an agency, and that I’m responsible for choosing, interviewing, and hiring my own sitter. '
+              : 'I understand Little Lamb is a listing service, not an agency, and that I’m responsible for choosing which families I work with. '}
+            I agree to the{' '}
+            <Link to="/terms" className="font-semibold text-ll-sage-deep underline-offset-2 hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link to="/privacy" className="font-semibold text-ll-sage-deep underline-offset-2 hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </span>
+        </label>
         {error && (
           <p role="alert" className="text-sm font-semibold text-red-600">
             {error}
@@ -160,17 +203,6 @@ export function SignupPage() {
           Create account
         </Button>
       </form>
-
-      <p className="mt-4 text-center text-xs text-ll-warm-gray">
-        By creating an account you agree to our{' '}
-        <Link
-          to="/privacy"
-          className="font-semibold text-ll-sage-deep underline-offset-2 hover:underline"
-        >
-          Privacy Policy
-        </Link>
-        .
-      </p>
 
       <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-ll-warm-gray">
         <span className="h-px flex-1 bg-ll-ink/10" />

@@ -69,6 +69,8 @@ export function ApplicationPage() {
   const [experience, setExperience] = useState('')
   const [statement, setStatement] = useState('')
 
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -101,9 +103,25 @@ export function ApplicationPage() {
       : { yearsExperience: experience, personalStatement: statement }
   }
 
+  /**
+   * The Terms acknowledgment is a required, affirmative step (D77 / business plan): Little Lamb
+   * is a job-LISTING service, so a family must actively accept that THEY choose, vet, and hire
+   * sitters before any account is created. Both signup paths run this first. Returns false (and
+   * surfaces the reason) when the box is unticked, so neither createAccount nor signInWithGoogle
+   * fires without an acceptance to record.
+   */
+  function termsBlock(): boolean {
+    if (!agreedToTerms) {
+      setError('Please accept the Terms of Service to continue.')
+      return true
+    }
+    return false
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (termsBlock()) return
 
     const name = cleanLine(fullName, 80)
     const cleanedPhone = cleanPhone(phone)
@@ -134,6 +152,7 @@ export function ApplicationPage() {
 
   async function handleGoogle() {
     setError(null)
+    if (termsBlock()) return
     setBusy(true)
     try {
       await signInWithGoogle(role, {
@@ -299,6 +318,30 @@ export function ApplicationPage() {
                 </Select>
               )}
 
+              {/* Affirmative Terms acknowledgment (D77 / business plan). Little Lamb is a job
+                  LISTING service, not an agency — this is the family actively accepting that
+                  THEY choose, vet, and hire sitters. Required: both signup paths are gated on
+                  it, so a passive "by signing up you agree" line won't do. The label text that
+                  follows "I'm responsible for choosing…" is the checkbox's accessible name. */}
+              <label className="flex cursor-pointer items-start gap-3 rounded-ll-input border-1.5 border-ll-sand bg-ll-cream/60 p-3.5">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded accent-ll-sage-deep"
+                />
+                <span className="text-sm text-ll-warm-gray">
+                  {isFamily
+                    ? 'I understand Little Lamb is a listing service, not an agency, and that I’m responsible for choosing, interviewing, and hiring my own sitter. '
+                    : 'I understand Little Lamb is a listing service, not an agency, and that I’m responsible for choosing which families I work with. '}
+                  I agree to the{' '}
+                  <Link to="/terms" className="text-ll-sage-deep underline-offset-2 hover:underline">
+                    Terms of Service
+                  </Link>
+                  .
+                </span>
+              </label>
+
               {error && (
                 <p role="alert" className="text-sm font-semibold text-red-600">
                   {error}
@@ -313,13 +356,6 @@ export function ApplicationPage() {
                 <Button type="submit" className="w-full" loading={busy}>
                   {isFamily ? 'Create account' : 'Create sitter account'}
                 </Button>
-                <p className="mt-3 text-center text-sm text-ll-warm-gray">
-                  By creating an account you agree to our{' '}
-                  <Link to="/terms" className="text-ll-sage-deep underline-offset-2 hover:underline">
-                    Terms of Service
-                  </Link>
-                  .
-                </p>
               </motion.div>
             </form>
 

@@ -206,3 +206,22 @@ describe('signInWithGoogle — self-activation on first-time Google signup', () 
     expect('stage' in written).toBe(false)
   })
 })
+
+// Terms-of-service acceptance is a persisted, affirmative record (D77 / business plan):
+// Little Lamb is a job-LISTING service, so families must acknowledge THEY are responsible for
+// choosing, vetting, and hiring sitters. We stamp termsAcceptedAt at signup — a server
+// timestamp, so the record carries WHEN they accepted, and its presence IS the acceptance.
+// (Under the test mock serverTimestamp() is the sentinel 'SERVER_TS'.)
+describe('termsAcceptedAt — acceptance is recorded at signup', () => {
+  it('stamps termsAcceptedAt on a new email/password account', async () => {
+    await createAccount({ ...base, role: 'family', children: 'One kid, age 4' })
+
+    expect(writtenDoc().termsAcceptedAt).toBe('SERVER_TS')
+  })
+
+  it('stamps termsAcceptedAt on a first-time Google signup', async () => {
+    await signInWithGoogle('family')
+
+    expect(writtenDoc().termsAcceptedAt).toBe('SERVER_TS')
+  })
+})

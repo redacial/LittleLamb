@@ -48,6 +48,14 @@ export interface UserDoc {
   yearsExperience?: string
   /** Nanny applicants only. */
   personalStatement?: string
+  /**
+   * When the account holder affirmatively accepted the Terms of Service at signup (D77 /
+   * business plan). Little Lamb is a job-LISTING service, so families acknowledge THEY are
+   * responsible for choosing, vetting, and hiring sitters. The presence of this timestamp IS
+   * the acceptance; its value records WHEN. Optional — accounts created before this field
+   * existed have none, so every reader must tolerate its absence.
+   */
+  termsAcceptedAt?: Timestamp | null
   createdAt: Timestamp | null
   updatedAt: Timestamp | null
 }

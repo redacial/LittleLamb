@@ -51,12 +51,14 @@ function renderPage() {
   )
 }
 
-/** Fills the four fields shared by both roles with valid values. */
+/** Fills the four fields shared by both roles with valid values, and ticks the required
+ *  Terms acknowledgment — signup cannot proceed without it (D77). */
 async function fillSharedFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/full name/i), 'Dana Whitfield')
   await user.type(screen.getByLabelText(/^email/i), 'dana@example.com')
   await user.type(screen.getByLabelText(/phone/i), '805-555-0142')
   await user.type(screen.getByLabelText(/password/i), 'lambs1234')
+  await user.click(screen.getByRole('checkbox', { name: /responsible for choosing/i }))
 }
 
 /** The single argument object handed to createAccount by the most recent submit. */
@@ -171,6 +173,8 @@ describe('ApplicationPage — Google signup carries the application too', () => 
     renderPage()
 
     await user.type(screen.getByLabelText(/number of children/i), 'One, age 4')
+    // Google signup is gated behind the same required Terms acknowledgment.
+    await user.click(screen.getByRole('checkbox', { name: /responsible for choosing/i }))
 
     await user.click(screen.getByRole('button', { name: /continue with google/i }))
 
@@ -182,5 +186,38 @@ describe('ApplicationPage — Google signup carries the application too', () => 
 
     expect(role).toBe('family')
     expect(options.children).toBe('One, age 4')
+  })
+})
+
+// The affirmative Terms acknowledgment (D77 / business plan). Little Lamb is a job-LISTING
+// service, so a family must actively accept that THEY choose, vet, and hire sitters before an
+// account can be created — a passive "by signing up you agree" line is not an acknowledgment.
+// Neither signup path may fire while the box is unticked.
+describe('ApplicationPage — Terms must be actively accepted', () => {
+  it('blocks email/password signup until the Terms box is ticked', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    // Everything valid EXCEPT the acknowledgment.
+    await user.type(screen.getByLabelText(/full name/i), 'Dana Whitfield')
+    await user.type(screen.getByLabelText(/^email/i), 'dana@example.com')
+    await user.type(screen.getByLabelText(/phone/i), '805-555-0142')
+    await user.type(screen.getByLabelText(/password/i), 'lambs1234')
+
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    // No account is created, and the reason is surfaced.
+    expect(createAccount).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(/terms/i)
+  })
+
+  it('blocks Google signup until the Terms box is ticked', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: /continue with google/i }))
+
+    expect(signInWithGoogle).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(/terms/i)
   })
 })

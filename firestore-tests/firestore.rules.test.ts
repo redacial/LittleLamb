@@ -566,6 +566,21 @@ describe('users — application fields', () => {
       }),
     )
   })
+
+  // Terms-of-service acceptance (D77 / business plan): the client stamps termsAcceptedAt at
+  // signup. The server accepts a real timestamp and REJECTS anything else, so a forged client
+  // can't backdate acceptance with an arbitrary string or number in the legal record.
+  it('accepts a signup carrying a timestamp termsAcceptedAt', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(NEW), 'users', NEW), pendingUser({ termsAcceptedAt: serverTimestamp() })),
+    )
+  })
+
+  it('rejects a termsAcceptedAt that is not a timestamp', async () => {
+    await assertFails(
+      setDoc(doc(as(NEW), 'users', NEW), pendingUser({ termsAcceptedAt: 'yesterday, probably' })),
+    )
+  })
 })
 
 // Listing-service model (D77, reverses the 2026-11-16 invariant): Little Lamb is a job-LISTING

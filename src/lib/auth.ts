@@ -124,6 +124,9 @@ export async function createAccount(input: CreateAccountInput): Promise<UserDoc>
     // The application answers, sanitized. Without these the users doc carries no record of
     // what the applicant actually submitted, and an admin approves on name + email alone.
     ...cleanApplication(input),
+    // Affirmative Terms acceptance, stamped at signup (D77). Reaching this write means the
+    // /apply form's required acknowledgment was ticked — we record WHEN, server-side.
+    termsAcceptedAt: serverTimestamp() as never,
     createdAt: serverTimestamp() as never,
     updatedAt: serverTimestamp() as never,
   }
@@ -173,6 +176,9 @@ export async function signInWithGoogle(
     referralCode: generateReferralCode(cred.user.uid),
     // Google signups fill in the same /apply form, so their answers persist identically.
     ...cleanApplication(attribution ?? {}),
+    // Same affirmative Terms acceptance as the email/password path — the /apply form gates
+    // "Continue with Google" behind the same required acknowledgment.
+    termsAcceptedAt: serverTimestamp() as never,
     createdAt: serverTimestamp() as never,
     updatedAt: serverTimestamp() as never,
   }

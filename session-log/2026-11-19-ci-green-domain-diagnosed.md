@@ -177,3 +177,38 @@ listing-service copy; sitters self-activate; the whole app is paper-washed.
   is 200, don't wait it out — **redeploy hosting** (`build:app:staging` +
   `firebase deploy --only hosting:app --project littlelamb-sb-staging`), which rotates the
   release and flushes the edge cache. Clears in ~1 min.
+
+---
+
+## 2026-11-20 — Affirmative, persisted ToS acceptance at signup (D78)
+
+Picked up the deferred "persisted ToS-acceptance checkbox" item. Little Lamb is a job-LISTING
+service (D77): the family is responsible for choosing/vetting/hiring their sitter, so signup now
+requires an **affirmative, ticked** acknowledgment, and the acceptance is **recorded**.
+
+**What shipped (all test-first — behavioral):**
+- `UserDoc.termsAcceptedAt?: Timestamp | null` — presence = acceptance, value = when. Stamped with
+  `serverTimestamp()` in `createAccount` and the first-time branch of `signInWithGoogle`
+  (`src/lib/auth.ts`). Optional, so every pre-existing account still reads/writes.
+- Required checkbox on **`/apply`** (`ApplicationPage`) and **`/signup`** (`SignupPage`), naming the
+  duty; both email/password and Google paths gated (`termsBlock()`), replacing the old passive
+  "by signing up you agree" line.
+- **`/login` deliberately left unchanged** (David's call via AskUserQuestion): it's a sign-in
+  screen; a Terms box there is confusing. Its Google button can still provision a first-timer, who
+  gets `termsAcceptedAt` stamped, just with no on-screen tick.
+- `firestore.rules` `termsAcceptedAtOk()`: if present, MUST be a `timestamp` (create + self-update)
+  so a forged client can't store an arbitrary string in the legal record.
+- Tests: `auth.test.ts` (+2), `firestore.rules.test.ts` (+2: timestamp accepted / non-timestamp
+  rejected), `ApplicationPage.test.tsx` (+2 gating), new `SignupPage.test.tsx` (3). Each watched
+  fail-for-the-right-reason before implementing.
+
+**State:** 493 client / 68 rules green, typecheck + lint clean, `build:app:staging` clean. Legal
+grep gate clean for all live code (only `src/landing/*` — abandoned, unserved — still trips it, as
+before). **Not deployed yet** — this is a pre-launch branch; bundle with the next hosting deploy.
+Also committed a small chore: `scratchpad/` added to the ESLint ignore (it's gitignored, so CI was
+green but local lint tripped on leftover `.mjs` files).
+
+**Remaining deferred (unchanged, all genuinely separate projects):** `'verified'` BadgeType / badge
+array migration (real data migration); billing-model math for "first two free + yearly" (billing
+gated OFF); prune orphaned `advanceStage`/`useCalendlyConfig`/`config/calendly` + `NannyStage` type
+members (low-value tidy); `www` Firebase re-verify click (David's console task).

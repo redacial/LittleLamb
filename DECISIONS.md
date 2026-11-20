@@ -772,3 +772,32 @@ surfaces (deploy). Deferred as separate follow-ups: admin agency-tooling removal
 `ll-sage-wash`), the `.sticky-note`/`.sticky-tape` CSS, and a shared `<StickyNote>` + doodle
 primitives (`CheckDoodle`/`ArrowDoodle`/`HeartDoodle`) in `src/components/theme`. No existing page
 changed yet.
+
+### D78. Affirmative, persisted Terms-of-Service acceptance at signup (2026-11-20)
+
+Follows D77. Under the job-LISTING model, the family — not Little Lamb — is responsible for
+choosing, interviewing, and hiring their sitter. The signup forms only carried a **passive** "by
+creating an account you agree…" line, and nothing recorded that the user accepted. That is the
+weakest possible footing for the exact liability the listing-service model is built to limit.
+
+**Decision:** signup now requires an **affirmative, ticked** acknowledgment, and the acceptance is
+**persisted**.
+- New optional field `UserDoc.termsAcceptedAt?: Timestamp | null`. Its **presence is the
+  acceptance**; its value records **when**. Stamped with `serverTimestamp()` in both
+  `createAccount` and the first-time branch of `signInWithGoogle` (`src/lib/auth.ts`). Optional so
+  every pre-existing account (which has none) still reads and writes.
+- A required checkbox on **`/apply`** (`ApplicationPage`) and **`/signup`** (`SignupPage`), naming
+  the duty ("I'm responsible for choosing, interviewing, and hiring my own sitter… I agree to the
+  Terms of Service"). Both the email/password and the Google path are gated on it — neither
+  `createAccount` nor `signInWithGoogle` fires without an acceptance to record.
+- **`/login` left unchanged** (David's call): it is a sign-in screen for existing users; a Terms
+  checkbox there is confusing. Its Google button can still provision a first-time account (which
+  gets `termsAcceptedAt` stamped), but there is no on-screen tick on the login page.
+- **Rules:** `firestore.rules` `termsAcceptedAtOk()` — if `termsAcceptedAt` is present it MUST be a
+  `timestamp`, on both create and self-update, so a forged client can't store an arbitrary
+  string/number in the legal record. Optional-by-absence preserved.
+
+**Test-first** (behavioral): inverted/added tests before the implementation — `auth.test.ts` (stamp
+on both paths), `firestore.rules.test.ts` (timestamp accepted, non-timestamp rejected),
+`ApplicationPage.test.tsx` + new `SignupPage.test.tsx` (both signup paths blocked until the box is
+ticked). Closes the "persisted ToS-acceptance checkbox" item deferred under D77.
