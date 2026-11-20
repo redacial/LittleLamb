@@ -11,6 +11,24 @@ export interface DirectoryNanny extends NannyProfile {
 }
 
 /**
+ * Reconcile a raw nannies/{uid} doc with the NannyProfile contract before it reaches any
+ * consumer. The TYPE declares selfBadges/verifiedBadges as required string[], but Firestore
+ * returns exactly what's stored: a wizard-created profile writes selfBadges and NOT
+ * verifiedBadges (admin-only), so verifiedBadges comes back undefined. Consumers then do
+ * `.map()` / spread on it (NannyCard, the shared NannyProfilePage) and crash at render into the
+ * ErrorBoundary. Defaulting both arrays here — the single read boundary — keeps the type's
+ * promise true at runtime for every reader, instead of guarding each call site one by one.
+ */
+function normalizeNanny(data: NannyProfile): DirectoryNanny {
+  return {
+    ...data,
+    fullName: data.fullName || 'Nanny',
+    selfBadges: data.selfBadges ?? [],
+    verifiedBadges: data.verifiedBadges ?? [],
+  }
+}
+
+/**
  * Cap on the directory read. Unlike the admin lists this is a one-shot getDocs, but it
  * is still an unbounded whole-collection read that every family and nanny performs on
  * page load. Set well above the plausible size of a Santa Barbara nanny network.
@@ -33,10 +51,7 @@ export function useNannyDirectory() {
         const profilesSnap = await getDocs(
           query(collection(db, 'nannies'), limit(DIRECTORY_PAGE_SIZE)),
         )
-        const list = profilesSnap.docs.map((d) => {
-          const data = d.data() as NannyProfile
-          return { ...data, fullName: data.fullName || 'Nanny' }
-        })
+        const list = profilesSnap.docs.map((d) => normalizeNanny(d.data() as NannyProfile))
         if (alive) {
           setNannies(list)
           setTruncated(profilesSnap.size >= DIRECTORY_PAGE_SIZE)
@@ -72,8 +87,7 @@ export function useNanny(uid: string | undefined) {
         // (and rules never grant) a read of another user's private users/{uid} document.
         const profileSnap = await getDoc(doc(db, 'nannies', uid))
         if (alive && profileSnap.exists()) {
-          const data = profileSnap.data() as NannyProfile
-          setNanny({ ...data, fullName: data.fullName || 'Nanny' })
+          setNanny(normalizeNanny(profileSnap.data() as NannyProfile))
         }
       } finally {
         if (alive) setLoading(false)
