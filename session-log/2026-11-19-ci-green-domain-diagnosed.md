@@ -109,12 +109,17 @@ remove/deactivate — the business plan's own TOS lever; no data migration).
   paper. **Live on littlelambnannies.com** (HTTP 200, sticky-note CSS confirmed).
 - Green throughout: 491 client tests, typecheck, lint, build.
 
+- **Phase 3** (`5ce02e3`, DEPLOYED with rules): sitter self-activation. Test-first — inverted the
+  approval rules block + `pendingUser()` helper, and the auth.test.ts create/Google tests (watched
+  fail → pass). `selfApprovalOk()` now lets BOTH roles self-create approved+active (mixed states
+  still rejected; admin deactivate lever + verifiedBadges immutability untouched); `initialApproval`
+  returns approved+active regardless of role; NannyHoldingPage dropped the review/interview tracker
+  (now a welcome into setup); DeclinedPage reframed to "removed/closed under Terms". homeRouteFor
+  needed no change. **Deployed rules + hosting:app TOGETHER** (David approved) to
+  littlelamb-sb-staging — they must be consistent or signup breaks. Apex 200 on the new build.
+  Rules 66 / client 490 green, CI green.
+
 **Still to do (next):**
-- **Phase 3 (TEST-FIRST):** sitter self-activation — invert the 5 approval rules tests
-  (`firestore.rules.test.ts:579-656`), then `initialApproval` (nanny==family), `selfApprovalOk()`,
-  routing, drop the NannyHoldingPage interview-stage tracker, repurpose DeclinedPage to "removed per
-  Terms". Reverses the 2026-11-16 invariant — safe only because Phases 1–2 stripped the vetting
-  claims. The `src/lib/auth.ts` comment (lines 85–92) still states the OLD invariant; fix it here.
 - **Phase 4:** app shell + light-touch logged-in surfaces to paper (dense data UI stays readable).
 - **Deferred (Phase 5/6):** remove admin agency tooling (VerifiedBadgesModal write path, the
   interview/stage controls in AdminPeoplePage, the Calendly card in AdminSettings); drop the
