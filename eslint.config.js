@@ -28,6 +28,7 @@ export default tseslint.config(
       'node_modules/',
       'vendor/',
       '.firebase/',
+      'scratchpad/',
       '**/*.tsbuildinfo',
     ],
   },
