@@ -351,10 +351,14 @@ export function useAdminActions() {
    * "reinstated" event exists. It is also moot in practice — the rejection email never
    * reached them (platform email is not live), so from their side nothing ever happened.
    */
+  // Undo a removal: move a rejected/inactive account back to approved + active. Under the
+  // listing-service model (D77) there is no "pending" review state to return to — reinstating
+  // simply restores the member, which is also what routing expects (homeRouteFor sends an
+  // approved+active member back into the normal flow).
   const reinstate = useCallback(async (uid: string) => {
     await updateDoc(doc(db, 'users', uid), {
-      approved: false,
-      status: 'pending',
+      approved: true,
+      status: 'approved',
       updatedAt: serverTimestamp(),
     })
   }, [])

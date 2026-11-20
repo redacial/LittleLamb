@@ -471,10 +471,10 @@ describe('AdminPeoplePage — undoing a rejection', () => {
     expect(screen.getByRole('button', { name: /reinstate/i })).toBeInTheDocument()
   })
 
-  it('moves them back to pending — NOT straight to approved', async () => {
-    // Reinstating must undo the mistake, not commit the opposite one. Back to pending is
-    // the exact state they were in a moment before the misclick; approving is a separate,
-    // deliberate click that fires a real "you're in" email.
+  it('reinstates a removed member (restores them to active)', async () => {
+    // Reinstate undoes a removal. Under the listing-service model there is no "pending" review
+    // state to return to, so reinstate restores the member to approved+active directly (the
+    // payload itself lives in useAdmin.reinstate; here we assert the control calls it).
     const fam = rejectedFamily()
     reset({ users: [fam], items: [fam] })
 
@@ -483,7 +483,6 @@ describe('AdminPeoplePage — undoing a rejection', () => {
     await userEvent.click(screen.getByRole('button', { name: /reinstate/i }))
 
     expect(adminActions.reinstate).toHaveBeenCalledWith('fam-9')
-    expect(adminActions.approve).not.toHaveBeenCalled()
   })
 
   it('does not offer Reinstate to people who were never rejected', async () => {
