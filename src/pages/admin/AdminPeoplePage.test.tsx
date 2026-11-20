@@ -33,7 +33,6 @@ const adminActions = {
   approve: vi.fn(async () => {}),
   reject: vi.fn(async () => {}),
   reinstate: vi.fn(async () => {}),
-  advanceStage: vi.fn(async () => {}),
 }
 
 const reviewsResult = {
@@ -412,7 +411,7 @@ describe('AdminPeoplePage — confirming a rejection', () => {
     await userEvent.click(screen.getByRole('button', { name: /^reject$/i }))
 
     const dialog = await screen.findByRole('dialog')
-    await userEvent.click(within(dialog).getByRole('button', { name: /keep application|never mind|cancel/i }))
+    await userEvent.click(within(dialog).getByRole('button', { name: /keep them|never mind|cancel/i }))
 
     expect(adminActions.reject).not.toHaveBeenCalled()
   })
@@ -425,7 +424,7 @@ describe('AdminPeoplePage — confirming a rejection', () => {
     await userEvent.click(screen.getByRole('button', { name: /^reject$/i }))
 
     const dialog = await screen.findByRole('dialog')
-    await userEvent.click(within(dialog).getByRole('button', { name: /reject application/i }))
+    await userEvent.click(within(dialog).getByRole('button', { name: /^remove$/i }))
 
     expect(adminActions.reject).toHaveBeenCalledWith('fam-9', 'The Alvarez Family', 'family')
   })
@@ -492,6 +491,25 @@ describe('AdminPeoplePage — undoing a rejection', () => {
     await openActiveTab()
 
     expect(screen.queryByRole('button', { name: /reinstate/i })).not.toBeInTheDocument()
+  })
+})
+
+// Removal is the Terms-enforcement lever (D77): Little Lamb does not approve or interview, but it
+// CAN take down an active member who breaks the Terms. The row offers Remove on an active member,
+// behind a confirm dialog, and it calls reject() (status → rejected).
+describe('AdminPeoplePage — removing an active member', () => {
+  it('offers Remove on an active member and removes them once confirmed', async () => {
+    const active = approvedNanny()
+    reset({ users: [active], items: [active] })
+
+    render(<AdminPeoplePage role="nanny" />)
+    await openActiveTab()
+
+    await userEvent.click(screen.getByRole('button', { name: /^remove$/i }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: /^remove$/i }))
+
+    expect(adminActions.reject).toHaveBeenCalledWith('nanny-1', 'Maria Reyes', 'nanny')
   })
 })
 
@@ -594,7 +612,7 @@ describe('AdminPeoplePage — a failed admin action must never pass for success'
     render(<AdminPeoplePage role="nanny" />)
     await userEvent.click(screen.getByRole('button', { name: /^reject$/i }))
     const dialog = await screen.findByRole('dialog')
-    await userEvent.click(within(dialog).getByRole('button', { name: /reject application/i }))
+    await userEvent.click(within(dialog).getByRole('button', { name: /^remove$/i }))
 
     const alert = await screen.findByRole('alert')
     // Naming the person matters: the page lists many rows and the error has to say
@@ -626,16 +644,6 @@ describe('AdminPeoplePage — a failed admin action must never pass for success'
     expect(await screen.findByRole('alert')).toHaveTextContent(/Dana Whitfield/)
   })
 
-  it('shows an error when ADVANCING the application stage fails', async () => {
-    adminActions.advanceStage.mockRejectedValueOnce(new Error('offline'))
-    const n = pendingNanny()
-    reset({ users: [n], items: [n] })
-
-    render(<AdminPeoplePage role="nanny" />)
-    await userEvent.click(screen.getByRole('button', { name: /advance/i }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Dana Whitfield/)
-  })
 
   it('says nothing when the action SUCCEEDS — no error on the happy path', async () => {
     // Guards the fix against the lazy version that renders the notice unconditionally.

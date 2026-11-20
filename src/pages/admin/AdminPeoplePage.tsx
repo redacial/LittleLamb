@@ -5,26 +5,21 @@ import { Card, Button, Avatar, StatusPill, LoadErrorNotice, TruncatedNotice, Mod
 import { VerifiedBadgesModal } from '../../components/admin/VerifiedBadgesModal'
 import { PersonReviewsModal } from '../../components/admin/PersonReviewsModal'
 import { cn } from '../../lib/cn'
-import type { NannyStage, Role, UserDoc } from '../../types'
+import type { Role, UserDoc } from '../../types'
 
 type Tab = 'active' | 'pending' | 'inactive' | 'rejected'
 
-const NANNY_STAGES: NannyStage[] = ['application_received', 'under_review', 'interview_scheduled', 'decision_made']
-const STAGE_LABEL: Record<NannyStage, string> = {
-  application_received: 'Application received',
-  under_review: 'Under review',
-  interview_scheduled: 'Interview scheduled',
-  decision_made: 'Decision made',
-}
-
 /**
- * Admin management of nannies or families. Tabs by status; approve/reject + advance stage.
- * Theme note: this is a dense work surface — rows stay calm (no tilt, no grain). Only the
- * tab strip and status pills carry colour; motion is limited to button hover/focus.
+ * Admin management of sitters or families. Tabs by status; the live levers are Credentials,
+ * Reviews, and Reject/Reinstate (remove/restore — the Terms-enforcement path). Little Lamb does
+ * not approve or interview sitters (D77), so there is no application-stage / interview tracker;
+ * the Approve control remains only as a fallback for any legacy account still marked pending.
+ * Theme note: this is a dense work surface — rows stay calm (no tilt, no grain). Only the tab
+ * strip and status pills carry colour; motion is limited to button hover/focus.
  */
 export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'family'> }) {
   const { users, loading, error, truncated, loadMore, loadingMore } = useUsersByRole(role)
-  const { approve, reject, reinstate, advanceStage } = useAdminActions()
+  const { approve, reject, reinstate } = useAdminActions()
   const [tab, setTab] = useState<Tab>('pending')
 
   const filtered = users.filter((u) => {
@@ -99,7 +94,6 @@ export function AdminPeoplePage({ role }: { role: Extract<Role, 'nanny' | 'famil
                 onApprove={() => approve(u.uid, u.fullName, role)}
                 onReject={() => reject(u.uid, u.fullName, role)}
                 onReinstate={() => reinstate(u.uid)}
-                onAdvance={(s) => advanceStage(u.uid, s, u.fullName)}
               />
             ))}
           </div>
@@ -156,7 +150,6 @@ function PersonRow({
   onApprove,
   onReject,
   onReinstate,
-  onAdvance,
 }: {
   user: UserDoc
   role: 'nanny' | 'family'
@@ -166,7 +159,6 @@ function PersonRow({
   onApprove: () => Promise<unknown>
   onReject: () => Promise<unknown>
   onReinstate: () => Promise<unknown>
-  onAdvance: (s: NannyStage) => Promise<unknown>
 }) {
   const [badgesOpen, setBadgesOpen] = useState(false)
   const [reviewsOpen, setReviewsOpen] = useState(false)
@@ -200,11 +192,6 @@ function PersonRow({
     }
   }
 
-  const nextStage =
-    role === 'nanny' && u.stage
-      ? NANNY_STAGES[Math.min(NANNY_STAGES.indexOf(u.stage) + 1, NANNY_STAGES.length - 1)]
-      : null
-
   return (
     <Card className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3">
@@ -213,9 +200,6 @@ function PersonRow({
           <p className="font-semibold text-ll-ink">{u.fullName}</p>
           <p className="text-sm text-ll-warm-gray">{u.email}</p>
           {u.phone && <p className="text-sm text-ll-warm-gray">{u.phone}</p>}
-          {role === 'nanny' && u.stage && (
-            <p className="mt-0.5 font-mono text-mono-sm text-ll-sage-deep">{STAGE_LABEL[u.stage]}</p>
-          )}
           <ApplicationSummary user={u} role={role} />
         </div>
       </div>
@@ -233,33 +217,34 @@ function PersonRow({
         <Button size="sm" variant="ghost" onClick={() => setReviewsOpen(true)}>
           Reviews
         </Button>
+        {/* Approve is a fallback only: no new account is ever pending (sitters and families
+            self-activate, D77), but a legacy pending account still needs a way in. */}
         {!u.approved && u.status === 'pending' && (
-          <>
-            {role === 'nanny' && nextStage && u.stage !== 'decision_made' && (
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={busy}
-                onClick={() => run(() => onAdvance(nextStage), 'advance')}
-              >
-                Advance
-                <ArrowRight />
-              </Button>
-            )}
-            <Button size="sm" disabled={busy} onClick={() => run(onApprove, 'approve')}>
-              Approve
-            </Button>
-            {/* Deliberately asymmetric: Approve fires straight away, Reject asks first.
-                Approving by mistake is undone in seconds; rejecting used to be permanent. */}
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={busy}
-              onClick={() => setConfirmReject(true)}
-            >
-              Reject
-            </Button>
-          </>
+          <Button size="sm" disabled={busy} onClick={() => run(onApprove, 'approve')}>
+            Approve
+          </Button>
+        )}
+        {/* Remove/deactivate — the Terms-enforcement lever — on any active OR pending member.
+            Asks first (unlike the one-click actions): removal turns off their account. */}
+        {u.approved && u.status === 'approved' && (
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={busy}
+            onClick={() => setConfirmReject(true)}
+          >
+            Remove
+          </Button>
+        )}
+        {!u.approved && u.status === 'pending' && (
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={busy}
+            onClick={() => setConfirmReject(true)}
+          >
+            Reject
+          </Button>
         )}
         {/* The way back out of a misclick. Without this the rejected tab was a dead end —
             the row landed here and no control on the page could move it again. */}
@@ -294,16 +279,15 @@ function PersonRow({
       <Modal
         open={confirmReject}
         onClose={() => setConfirmReject(false)}
-        title={`Reject ${u.fullName}?`}
+        title={`Remove ${u.fullName}?`}
       >
         <p className="text-sm text-ll-warm-gray">
           <span className="font-semibold text-ll-ink">{u.fullName}</span> ({u.email}) will be
-          declined and moved to the rejected tab. Their account stays inactive and they can’t
-          use the platform.
+          removed and moved to the rejected tab. Their account is turned off and they can’t use
+          the platform.
         </p>
         {/* Naming the email gap is the point. Lucy would otherwise reasonably assume the
-            platform breaks the news for her, and the applicant is left refreshing a holding
-            page that says they'll hear back. */}
+            platform breaks the news for her. */}
         <p className="mt-3 text-sm text-ll-warm-gray">
           They <span className="font-semibold text-ll-ink">won’t be notified</span> — platform
           email isn’t live yet, so nothing is sent automatically. If they should know, contact
@@ -314,7 +298,7 @@ function PersonRow({
         </p>
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={() => setConfirmReject(false)}>
-            Keep application
+            Keep them
           </Button>
           <Button
             variant="danger"
@@ -323,18 +307,10 @@ function PersonRow({
               void run(onReject, 'reject')
             }}
           >
-            Reject application
+            Remove
           </Button>
         </div>
       </Modal>
     </Card>
-  )
-}
-
-function ArrowRight() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   )
 }
