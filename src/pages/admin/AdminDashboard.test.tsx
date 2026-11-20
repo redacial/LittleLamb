@@ -41,7 +41,7 @@ vi.mock('../../hooks/useAdmin', () => ({
       ? { ...pendingNannies, users: pendingNannies.items }
       : { ...pendingFamilies, users: pendingFamilies.items },
   useUndeliveredMail: () => undeliveredMail,
-  useAdminActions: () => ({ approve: vi.fn(), reject: vi.fn(), advanceStage: vi.fn() }),
+  useAdminActions: () => ({ approve: vi.fn(), reject: vi.fn() }),
 }))
 
 vi.mock('../../context/AuthContext', () => ({

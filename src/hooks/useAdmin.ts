@@ -19,7 +19,7 @@ import { notify, type NotificationEvent } from '../lib/notifications'
 import { useGrowingCollection, type GrowingList } from './useGrowingCollection'
 import { DEFAULT_BADGES, setBadgeRegistry, type BadgeDef } from '../lib/badges'
 import { DEFAULT_POLICIES, parsePolicies, type Policies } from '../lib/policies'
-import type { UserDoc, Role, NannyStage, Booking } from '../types'
+import type { UserDoc, Role, Booking } from '../types'
 
 /** Fire-and-forget: a notification failure must never reject an admin write. */
 function fireNotify(event: NotificationEvent) {
@@ -64,43 +64,6 @@ export function useBillingConfig() {
 
   const save = useCallback(async (next: Partial<BillingConfig>) => {
     await setDoc(doc(db, 'config', 'billing'), { ...next, updatedAt: serverTimestamp() }, { merge: true })
-  }, [])
-
-  return { config, loading, save }
-}
-
-/** The interview-scheduling link, stored in config/calendly. */
-export interface CalendlyConfig {
-  /** Empty means NOT CONFIGURED — consumers must hide the CTA rather than link nowhere. */
-  url: string
-}
-
-/**
- * Live read of the Calendly config doc.
- *
- * The URL was previously hardcoded in two places — NannyHoldingPage and the Settings tab —
- * and the hardcoded value 404s, so the one call-to-action at the most important moment in
- * the nanny funnel was a dead link. There is deliberately NO default URL here: an unset
- * config yields '', and the holding page hides the button entirely. A missing CTA is
- * recoverable (Lucy emails her); a broken one burns the applicant's trust.
- */
-export function useCalendlyConfig() {
-  const [config, setConfig] = useState<CalendlyConfig>({ url: '' })
-  const [loading, setLoading] = useState(true)
-  useEffect(() => {
-    return onSnapshot(
-      doc(db, 'config', 'calendly'),
-      (snap) => {
-        const d = snap.data()
-        setConfig({ url: typeof d?.url === 'string' ? d.url : '' })
-        setLoading(false)
-      },
-      () => setLoading(false),
-    )
-  }, [])
-
-  const save = useCallback(async (next: Partial<CalendlyConfig>) => {
-    await setDoc(doc(db, 'config', 'calendly'), { ...next, updatedAt: serverTimestamp() }, { merge: true })
   }, [])
 
   return { config, loading, save }
@@ -363,13 +326,10 @@ export function useAdminActions() {
     })
   }, [])
 
-  const advanceStage = useCallback(async (uid: string, stage: NannyStage, fullName: string) => {
-    await updateDoc(doc(db, 'users', uid), { stage, updatedAt: serverTimestamp() })
-    // Only nannies have application stages.
-    fireNotify({ type: 'application_status_updated', to: 'nanny', userId: uid, fullName, stage })
-  }, [])
-
-  return { approve, reject, reinstate, advanceStage }
+  // advanceStage (the nanny interview/stage tracker) was removed with the listing-service
+  // model (D77): Little Lamb no longer approves, interviews, or advances sitters through stages.
+  // Remove/deactivate (reject) is the only lifecycle lever now; see D77.
+  return { approve, reject, reinstate }
 }
 
 /* ────────────────────────── Badges ──────────────────────────

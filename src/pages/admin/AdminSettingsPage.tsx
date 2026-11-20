@@ -82,20 +82,6 @@ function EmailCopyNote() {
 }
 
 /**
- * The interview-scheduling link (config/calendly).
- *
- * This tab used to be an input with a hardcoded `defaultValue` and a Save button with no
- * handler — so it displayed a URL that 404s as though it were configured, and typing a real
- * one and clicking Save silently discarded it. NannyHoldingPage held a second copy of the
- * same hardcoded string, free to drift from this one. Both now read config/calendly, and
- * an empty value here means the holding page shows no button at all.
- */
-/* Calendly tab removed (D77): it configured an interview-scheduling link, but Little Lamb is a
-   job-listing service and does not interview or approve sitters — the whole interview/stage flow
-   was removed in Phase 3. The `useCalendlyConfig` hook + config/calendly doc are now orphaned and
-   can be pruned from src/hooks/useAdmin.ts in a later cleanup. */
-
-/**
  * Editable policy copy (config/policies) — the three blocks rendered on the shared
  * Policies page. Previously three textareas with no value/onChange and a dead Save.
  *

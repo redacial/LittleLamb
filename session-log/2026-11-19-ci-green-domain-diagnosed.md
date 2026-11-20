@@ -219,7 +219,27 @@ still literally `'verified'`, an internal name no user sees), and renaming it wo
 `config/badges` migration for zero user-visible gain. KEEP both the split and the value. Full
 rationale in DECISIONS.md D79. No code changed; docs only.
 
+### Orphaned-export prune (client-only, tier 1)
+
+Pruned the genuinely-dead, client-only orphans — all verified unreferenced by any live consumer
+before deletion (typecheck + lint + 493 tests green after):
+- `useCalendlyConfig` + `CalendlyConfig` interface + the `config/calendly` read/write — only
+  reference was a stale comment in `AdminSettingsPage.tsx` (removed with its sibling dead comment).
+- `advanceStage` (+ its `application_status_updated` client emit) from `useAdmin.ts` /
+  `useAdminActions` — no real consumer destructured it; the lone other reference was a stale
+  `vi.fn()` field in `AdminDashboard.test.tsx` (dropped). Replaced with a one-line D77 note.
+- `NannyStage` import dropped from `useAdmin.ts` (now unused there).
+- −54 lines net, 3 files, no behavioral change. Docs comments that said "prune in a later cleanup"
+  are gone.
+
+**Scoped OUT (tier 2 — NOT done, deliberately):** removing the `NannyStage` *type*, `UserDoc.stage`,
+and the `application_status_updated` notification variant. These span the **functions/** package
+(event type, email template, recipient resolver, functions tests) and touch the deployed email
+pipeline — that is a cross-package change, not a safe client tidy. Left intact and harmless (the
+notification type is simply never emitted now). Pick it up as its own functions-aware task if ever
+wanted; it is cosmetic.
+
 **Remaining deferred (all genuinely separate projects):** billing-model math for "first two free +
-yearly" (billing gated OFF, nothing shows); prune orphaned `advanceStage`/`useCalendlyConfig`/
-`config/calendly` + `NannyStage` type members (low-value tidy); `www` Firebase re-verify click
-(David's console task). (The badge migration is now closed — D79 — not deferred.)
+yearly" (billing gated OFF, nothing shows); the tier-2 `NannyStage`/notification removal above
+(cross-package, cosmetic); `www` Firebase re-verify click (David's console task). (The badge
+migration is closed — D79 — not deferred.)
