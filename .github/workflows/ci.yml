@@ -94,6 +94,14 @@ jobs:
   rules-tests:
     name: Firestore rules tests
     runs-on: ubuntu-latest
+    # Same Pacific pin as build-and-test, and for the same reason: the past-date backstop in
+    # firestore.rules (bookingDateNotPast, a +1d+8h window) assumes the day was formed in
+    # Pacific, and firestore.rules.test.ts builds "yesterday" with isoOffsetDays() off the
+    # local calendar day. On a UTC runner the two disagree by 8h and the
+    # "rejects a booking dated yesterday" test flakes by time of day. job-level env does NOT
+    # inherit across jobs, so this must be declared here too — not only on build-and-test.
+    env:
+      TZ: America/Los_Angeles
     steps:
       - uses: actions/checkout@v4
 
