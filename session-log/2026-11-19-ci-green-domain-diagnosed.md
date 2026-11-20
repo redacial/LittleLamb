@@ -83,6 +83,44 @@ Three Hosting sites exist: `littlelamb-sb-staging` (default), **`littlelamb-sb-s
    at hello@), prune the inert `savePaymentMethod` function + placeholder Stripe secrets, and
    the App-Check-enforcement / MFA decisions (both deferred, not blocking).
 
+## Sticky-note redesign + legal-model realignment (D77) — started this session
+After the domain went live, David asked to bring back the **D73 sticky-note design** as the app's
+primary language (reverses D75), then attached the **Little Lamb LLC business plan**, which
+reclassifies Little Lamb as a **California job-LISTING service, NOT an agency**. That turned the
+re-skin into a copy + model realignment. David's calls: full model realignment; "sitters & nannies"
+noun mix (keep `'nanny'` as the code identifier); fix pricing leaks + state the new model; make
+sticky-note the system. Plan in `.claude/plans/recreate-the-plan-i-ve-agile-orbit.md` + **D77**.
+
+Two audit subagents mapped the forbidden language + pricing/terminology wiring; a Plan subagent
+designed the safe approval reversal (sitters self-activate like families; admin keeps
+remove/deactivate — the business plan's own TOS lever; no data migration).
+
+**Landed + committed:**
+- **Phase 0** (`3eb21b8`): restored sticky-note Tailwind tokens + `.sticky-note`/`.sticky-tape` CSS
+  + `<StickyNote>`/doodle primitives in `src/components/theme`; DESIGN_SYSTEM.md + D77.
+- **Phase 1** (`c1fef91`): rewrote all user-facing copy to the listing-service model — removed
+  vetting/agency/matching claims across public pages, profiles, cards, directory, onboarding;
+  credentials → "self-reported, not verified by Little Lamb" (retired Background-Checked/Interviewed
+  seed badges, added TrustLine); "unmatched/matching" → listing language (UI only, enum kept);
+  scrubbed old "$25/quarter + $1/booking" + stated "first two bookings free, then $150/year"; new
+  public **/terms** page (`src/lib/terms.ts`). Updated the tests a copy/badge change moved.
+- **Phase 2** (`9670b84`, DEPLOYED): sticky-note re-skin of the marketing HomePage (paper, taped
+  notes, brand bands) inside PublicShell with live CTAs + compliant copy; PublicShell re-skinned to
+  paper. **Live on littlelambnannies.com** (HTTP 200, sticky-note CSS confirmed).
+- Green throughout: 491 client tests, typecheck, lint, build.
+
+**Still to do (next):**
+- **Phase 3 (TEST-FIRST):** sitter self-activation — invert the 5 approval rules tests
+  (`firestore.rules.test.ts:579-656`), then `initialApproval` (nanny==family), `selfApprovalOk()`,
+  routing, drop the NannyHoldingPage interview-stage tracker, repurpose DeclinedPage to "removed per
+  Terms". Reverses the 2026-11-16 invariant — safe only because Phases 1–2 stripped the vetting
+  claims. The `src/lib/auth.ts` comment (lines 85–92) still states the OLD invariant; fix it here.
+- **Phase 4:** app shell + light-touch logged-in surfaces to paper (dense data UI stays readable).
+- **Deferred (Phase 5/6):** remove admin agency tooling (VerifiedBadgesModal write path, the
+  interview/stage controls in AdminPeoplePage, the Calendly card in AdminSettings); drop the
+  `'verified'` BadgeType / migrate badge arrays; persisted ToS-acceptance checkbox.
+- The abandoned `src/landing/*` still has the old vetting copy — not served, left as-is this pass.
+
 ## Do not re-attempt
 - Don't add `TZ` only to one job and assume it covers the workflow — it does **not** inherit.
 - Don't point any domain at `littlelamb-sb-staging` or `-landing`; everything is `-app`.
