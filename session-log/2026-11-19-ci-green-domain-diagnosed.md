@@ -136,19 +136,29 @@ listing-service copy; sitters self-activate; the whole app is paper-washed.
   no "pending" to return to). Matches `routing.test.ts:97`. NOTE: the hook write payload has no
   direct unit test (useAdmin.ts has no harness) — covered only indirectly by the routing test.
 
-**Still deferred (separate projects, NOT blocking):**
-- **AdminPeoplePage interview/stage/approve rework (the big one):** `NANNY_STAGES`/`STAGE_LABEL`
-  (incl. "Interview scheduled"), the Advance button + `advanceStage`, the "post-interview pass"
-  wording, the `pending` tab, and the Approve path are all DEAD for new signups (no account is
-  ever pending now) but still present as internal admin chrome. A clean removal must also add a
-  proper **Deactivate** action on active members (today admin can only "Reject" a *pending* row;
-  there's no deactivate-an-active-member button) and rework ~6 test suites in
-  `AdminPeoplePage.test.tsx`. Not a live user-facing exposure (no sitter/family sees it), so lower
-  priority than the public copy already fixed. `src/types/index.ts` still has the `NannyStage`
-  union + `'interview_scheduled'`; `useAdmin.ts` still exports `advanceStage`.
-- **VerifiedBadgesModal:** admin still has a "Badges" modal that writes `verifiedBadges` (the
-  "verified by Little Lamb" concept). The Badge UI already renders these as self-reported (Phase 1),
-  so it's not a live false claim, but the admin-assignment affordance should go.
+- ✅ **VerifiedBadgesModal reframed** (`917e8fb`): title "Credentials — <name>", copy "told us they
+  hold… Little Lamb does not verify them"; row button "Badges" → "Credentials". Kept the mechanism
+  (sitters need a way to get CPR/TrustLine onto a profile) but stripped the verify/interview framing.
+- ✅ **AdminPeoplePage interview/stage rework** (`72d1c6a`): removed `NANNY_STAGES`/`STAGE_LABEL`
+  ("Interview scheduled"/"Under review"), the per-row stage display, the Advance button +
+  `advanceStage` wiring, and the unused ArrowRight. Approve kept only as a legacy-pending fallback.
+  Added the real Terms lever: a **Remove** button on active members (confirm dialog → `reject()`).
+  Reject-modal copy reframed to "remove the member". Test-first for Remove; removed the Advance
+  test. All deployed (hosting-only).
+
+**Still deferred (genuinely separate projects):**
+- **`'verified'` BadgeType data migration:** collapse the `'verified'`/`'self'` BadgeType and move
+  `verifiedBadges`→`selfBadges` so there's one self-reported badge array. A real Firestore data
+  migration (existing nanny docs have both arrays) — out of scope for a copy/UI pass.
+- **Persisted ToS-acceptance checkbox** at signup (adds a stored field + a rules guard).
+- **Billing-model project:** the per-booking fee math (`perBookingCents`, AdminBilling/Analytics
+  revenue formula, `quarterlyCharge.ts`) still reflects the retired model. Billing is gated OFF so
+  nothing shows; flipping it on needs the "first two free + yearly" math built.
+- Prune the now-orphaned `advanceStage`/`useCalendlyConfig` exports + `config/calendly` doc from
+  `useAdmin.ts`; drop the `NannyStage`/`stage`/`'interview_scheduled'` type members once nothing
+  references them. Low-value tidy.
+- The abandoned `src/landing/*` still has old vetting copy — not served, left as-is.
+- **`www.littlelambnannies.com`** still needs the Firebase re-verify click after the DNS TXT swap.
 - **Billing-model project:** the per-booking fee math/config (`perBookingCents`, the
   AdminBilling/Analytics revenue formula, `quarterlyCharge.ts`) still reflects the retired model;
   billing is gated OFF so nothing shows, but flipping it on needs the "first two free + yearly"
