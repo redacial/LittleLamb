@@ -35,7 +35,7 @@ const STATUS_MARK: Record<string, { glyph: string; label: string }> = {
   confirmed: { glyph: '✓', label: 'Confirmed' },
   pending: { glyph: '◷', label: 'Pending' },
   open: { glyph: '◇', label: 'Open' },
-  unmatched: { glyph: '◇', label: 'Unmatched' },
+  unmatched: { glyph: '◇', label: 'Open to sitters' },
   same_day_review: { glyph: '!', label: 'Same-day review' },
   cancelled: { glyph: '✕', label: 'Cancelled' },
 }

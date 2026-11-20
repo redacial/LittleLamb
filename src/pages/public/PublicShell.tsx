@@ -62,7 +62,8 @@ export function PublicFooter() {
         <div>
           <Logo />
           <p className="mt-3 max-w-xs text-sm text-ll-warm-gray">
-            Trusted, pre-screened nannies for Santa Barbara families. Founded at Westmont College.
+            A local board where Santa Barbara families and sitters find each other. It takes a
+            village. Find yours. Founded at Westmont College.
           </p>
         </div>
         <FooterCol
@@ -87,12 +88,20 @@ export function PublicFooter() {
           <p className="font-mono text-mono-sm text-ll-warm-gray">
             littlelambnannies.com · Santa Barbara, CA
           </p>
-          <Link
-            to="/privacy"
-            className="font-mono text-mono-sm text-ll-warm-gray underline-offset-2 hover:text-ll-ink hover:underline"
-          >
-            Privacy Policy
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              to="/terms"
+              className="font-mono text-mono-sm text-ll-warm-gray underline-offset-2 hover:text-ll-ink hover:underline"
+            >
+              Terms of Service
+            </Link>
+            <Link
+              to="/privacy"
+              className="font-mono text-mono-sm text-ll-warm-gray underline-offset-2 hover:text-ll-ink hover:underline"
+            >
+              Privacy Policy
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

@@ -19,15 +19,17 @@ export interface Policies {
 export const DEFAULT_POLICIES: Policies = {
   platform: [
     'Treat every member of the community with kindness and respect.',
-    'Communicate through the platform so the Little Lamb team can support you if anything comes up.',
-    'Every nanny is background-checked and personally interviewed before their profile goes live.',
+    'Little Lamb is a job-listing service, not an employment agency. We do not employ, place, screen, or verify sitters. Families choose, interview, and hire their own sitter, and any credentials shown are self-reported, not verified by Little Lamb.',
+    'We remove profiles or posts that break these guidelines. If something concerns you, report it to the Little Lamb team.',
   ].join('\n'),
   family: [
-    'Cancellations are made from your Calendar or Bookings page; your nanny is notified automatically.',
-    'Quarterly billing covers the platform — wages are arranged directly with your nanny.',
+    'You are responsible for interviewing, vetting, and hiring the sitter you choose, and for any employment obligations that come with it.',
+    'Cancellations are made from your Calendar or Bookings page; your sitter is notified automatically.',
+    'Your first two bookings are free. After that, access is a $150/year subscription. You pay your sitter directly — no money passes through Little Lamb.',
   ].join('\n'),
   nanny: [
     'Keep your availability current so families only book times that work for you.',
+    'List only credentials you actually hold; they are shown to families as self-reported.',
     'Cancellations are handled with the Little Lamb team — message us and we’ll take care of it.',
   ].join('\n'),
 }

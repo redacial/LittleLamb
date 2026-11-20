@@ -44,8 +44,6 @@ vi.mock('../../hooks/useAdmin', () => ({
 const printInvoice = vi.fn()
 vi.mock('../../lib/exporters', () => ({ printInvoice: (...a: unknown[]) => printInvoice(...a) }))
 
-const confirmed = (n: number) => Array.from({ length: n }, () => ({ status: 'confirmed' as const }))
-
 beforeEach(() => {
   printInvoice.mockClear()
   bookingsRef.current = []
@@ -59,92 +57,59 @@ beforeEach(() => {
 })
 
 describe('FamilyBillingPage — free-launch (billing off)', () => {
-  it('shows a free-service panel and NO pricing when billing is off', () => {
+  it('shows a free-service panel and NO old-model pricing when billing is off', () => {
     stripeOn.current = false
-    billing.current.config = { subscriptionCents: 2500, perBookingCents: 100, enabled: false }
+    billing.current.config = { subscriptionCents: 15000, perBookingCents: 100, enabled: false }
     render(<FamilyBillingPage />)
 
-    // Presents Little Lamb as free, and none of the pricing/charge copy is on the page.
+    // Presents Little Lamb as free, and the retired per-quarter / per-booking model never shows.
     expect(screen.getAllByText(/free/i).length).toBeGreaterThan(0)
-    expect(screen.queryByText('$25.00')).not.toBeInTheDocument()
     expect(screen.queryByText(/per quarter|per confirmed booking|auto-charged|estimated next bill/i)).not.toBeInTheDocument()
-    // No "download this quarter" invoice button either — there is no bill.
-    expect(screen.queryByRole('button', { name: /download this quarter/i })).not.toBeInTheDocument()
   })
 })
 
-describe('FamilyBillingPage — rates come from config/billing', () => {
+// The model is now "first two bookings free, then a YEARLY subscription" (D77) — no per-booking
+// fee, no quarter. The still-vital guard these tests protect is the 100x one: the subscription
+// renders in DOLLARS from config/billing, never raw cents, and follows a Settings change.
+describe('FamilyBillingPage — subscription comes from config/billing', () => {
   it('renders the configured subscription in DOLLARS, not raw cents', () => {
-    billing.current.config = { subscriptionCents: 2500, perBookingCents: 100, enabled: false }
+    billing.current.config = { subscriptionCents: 15000, perBookingCents: 100, enabled: false }
     render(<FamilyBillingPage />)
-    // 2500 cents is $25.00 — never "$2,500.00". (With no bookings the estimate is also
-    // $25.00, so match all occurrences rather than asserting a single one.)
-    expect(screen.getAllByText('$25.00').length).toBeGreaterThan(0)
-    expect(screen.getByText('$1.00')).toBeInTheDocument()
-    expect(screen.queryByText('$2,500.00')).not.toBeInTheDocument()
-    expect(screen.queryByText('$100.00')).not.toBeInTheDocument()
+    // 15000 cents is $150.00 — never "$15,000.00".
+    expect(screen.getAllByText('$150.00').length).toBeGreaterThan(0)
+    expect(screen.queryByText('$15,000.00')).not.toBeInTheDocument()
+    // The retired per-booking fee must NOT render as its own figure.
+    expect(screen.queryByText('$1.00')).not.toBeInTheDocument()
   })
 
-  it('follows a rate change made in Settings instead of showing the old hardcoded price', () => {
-    // Lucy raises the subscription to $30 and the per-booking fee to $2.
-    billing.current.config = { subscriptionCents: 3000, perBookingCents: 200, enabled: true }
-    bookingsRef.current = confirmed(3)
-
+  it('follows a subscription change made in Settings instead of a hardcoded price', () => {
+    billing.current.config = { subscriptionCents: 17500, perBookingCents: 200, enabled: true }
     render(<FamilyBillingPage />)
 
-    expect(screen.getByText('$30.00')).toBeInTheDocument()
-    expect(screen.getByText('$2.00')).toBeInTheDocument()
-    // Estimated next bill = $30 + 3 x $2 = $36.
-    expect(screen.getByText('$36.00')).toBeInTheDocument()
-    // The old hardcoded numbers must be gone entirely.
+    expect(screen.getAllByText('$175.00').length).toBeGreaterThan(0)
+    // The old hardcoded number must be gone.
     expect(screen.queryByText('$25.00')).not.toBeInTheDocument()
-    expect(screen.queryByText('$28.00')).not.toBeInTheDocument()
-  })
-
-  it('handles a fractional rate without a rounding error', () => {
-    // $27.50 subscription, $1.50 per booking, 2 bookings => $30.50.
-    billing.current.config = { subscriptionCents: 2750, perBookingCents: 150, enabled: true }
-    bookingsRef.current = confirmed(2)
-
-    render(<FamilyBillingPage />)
-
-    expect(screen.getByText('$30.50')).toBeInTheDocument()
-  })
-
-  it('counts only CONFIRMED bookings toward the estimate', () => {
-    bookingsRef.current = [
-      { status: 'confirmed' },
-      { status: 'cancelled' },
-      { status: 'pending' },
-      { status: 'confirmed' },
-    ]
-    render(<FamilyBillingPage />)
-    // $25 + 2 x $1 = $27.
-    expect(screen.getByText('$27.00')).toBeInTheDocument()
   })
 
   it('shows a loading state rather than flashing a wrong price before config resolves', () => {
-    // Rendering the 2500-cent default while loading would show $25 to a family on a $30
-    // plan for one frame — a number they may screenshot. Show nothing instead.
     billing.current = {
-      config: { subscriptionCents: 2500, perBookingCents: 100, enabled: false },
+      config: { subscriptionCents: 15000, perBookingCents: 100, enabled: false },
       loading: true,
     }
 
     render(<FamilyBillingPage />)
 
-    expect(screen.queryByText('$25.00')).not.toBeInTheDocument()
+    expect(screen.queryByText('$150.00')).not.toBeInTheDocument()
     expect(screen.getByText(/loading/i)).toBeInTheDocument()
   })
 })
 
-describe('FamilyBillingPage — printed invoice uses live rates', () => {
-  it('puts the CONFIGURED rates on the invoice a family keeps', async () => {
-    billing.current.config = { subscriptionCents: 3000, perBookingCents: 200, enabled: true }
-    bookingsRef.current = confirmed(3)
+describe('FamilyBillingPage — printed invoice uses the live subscription', () => {
+  it('puts the CONFIGURED subscription in dollars on the invoice a family keeps', async () => {
+    billing.current.config = { subscriptionCents: 15000, perBookingCents: 200, enabled: true }
 
     render(<FamilyBillingPage />)
-    await userEvent.click(screen.getByRole('button', { name: /download this quarter/i }))
+    await userEvent.click(screen.getByRole('button', { name: /download summary/i }))
 
     expect(printInvoice).toHaveBeenCalledTimes(1)
     const inv = printInvoice.mock.calls[0][0] as {
@@ -153,11 +118,10 @@ describe('FamilyBillingPage — printed invoice uses live rates', () => {
       familyName: string
     }
 
-    // Dollars on the invoice — 30, not 3000.
-    expect(inv.total).toBe(36)
-    expect(inv.lineItems[0].amount).toBe(30)
-    expect(inv.lineItems[1].amount).toBe(6)
-    expect(inv.lineItems[1].label).toContain('$2.00')
+    // Dollars on the invoice — 150, not 15000. Subscription-only, no per-booking line.
+    expect(inv.total).toBe(150)
+    expect(inv.lineItems).toHaveLength(1)
+    expect(inv.lineItems[0].amount).toBe(150)
     expect(inv.familyName).toBe('The Ito Family')
   })
 })

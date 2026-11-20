@@ -142,7 +142,7 @@ export function AdminBillingPage() {
               return (
                 <div className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-3">
-                    <SummaryCard label="Quarterly revenue" value={money(revenue)} accent />
+                    <SummaryCard label="Revenue" value={money(revenue)} accent />
                     <SummaryCard label="Active families" value={activeFamilies} />
                     <SummaryCard label="Donation owed (10%)" value={money(donation)} />
                   </div>
@@ -234,9 +234,9 @@ export function AdminBillingPage() {
             return (
               <div className="space-y-4">
                 <Card tone="sage" className="bg-ll-sage-light">
-                  <CardLabel>Quarterly donation tracker</CardLabel>
+                  <CardLabel>Donation tracker</CardLabel>
                   <p className="mt-1 font-mono text-3xl font-medium leading-tight text-ll-ink">{money(donation)}</p>
-                  <p className="mt-1 text-sm text-ll-warm-gray">Auto-calculated as 10% of this quarter’s revenue.</p>
+                  <p className="mt-1 text-sm text-ll-warm-gray">Auto-calculated as 10% of gross revenue.</p>
                   <Button className="mt-3" size="sm">Mark as donated</Button>
                 </Card>
                 <Card className="bg-ll-cream">

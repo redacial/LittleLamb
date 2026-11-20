@@ -18,6 +18,7 @@ import { FamilyInfoPage } from './pages/public/FamilyInfoPage'
 import { NannyInfoPage } from './pages/public/NannyInfoPage'
 import { ApplicationPage } from './pages/public/ApplicationPage'
 import { PrivacyPolicyPage } from './pages/public/PrivacyPolicyPage'
+import { TermsPage } from './pages/public/TermsPage'
 import { FamilyHoldingPage } from './pages/onboarding/FamilyHoldingPage'
 import { NannyHoldingPage } from './pages/onboarding/NannyHoldingPage'
 import { DeclinedPage } from './pages/onboarding/DeclinedPage'
@@ -120,6 +121,7 @@ export function App() {
         <Route path="/for-nannies" element={<NannyInfoPage />} />
         <Route path="/apply" element={<ApplicationPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
 

@@ -254,7 +254,7 @@ export function FamilyCalendarPage() {
               <Input label="End" type="time" step={900} value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
             <Select label="Nanny" value={nannyId} onChange={(e) => setNannyId(e.target.value)}>
-              <option value="">No preference (find a match)</option>
+              <option value="">No preference (open to any sitter)</option>
               {nannies.map((n) => (
                 <option key={n.uid} value={n.uid}>
                   {n.fullName}
@@ -338,7 +338,7 @@ export function FamilyCalendarPage() {
                 </div>
               </div>
               <span className="trust-chip">
-                <ShieldIcon /> Background-checked nanny
+                <ShieldIcon /> Santa Barbara sitter
               </span>
               <p className="text-sm text-ll-warm-gray">
                 {formatDate(viewBooking.date)} · {formatTimeRange(viewBooking.startTime, viewBooking.endTime)}

@@ -32,8 +32,8 @@ export function RateRangeInput({ value, onChange, role }: Props) {
   const label = role === 'nanny' ? 'Lowest rate you’ll accept' : 'Most you’ll pay per hour'
   const help =
     role === 'nanny'
-      ? 'The least you’re willing to work for. Families see this on your profile, and we match you with families whose budget meets it.'
-      : 'The most you’re comfortable paying per hour. We use it to show you nannies whose rates fit — you can still request anyone.'
+      ? 'The least you’re willing to work for. Families see this on your profile and can find you when their budget meets it.'
+      : 'The most you’re comfortable paying per hour. We use it to show you sitters whose rates fit — you can still book anyone.'
 
   return (
     <div className="space-y-3" role="group" aria-labelledby={groupId}>

@@ -46,10 +46,13 @@ describe('NannyCard', () => {
     expect(screen.queryByText(/tide-pool expert/i)).not.toBeInTheDocument()
   })
 
-  it('always carries the background-check trust signal', () => {
+  // Little Lamb is a listing service and verifies nothing (D77) — the card must NOT claim a
+  // background check. It carries locale + self-reported facts instead.
+  it('carries the locale + experience facts, and makes no background-check claim', () => {
     renderCard()
-    expect(screen.getByText(/background checked/i)).toBeInTheDocument()
+    expect(screen.getByText(/santa barbara local/i)).toBeInTheDocument()
     expect(screen.getByText(/6 yrs experience/i)).toBeInTheDocument()
+    expect(screen.queryByText(/background check/i)).not.toBeInTheDocument()
   })
 
   it('links the photo and the View-profile button to the role-scoped profile', () => {

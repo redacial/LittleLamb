@@ -35,7 +35,7 @@ export function FamilyDashboard() {
   })()
   const upcoming = bookings.filter(isUpcoming).sort((a, b) => a.date.localeCompare(b.date))
   const next = upcoming[0]
-  const thisQuarter = bookings.filter((b) => b.status === 'confirmed').length
+  const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length
   // Review prompts: confirmed bookings whose date has passed.
   const today = todayISO()
   const toReview = bookings
@@ -81,9 +81,9 @@ export function FamilyDashboard() {
             accent
           />
           <SummaryCard
-            label="Bookings this quarter"
-            value={thisQuarter}
-            hint="Counts toward your quarterly bill"
+            label="Confirmed bookings"
+            value={confirmedCount}
+            hint="Your first two bookings are free"
           />
         </div>
 

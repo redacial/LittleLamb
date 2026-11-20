@@ -21,6 +21,9 @@ import type { BookingStatus } from '../../types'
 // post, or cancelled. `pending`/`same_day_review` are legacy union members no booking is created
 // with anymore, so they're not offered as filters.
 const STATUSES: BookingStatus[] = ['confirmed', 'open', 'unmatched', 'cancelled']
+// Display labels for the filter — the persisted enum value stays 'unmatched'; families/admins
+// read it as listing-service language, never "unmatched" (D77: Little Lamb does no matching).
+const STATUS_LABEL: Partial<Record<BookingStatus, string>> = { unmatched: 'open to sitters' }
 
 /** Platform-wide bookings with filters, admin override actions (cancel), and manual create. */
 export function AdminBookingsPage() {
@@ -62,7 +65,7 @@ export function AdminBookingsPage() {
         <div className="mb-4 flex flex-wrap gap-3">
           <Select value={status} onChange={(e) => setStatusFilter(e.target.value)} className="sm:w-48">
             <option value="">All statuses</option>
-            {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+            {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>)}
           </Select>
           <Input placeholder="Search family or nanny" value={search} onChange={(e) => setSearch(e.target.value)} className="sm:w-64" />
         </div>
@@ -78,7 +81,7 @@ export function AdminBookingsPage() {
                     <p className="inline-flex items-center gap-1.5 font-semibold text-ll-ink">
                       {b.familyName}
                       <Arrow />
-                      {b.nannyName ?? 'Unmatched'}
+                      {b.nannyName ?? 'Open to sitters'}
                     </p>
                     <StatusPill status={b.status} tone={b.status === 'confirmed' ? 'confirmed' : b.status === 'cancelled' ? 'cancelled' : 'pending'} />
                   </div>

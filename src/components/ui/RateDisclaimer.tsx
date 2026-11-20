@@ -1,10 +1,10 @@
 // Wage framing, shown wherever a rate appears.
 //
-// Little Lamb is explicitly NOT an employer and does not process wages — families pay
-// nannies directly (CLAUDE.md "What Is NOT in the Platform"). Rate ranges exist purely
-// to match families and nannies who want the same thing. Every surface that shows a
-// rate must also say this, so no one reads a displayed range as a rate the platform
-// sets, collects, or guarantees.
+// Little Lamb is explicitly NOT an employer or agency and does not process wages — families
+// pay sitters directly (CLAUDE.md "What Is NOT in the Platform"; D77). Rate ranges are just a
+// filter so families and sitters who want the same thing can find each other on the board.
+// Every surface that shows a rate must also say this, so no one reads a displayed range as a
+// rate the platform sets, collects, or guarantees.
 
 import { cn } from '../../lib/cn'
 
@@ -20,10 +20,10 @@ export function RateDisclaimer({ className, variant = 'full' }: Props) {
       <InfoIcon />
       <span>
         {variant === 'short' ? (
-          <>A matching guide only — pay is arranged directly.</>
+          <>A guide only — pay is arranged directly.</>
         ) : (
           <>
-            A matching guide only. Pay is arranged directly between family and nanny —
+            A guide only. Pay is arranged directly between family and sitter —
             Little Lamb does not process or guarantee wages.
           </>
         )}

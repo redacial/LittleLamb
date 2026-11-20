@@ -4,37 +4,34 @@ import type { BadgeType } from '../../types'
 interface BadgeProps {
   label: string
   /**
-   * 'verified' = admin-confirmed credential (periwinkle — the trust color);
-   * 'self' = self-reported trait (sage). Color-coded per spec so families can tell
-   * a vetted certification (CPR, First Aid) from a self-reported trait at a glance.
+   * Visual grouping only — NOT a verification claim (Little Lamb is a job-listing service and
+   * verifies nothing; D77). 'verified' = a credential a sitter self-reports (CPR, First Aid —
+   * periwinkle so it reads as a credential); 'self' = a self-reported trait (sage). Both are
+   * self-reported; the color just distinguishes a certification from a trait at a glance.
    */
   type?: BadgeType
   size?: 'sm' | 'md'
 }
 
 /**
- * Nanny trait/certification badge. DM Mono gives credential chips the "trust label"
- * treatment from DESIGN_SYSTEM.md §Trust Badges. Verified → periwinkle (the dedicated
- * trust color); self-reported → sage.
+ * Sitter trait/credential badge. DM Mono gives credential chips the "label" treatment from
+ * DESIGN_SYSTEM.md. All badges are SELF-REPORTED — the tooltip says so for both types, and
+ * there is no checkmark/"verified" affordance that would imply Little Lamb confirmed it.
+ * Periwinkle = a self-reported credential; sage = a self-reported trait.
  */
 export function Badge({ label, type = 'self', size = 'md' }: BadgeProps) {
-  const verified = type === 'verified'
+  const credential = type === 'verified'
   return (
     <span
-      title={verified ? 'Verified by Little Lamb' : 'Self-reported'}
+      title="Self-reported — not verified by Little Lamb"
       className={cn(
         'inline-flex items-center gap-1 rounded-full border-1.5 font-mono font-medium',
         size === 'sm' ? 'px-2.5 py-0.5 text-mono-sm' : 'px-3 py-1 text-mono-sm',
-        verified
+        credential
           ? 'bg-ll-peri-light text-ll-peri-ink border-ll-peri' // ll-peri-ink = 8.1:1 (AA)
           : 'bg-ll-sage-light text-ll-sage-deep border-ll-sage',
       )}
     >
-      {verified && (
-        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
-          <path d="M8 1l1.8 1.3 2.2-.2.9 2 2 .9-.2 2.2L16 11l-1.3 1.8.2 2.2-2 .9-.9 2-2.2-.2L8 19l-1.8-1.3-2.2.2-.9-2-2-.9.2-2.2L0 11l1.3-1.8L1.1 7l2-.9.9-2 2.2.2L8 1z" />
-        </svg>
-      )}
       {label}
     </span>
   )

@@ -28,12 +28,11 @@ interface NannyCardProps {
  * bottom gradient scrim); the trust strip, badges and rate sit BELOW the photo in a rigid,
  * identical layout on every card so families can compare at a glance.
  *
- * Why trust-below-photo rather than on it: NN/G's marketplace-trust research (and this project's
- * own DESIGN_SYSTEM.md §Trust Signal Hierarchy) puts "background checked / interviewed" as the
- * single most important signal on a nanny surface. Overlaid on a photo it would have to survive
- * whatever a user uploads; as a solid chip below, its contrast is guaranteed. The photo sells the
- * person, the strip earns the trust — and "years of experience" reads as professional where a raw
- * age would read as a dating app.
+ * Why facts-below-photo rather than on it: a solid chip below the photo has guaranteed contrast,
+ * where an overlay would have to survive whatever a user uploads. The photo sells the person, the
+ * strip carries locale + self-reported facts — and "years of experience" reads as professional
+ * where a raw age would read as a dating app. (No "background checked" claim — Little Lamb is a
+ * listing service and verifies nothing; credentials are the sitter's own self-reported badges.)
  */
 export function NannyCard({ nanny, profileBase, canBook, budget }: NannyCardProps) {
   const hover = useTiltHover()
@@ -85,14 +84,15 @@ export function NannyCard({ nanny, profileBase, canBook, budget }: NannyCardProp
         </div>
       </Link>
 
-      {/* Trust + facts, identical layout on every card for scannable comparison. */}
+      {/* Facts, identical layout on every card for scannable comparison. No "background checked"
+          claim — Little Lamb verifies nothing (D77); any credentials are self-reported badges. */}
       <div className="flex flex-1 flex-col p-4">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="trust-chip">
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
-              <path d="M8 1l5.5 2v4c0 3.4-2.3 6.6-5.5 8-3.2-1.4-5.5-4.6-5.5-8V3L8 1z" />
+              <path d="M8 1.6l1.9 3.9 4.3.6-3.1 3 .8 4.3L8 11.4 4.1 13.4l.8-4.3-3.1-3 4.3-.6L8 1.6z" />
             </svg>
-            Background checked
+            Santa Barbara local
           </span>
           {experienceText && (
             <span className="trust-chip">{experienceText} experience</span>

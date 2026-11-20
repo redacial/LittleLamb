@@ -8,18 +8,17 @@ import { cn } from '../../lib/cn'
 
 /**
  * "/for-families" intermediate info page (CLAUDE.md §1.2). Reached from the homepage
- * "Get started" path. Explains the platform, the vetting promise, and what's included
- * before sending families into /apply. Matches the homepage's Premium Playful quality:
- * asymmetric blob-masked hero, floating sticker credentials, a drawn underline on one
- * keyword, tilt-hover cards, and the recurring DM-Mono trust motif. Layout varies per
- * section (Variance Mandate): asymmetric hero, staggered vetting row, two-column ledger,
- * centered closing band.
+ * "Get started" path. Explains how the listing service works and what's included before
+ * sending families into /apply. Little Lamb is a job-listing service, NOT an agency — it
+ * does not vet, screen, interview, or verify sitters; families choose and hire their own
+ * (D77 + the business-plan legal copy rules). Layout varies per section (Variance Mandate):
+ * asymmetric hero, staggered how-it-works row, two-column ledger, centered closing band.
  */
 export function FamilyInfoPage() {
   return (
     <PublicShell>
       <Hero />
-      <VettingPromise />
+      <HowItWorks />
       <Included />
       <BottomCTA />
     </PublicShell>
@@ -55,9 +54,9 @@ function Hero() {
             for your family.
           </h1>
           <p className={cn('mt-6 max-w-md text-body-lg text-ll-warm-gray', rise)} style={delay(2)}>
-            Finding childcare you trust should not mean gambling on a stranger. Every nanny in our
-            Santa Barbara network is background-checked and personally interviewed before they
-            ever appear on your screen. Here is exactly how it works.
+            Finding a sitter shouldn’t mean digging through group chats. Little Lamb is a local
+            board where you post what you need, browse sitter profiles, and book directly — you
+            choose, interview, and hire your own sitter. Here is exactly how it works.
           </p>
 
           <div className={cn('mt-8 flex flex-wrap items-center gap-4', rise)} style={delay(3)}>
@@ -78,7 +77,7 @@ function Hero() {
           </div>
 
           <p className={cn('mt-4 text-sm text-ll-warm-gray', rise)} style={delay(4)}>
-            Background-checked and interviewed before going live. Free to browse.
+            Your first two bookings are free. Browse anytime, no commitment.
           </p>
         </div>
 
@@ -104,12 +103,12 @@ function HeroScene() {
 
       <div className="absolute -right-2 top-4">
         <StickerBadge tone="peri" rotate={4} delay={0.1}>
-          <ShieldIcon /> Background-checked
+          <CheckBadgeIcon /> Post a job
         </StickerBadge>
       </div>
       <div className="absolute -left-3 top-1/2">
         <StickerBadge tone="terra" rotate={-3} delay={0.3}>
-          <CheckBadgeIcon /> Interviewed
+          <ShieldIcon /> Book directly
         </StickerBadge>
       </div>
       <div className="absolute -bottom-2 right-6">
@@ -121,40 +120,41 @@ function HeroScene() {
   )
 }
 
-/* ------------------------------------------------------------- VettingPromise */
-/** The vetting promise: check → interview → live profile. Staggered tilt cards, mid raised. */
-function VettingPromise() {
+/* ---------------------------------------------------------------- HowItWorks */
+/** How the listing service works: post → browse → book & pay directly. Staggered tilt cards. */
+function HowItWorks() {
   const steps = [
     {
       n: '01',
-      title: 'Background check',
+      title: 'Post what you need',
       tone: 'peri' as const,
-      body: 'Before anything else, every applicant clears a background check. No exceptions, no shortcuts. It happens offline, and only the outcome reaches the platform.',
+      body: 'Share the dates, hours, and any details — a date night, after-school pickups, or last-minute help when plans fall apart. It goes out to local sitters.',
     },
     {
       n: '02',
-      title: 'A real interview',
+      title: 'Browse and choose',
       tone: 'sage' as const,
-      body: 'Our founders sit down with each nanny one-on-one. We look for the warmth, judgment, and reliability you would want in someone you would recommend to a close friend.',
+      body: 'See sitter profiles with photos, bios, self-reported credentials, and a one-minute intro video. You interview and choose whoever feels right for your family.',
     },
     {
       n: '03',
-      title: 'A live, honest profile',
+      title: 'Book and pay directly',
       tone: 'terra' as const,
-      body: 'Only after both steps does a nanny go live, with a real photo, an honest bio, credential chips, and a one-minute intro video so you meet them before you book.',
+      body: 'Book inside a sitter’s posted hours, or ask for a time that works. You pay your sitter directly — no money passes through Little Lamb.',
     },
   ]
   return (
     <section className="relative overflow-hidden border-y-1.5 border-ll-cream-dark bg-ll-cream-dark/30">
       <Blob tone="terra" className="right-[-8%] top-1/4 h-64 w-64" />
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 lg:py-24">
-        <p className="eyebrow text-center">Our vetting promise</p>
+        <p className="eyebrow text-center">How it works</p>
         <h2 className="mt-2 text-center font-display text-display-lg text-ll-ink">
-          Trust you can{' '}
-          <DrawnUnderline tone="sage">trace</DrawnUnderline>, step by step
+          Three steps to{' '}
+          <DrawnUnderline tone="sage">your</DrawnUnderline> sitter
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-center text-body-md text-ll-warm-gray">
-          Trust is not a badge we hand out. It is earned in this order, every single time.
+          Little Lamb is a local board that connects you with sitters. You choose, interview, and
+          hire — we keep the finding simple.
         </p>
         <ol className="mt-12 grid gap-6 sm:grid-cols-3">
           {steps.map((s, i) => (
@@ -211,15 +211,16 @@ function PromiseCard({
 /** What's included vs. what isn't — honest expectations (CLAUDE.md Part 20: wages are direct). */
 function Included() {
   const included = [
-    'A vetted, interviewed network of local nannies',
-    'Real profiles with photos, bios, badges, and intro videos',
-    'Simple booking. Pick a date, choose your nanny, confirm.',
-    'A team that handles the matching and the messaging',
+    'A local board of Santa Barbara sitters and nannies',
+    'Real profiles with photos, bios, self-reported credentials, and intro videos',
+    'Simple booking. Post a time, choose your sitter, confirm.',
+    'Your first two bookings free, then a $150/year subscription',
   ]
   const notIncluded = [
-    'Nanny wages. You pay your nanny directly (cash, Venmo, etc.).',
-    'Time tracking or clock in / clock out. Hours are between you and your nanny.',
-    'Hidden markups on what your nanny earns',
+    'Vetting, interviewing, and hiring — you choose and vet your own sitter',
+    'Sitter wages. You pay your sitter directly (cash, Venmo, etc.).',
+    'Verifying credentials — sitter badges are self-reported, not verified by Little Lamb',
+    'Time tracking or clock in / clock out. Hours are between you and your sitter.',
   ]
   const inHover = useTiltHover()
   const outHover = useTiltHover()
@@ -260,8 +261,8 @@ function Included() {
         </motion.div>
       </div>
       <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-ll-warm-gray">
-        We handle the part that is hard to do alone, finding someone you can trust. The wages stay
-        simple and direct between you and your nanny.
+        We make the part that is hard to do alone — finding local sitters — simple. You stay in
+        charge of who you hire, and wages stay direct between you and your sitter.
       </p>
     </section>
   )
@@ -280,11 +281,10 @@ function BottomCTA() {
           </span>
         </FloatLoop>
         <h2 className="mx-auto max-w-xl font-display text-display-lg text-ll-ink">
-          Ready to meet your next sitter?
+          Ready to find your next sitter?
         </h2>
         <p className="mx-auto mt-3 max-w-md text-body-md text-ll-warm-gray">
-          Tell us a little about your family. We review every application before your account goes
-          live.
+          Tell us a little about your family and you’re in — your first two bookings are free.
         </p>
         <motion.div {...btnHover} className="mt-8 inline-block">
           <Link

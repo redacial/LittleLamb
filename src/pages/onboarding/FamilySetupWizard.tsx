@@ -319,8 +319,8 @@ export function FamilySetupWizard() {
           <h1 className="text-display-md">{stripeEnabled ? 'Add a payment card' : 'You’re almost there'}</h1>
           {stripeEnabled && (
             <p className="text-ll-warm-gray">
-              Your card is stored securely with Stripe for quarterly billing — $25 per quarter plus
-              $1 per confirmed booking. You won’t be charged today.
+              Your card is stored securely for your subscription — your first two bookings are free,
+              then it’s $150/year. You won’t be charged today.
             </p>
           )}
           <PaymentStep onComplete={finish} saving={busy} />

@@ -21,7 +21,7 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
   {
     heading: 'Who we are',
     body: [
-      'Little Lamb Nannies ("Little Lamb", "we") connects Santa Barbara families with pre-screened nannies. This policy explains what we collect, why, and the choices you have.',
+      'Little Lamb Nannies ("Little Lamb", "we") is a local job-listing service that helps Santa Barbara families and sitters find each other. This policy explains what we collect, why, and the choices you have.',
       'Little Lamb is based in Santa Barbara, California. Questions: contact the Little Lamb team through the details on our website.',
     ].join('\n'),
   },
@@ -39,9 +39,9 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
   {
     heading: 'How we use it',
     body: [
-      'To run the service: create your account, match families with nannies, schedule and confirm bookings, and send the related emails (confirmations, approvals, invoices).',
-      'To keep everyone safe: every nanny is background-checked and interviewed before their profile goes live, and we require two-factor sign-in to protect your account.',
-      'To bill families: a flat quarterly platform fee plus a small per-booking fee, charged through Stripe.',
+      'To run the service: create your account, let families post jobs and browse sitter profiles, schedule and confirm bookings, and send the related emails (confirmations and account updates).',
+      'To keep your account secure: we require two-factor sign-in and run basic security checks. Little Lamb is a job-listing service — we do not screen or verify sitters, and any credentials shown are self-reported.',
+      'To bill families: a yearly subscription (your first two bookings are free), charged through our payment processor. You pay your sitter directly.',
       'We do not sell your personal information, and we do not use it for advertising.',
     ].join('\n'),
   },

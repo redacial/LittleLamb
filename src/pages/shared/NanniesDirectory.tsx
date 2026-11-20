@@ -21,7 +21,7 @@ export function NanniesDirectory() {
 
   return (
     <>
-      <PageHeader title="Our nannies" subtitle="Every nanny here is interviewed and background-checked." />
+      <PageHeader title="Our sitters" subtitle="Browse local sitters and nannies. You choose, interview, and book whoever fits your family." />
       <PageBody>
         {loading ? (
           <p className="text-ll-warm-gray">Loading nannies…</p>
@@ -31,9 +31,9 @@ export function NanniesDirectory() {
           <LoadErrorNotice what="the nanny directory" />
         ) : nannies.length === 0 ? (
           <Card tone="peri" className="text-center">
-            <p className="font-display text-display-md text-ll-ink">No nannies yet — but they’re coming</p>
+            <p className="font-display text-display-md text-ll-ink">No sitters yet — but they’re coming</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-ll-warm-gray">
-              We’re interviewing and background-checking nannies right now. Check back soon to meet the team.
+              Local sitters are joining the board right now. Check back soon to meet them.
             </p>
           </Card>
         ) : (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { FirebaseError } from 'firebase/app'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
@@ -162,12 +162,12 @@ export function ApplicationPage() {
           <aside className="lg:sticky lg:top-24">
             <p className="eyebrow">Apply to Little Lamb</p>
             <h1 className="mt-3 font-display text-display-lg leading-[0.95] text-ll-ink">
-              {isFamily ? 'Find a nanny you trust' : 'Join the nanny network'}
+              {isFamily ? 'Find a sitter you trust' : 'Join the sitter board'}
             </h1>
             <p className="mt-4 max-w-md text-body-md text-ll-warm-gray">
               {isFamily
-                ? 'Create your family account and tell us a little about your family. We review every application before your account goes live.'
-                : 'Create your account and tell us about your experience. We review and interview every nanny before approval.'}
+                ? 'Create your family account and tell us a little about your family. Your first two bookings are free.'
+                : 'Create your free account and tell us about your experience. Build your profile and set your own hours — anyone local can join.'}
             </p>
 
             <div className="relative mt-10 hidden max-w-xs lg:block">
@@ -180,7 +180,7 @@ export function ApplicationPage() {
               </FloatLoop>
               <div className="absolute -right-2 top-2">
                 <StickerBadge tone="peri" rotate={4} delay={0.2}>
-                  <ShieldIcon /> Reviewed by hand
+                  <ShieldIcon /> Santa Barbara board
                 </StickerBadge>
               </div>
               <div className="absolute -bottom-1 -left-2">
@@ -192,8 +192,8 @@ export function ApplicationPage() {
 
             <ul className="mt-8 space-y-3 lg:mt-10">
               {(isFamily
-                ? ['Free to browse the network', 'Background-checked, interviewed nannies', 'No commitment to apply']
-                : ['Always free for nannies', 'Set your own hours', 'Keep what you earn']
+                ? ['First two bookings free', 'Browse local sitter profiles', 'No commitment to join']
+                : ['Always free for sitters', 'Set your own hours', 'Keep what you earn']
               ).map((line) => (
                 <li key={line} className="flex gap-2.5 text-sm text-ll-warm-gray">
                   <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-ll-sage-deep" />
@@ -311,10 +311,14 @@ export function ApplicationPage() {
                 className="rounded-ll-card border-1.5 border-ll-terra-soft bg-ll-terra-light/40 p-5 shadow-soft transition-shadow hover:shadow-pop-terra"
               >
                 <Button type="submit" className="w-full" loading={busy}>
-                  {isFamily ? 'Create account & apply' : 'Submit application'}
+                  {isFamily ? 'Create account' : 'Create sitter account'}
                 </Button>
                 <p className="mt-3 text-center text-sm text-ll-warm-gray">
-                  We review every application before your account goes live.
+                  By creating an account you agree to our{' '}
+                  <Link to="/terms" className="text-ll-sage-deep underline-offset-2 hover:underline">
+                    Terms of Service
+                  </Link>
+                  .
                 </p>
               </motion.div>
             </form>

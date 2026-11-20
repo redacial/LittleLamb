@@ -22,12 +22,20 @@ export const SELF_BADGES: BadgeDef[] = [
   { id: 'swim', label: 'Water-Safe', type: 'self' },
 ]
 
-export const VERIFIED_BADGES: BadgeDef[] = [
-  { id: 'cpr', label: 'CPR Certified', type: 'verified' },
-  { id: 'first_aid', label: 'First Aid Certified', type: 'verified' },
-  { id: 'background_check', label: 'Background Checked', type: 'verified' },
-  { id: 'interviewed', label: 'Interviewed', type: 'verified' },
+// Self-reported CREDENTIALS. The `type: 'verified'` value is a VISUAL grouping only — it renders
+// as a credential chip (periwinkle), NOT a Little-Lamb-verified claim (D77; Little Lamb is a
+// job-listing service and verifies nothing). 'Background Checked' and 'Interviewed' were retired
+// from the seed because they imply Little Lamb performed those steps; sitters list credentials
+// like TrustLine / CPR / First Aid that they self-report. Retired ids still resolve their label
+// via badgeLabel()'s id-fallback, so any nanny who already had one keeps rendering it.
+export const CREDENTIAL_BADGES: BadgeDef[] = [
+  { id: 'cpr', label: 'CPR', type: 'verified' },
+  { id: 'first_aid', label: 'First Aid', type: 'verified' },
+  { id: 'trustline', label: 'TrustLine', type: 'verified' },
 ]
+
+/** @deprecated kept as an alias so existing imports keep compiling; use CREDENTIAL_BADGES. */
+export const VERIFIED_BADGES = CREDENTIAL_BADGES
 
 /** The seed catalog, both types together — what `config/badges` is initialized from. */
 export const DEFAULT_BADGES: BadgeDef[] = [...SELF_BADGES, ...VERIFIED_BADGES]

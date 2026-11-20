@@ -88,19 +88,15 @@ export function NannyProfilePage() {
                 </div>
               </div>
 
-              {/* Trust signals above the fold — the most important content on this surface. */}
+              {/* Facts above the fold. No "background checked / interviewed" claim — Little Lamb
+                  is a listing service and verifies nothing (D77); the sitter's own credentials
+                  are the self-reported badges below. */}
               <div className="mt-4 flex flex-wrap items-center gap-1.5">
                 <span className="trust-chip">
                   <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
-                    <path d="M8 1l5.5 2v4c0 3.4-2.3 6.6-5.5 8-3.2-1.4-5.5-4.6-5.5-8V3L8 1z" />
+                    <path d="M8 1.6l1.9 3.9 4.3.6-3.1 3 .8 4.3L8 11.4 4.1 13.4l.8-4.3-3.1-3 4.3-.6L8 1.6z" />
                   </svg>
-                  Background checked
-                </span>
-                <span className="trust-chip">
-                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
-                    <path d="M8 1l5.5 2v4c0 3.4-2.3 6.6-5.5 8-3.2-1.4-5.5-4.6-5.5-8V3L8 1z" />
-                  </svg>
-                  Admin interviewed
+                  Santa Barbara local
                 </span>
                 {experienceText && (
                   <span className="trust-chip">{experienceText} experience</span>
@@ -125,6 +121,11 @@ export function NannyProfilePage() {
                   <p className="text-sm text-ll-warm-gray">No badges yet.</p>
                 )}
               </div>
+              {nanny.verifiedBadges.length + nanny.selfBadges.length > 0 && (
+                <p className="mt-2 text-xs text-ll-warm-gray">
+                  Self-reported by the sitter — not verified by Little Lamb.
+                </p>
+              )}
             </Card>
           </div>
 

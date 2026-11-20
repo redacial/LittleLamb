@@ -182,9 +182,9 @@ export function AdminDashboard() {
               that used to live here had no onClick and did nothing, which is worse than no
               button at all (Lucy clicks it, assumes the family is handled, moves on). The list
               itself stays so she knows who is still waiting. */}
-          <Section title="Unmatched bookings" count={unmatched.length}>
+          <Section title="Open to sitters" count={unmatched.length}>
             {unmatched.length === 0 ? (
-              <Empty>No unmatched bookings. Every request has a nanny.</Empty>
+              <Empty>No open requests. Every booking has a sitter.</Empty>
             ) : (
               <div className="space-y-2.5">
                 {unmatched.map((b) => (

@@ -247,14 +247,17 @@ function BillingConfigCard() {
     <Card className="max-w-lg space-y-4">
       <CardLabel>Billing configuration</CardLabel>
       <Input
-        label="Flat subscription per quarter ($)"
+        label="Yearly subscription ($)"
         type="number"
         value={subscription}
         onChange={(e) => setSubscription(e.target.value)}
         disabled={loading}
       />
+      {/* Retired in the listing-service model (D77): families pay a yearly subscription with the
+          first two bookings free, not a per-booking fee. The field is kept wired to config until
+          the billing-model project lands, but it no longer affects what families are shown. */}
       <Input
-        label="Per-booking fee ($)"
+        label="Per-booking fee ($) — retired, unused"
         type="number"
         value={perBooking}
         onChange={(e) => setPerBooking(e.target.value)}
@@ -270,8 +273,8 @@ function BillingConfigCard() {
         <span>
           <span className="font-semibold">Charge families for real</span>
           <span className="block text-ll-warm-gray">
-            When off, quarterly billing dry-runs: it computes totals and generates invoices but
-            never charges a card. Turn on only when you’re ready to bill.
+            When off, billing dry-runs: it computes totals and generates invoices but never charges
+            a card. Turn on only when you’re ready to bill.
           </span>
         </span>
       </label>

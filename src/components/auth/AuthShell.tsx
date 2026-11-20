@@ -2,9 +2,10 @@ import { Link } from 'react-router-dom'
 import { Logo } from '../ui'
 
 /**
- * Two-panel auth layout. Left: the form. Right (desktop): an editorial trust panel — the
- * "characteristic thing" in this subject's world is the promise that every nanny is vetted.
- * That promise, set in the display serif, is the signature here rather than a stock hero image.
+ * Two-panel auth layout. Left: the form. Right (desktop): an editorial panel carrying the
+ * community line — a local board where Santa Barbara families and sitters find each other. Set
+ * in the display face, it is the signature here rather than a stock hero image. (No vetting
+ * claim — Little Lamb is a listing service; D77.)
  */
 export function AuthShell({
   children,
@@ -34,12 +35,11 @@ export function AuthShell({
           <p className="eyebrow font-mono text-ll-cream/70">Santa Barbara childcare</p>
           <div>
             <p className="font-display text-display-md leading-tight text-ll-cream">
-              Every nanny here has passed a background check and a personal interview before their
-              profile ever goes live.
+              It takes a village. Find yours.
             </p>
             <p className="mt-6 max-w-prose text-ll-cream/80">
-              Little Lamb is a small, local network — the kind of nanny you'd find through a friend,
-              with the calendar and trust built in.
+              Little Lamb is a local board where Santa Barbara families and sitters find each
+              other — the kind of sitter you'd hear about from a friend, with the calendar built in.
             </p>
           </div>
           <p className="text-sm text-ll-cream/60">Founded at Westmont College · littlelambnannies.com</p>

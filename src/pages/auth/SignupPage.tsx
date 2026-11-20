@@ -101,8 +101,8 @@ export function SignupPage() {
       <h1 className="text-display-md">Join Little Lamb</h1>
       <p className="mt-2 text-ll-warm-gray">
         {role === 'family'
-          ? 'Create your family account. We review every application before your account goes live.'
-          : 'Apply to join the nanny network. We review and interview before approval.'}
+          ? 'Create your family account. Your first two bookings are free.'
+          : 'Create your free sitter account, build a profile, and set your own hours.'}
       </p>
 
       {referralCode && (

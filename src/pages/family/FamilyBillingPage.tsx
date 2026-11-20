@@ -19,8 +19,9 @@ export function FamilyBillingPage() {
   // UNITS: the config stores CENTS (2500); everything below this line is DOLLARS, which is
   // what money() and printInvoice expect. Convert once, here, and never again downstream.
   const { config, loading: ratesLoading } = useBillingConfig()
+  // The yearly subscription price. The retired per-booking fee (config.perBookingCents) is no
+  // longer shown — the model is "first two bookings free, then a yearly subscription" (D77).
   const subscription = config.subscriptionCents / 100
-  const perBooking = config.perBookingCents / 100
 
   // Free-launch guard. Little Lamb launches FREE (billing off), and the Billing nav tab is
   // hidden then (see navFor). A family can still reach this URL directly, so show a plain
@@ -38,8 +39,9 @@ export function FamilyBillingPage() {
             </div>
             <p className="mt-3 text-sm text-ll-ink">
               Little Lamb is <span className="font-bold text-ll-sage-deep">free</span> for families
-              during our beta. There's nothing to pay and no invoices to track — just book the care
-              you need.
+              during our beta — there's nothing to pay right now. When billing turns on, your first
+              two bookings stay free, then it's a $150/year subscription. You always pay your sitter
+              directly; no wages pass through Little Lamb.
             </p>
           </Card>
         </PageBody>
@@ -48,21 +50,21 @@ export function FamilyBillingPage() {
   }
 
   const confirmedThisQuarter = bookings.filter((b) => b.status === 'confirmed').length
-  const estimate = subscription + confirmedThisQuarter * perBooking
 
-  // Current-quarter summary rendered as a print-ready invoice (browser "Save as PDF").
+  // Summary rendered as a print-ready document (browser "Save as PDF"). NOTE: the exact
+  // free-first-two-bookings / yearly-proration math belongs to the billing-model project
+  // (deferred, D77); billing is gated OFF today, so this path is unreachable. The line item
+  // reflects the yearly subscription, not the retired per-quarter + per-booking model.
   function downloadInvoice() {
-    const issuedAt = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const now = new Date()
+    const issuedAt = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     printInvoice({
-      invoiceNumber: `LL-${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`,
+      invoiceNumber: `LL-${now.getFullYear()}`,
       familyName: profile?.fullName ?? 'Little Lamb family',
-      quarterLabel: `Q${Math.floor(new Date().getMonth() / 3) + 1} ${new Date().getFullYear()}`,
+      quarterLabel: `${now.getFullYear()}`,
       issuedAt,
-      lineItems: [
-        { label: 'Platform subscription', amount: subscription },
-        { label: `Confirmed bookings (${confirmedThisQuarter} × ${money(perBooking)})`, amount: confirmedThisQuarter * perBooking },
-      ],
-      total: estimate,
+      lineItems: [{ label: 'Annual subscription', amount: subscription }],
+      total: subscription,
     })
   }
 
@@ -72,7 +74,7 @@ export function FamilyBillingPage() {
   if (ratesLoading)
     return (
       <>
-        <PageHeader title="Billing" subtitle="Simple, quarterly, no surprises." />
+        <PageHeader title="Billing" subtitle="A simple yearly subscription." />
         <PageBody>
           <p className="text-ll-warm-gray">Loading…</p>
         </PageBody>
@@ -81,12 +83,12 @@ export function FamilyBillingPage() {
 
   return (
     <>
-      <PageHeader title="Billing" subtitle="Simple, quarterly, no surprises." />
+      <PageHeader title="Billing" subtitle="A simple yearly subscription." />
       <PageBody>
         <div className="grid gap-4 sm:grid-cols-3">
-          <SummaryCard label="Bookings this quarter" value={confirmedThisQuarter} />
-          <SummaryCard label="Estimated next bill" value={money(estimate)} accent />
-          <SummaryCard label="Billing cycle" value="Quarterly" hint="Every 90 days from signup" />
+          <SummaryCard label="Confirmed bookings" value={confirmedThisQuarter} />
+          <SummaryCard label="Subscription" value={money(subscription)} accent hint="Per year" />
+          <SummaryCard label="First two bookings" value="Free" hint="Then your subscription applies" />
         </div>
 
         <Card className="mt-6" tone="peri">
@@ -97,21 +99,18 @@ export function FamilyBillingPage() {
           <ul className="mt-3 space-y-2 text-sm text-ll-ink">
             <li className="flex gap-2.5">
               <Dot />
-              <span>
-                <span className="font-mono text-ll-peri-ink">{money(subscription)}</span> flat platform
-                subscription per quarter
-              </span>
+              <span>Your first two bookings are <span className="font-mono text-ll-peri-ink">free</span>.</span>
             </li>
             <li className="flex gap-2.5">
               <Dot />
               <span>
-                <span className="font-mono text-ll-peri-ink">{money(perBooking)}</span> per confirmed
-                booking, accumulated through the quarter
+                After that, a <span className="font-mono text-ll-peri-ink">{money(subscription)}</span> yearly
+                subscription for access to the board.
               </span>
             </li>
             <li className="flex gap-2.5">
               <Dot />
-              <span>Auto-charged every 90 days. A PDF invoice is emailed and stored here.</span>
+              <span>You pay your sitter directly — no wages pass through Little Lamb.</span>
             </li>
           </ul>
         </Card>
@@ -119,12 +118,12 @@ export function FamilyBillingPage() {
         <Card className="mt-6">
           <CardLabel>Invoice history</CardLabel>
           <p className="mt-2 text-sm text-ll-warm-gray">
-            Your past invoices will appear here once your first billing cycle closes. In the
-            meantime, you can download this quarter's running summary.
+            Your past invoices will appear here once your first subscription charge posts. In the
+            meantime, you can download a summary.
           </p>
           <div className="mt-3">
             <Button variant="secondary" size="sm" onClick={downloadInvoice}>
-              Download this quarter (PDF)
+              Download summary (PDF)
             </Button>
           </div>
         </Card>

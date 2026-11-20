@@ -206,7 +206,7 @@ describe('AdminPeoplePage — assigning verified badges after an interview', () 
     await userEvent.click(screen.getByRole('button', { name: /badges/i }))
 
     const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByRole('checkbox', { name: /CPR Certified/i })).toBeChecked()
+    expect(within(dialog).getByRole('checkbox', { name: /CPR/i })).toBeChecked()
     expect(within(dialog).getByRole('checkbox', { name: /First Aid/i })).not.toBeChecked()
   })
 
@@ -236,7 +236,7 @@ describe('AdminPeoplePage — assigning verified badges after an interview', () 
     await userEvent.click(screen.getByRole('button', { name: /badges/i }))
 
     const dialog = await screen.findByRole('dialog')
-    await userEvent.click(within(dialog).getByRole('checkbox', { name: /CPR Certified/i }))
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: /CPR/i }))
     await userEvent.click(within(dialog).getByRole('button', { name: /save/i }))
 
     expect(saveVerifiedBadges).toHaveBeenCalledWith(['first_aid'])

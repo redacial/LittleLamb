@@ -349,7 +349,7 @@ export function NannySetupWizard() {
         >
           <h1 className="text-display-md">Tell families about you</h1>
           <p className="text-ll-warm-gray">
-            Tap whatever fits — it helps families find their match. Everything here is optional.
+            Tap whatever fits — it helps families find the right sitter for them. Everything here is optional.
           </p>
 
           <div>
@@ -372,7 +372,8 @@ export function NannySetupWizard() {
           <div>
             <p className="label mb-2 text-ll-ink">Badges</p>
             <p className="mb-2 text-sm text-ll-warm-gray">
-              Certifications like CPR and First Aid are verified and added by our team after your interview.
+              Pick the traits that fit you. Credentials like TrustLine, CPR, and First Aid are added
+              to your profile as self-reported — Little Lamb does not verify them.
             </p>
           <div className="flex flex-wrap gap-2">
             {SELF_BADGES.map((b) => {
@@ -397,11 +398,11 @@ export function NannySetupWizard() {
             })}
           </div>
             <div className="mt-3">
-              <p className="eyebrow mb-2">Verified by Little Lamb after your interview</p>
+              <p className="eyebrow mb-2">Self-reported credentials</p>
               <div className="flex flex-wrap gap-2 opacity-70">
-                <Badge label="CPR Certified" type="verified" />
-                <Badge label="First Aid Certified" type="verified" />
-                <Badge label="Background Checked" type="verified" />
+                <Badge label="CPR" type="verified" />
+                <Badge label="First Aid" type="verified" />
+                <Badge label="TrustLine" type="verified" />
               </div>
             </div>
           </div>
@@ -447,8 +448,8 @@ export function NannySetupWizard() {
         >
           <h1 className="text-display-md">What do you charge?</h1>
           <p className="text-ll-warm-gray">
-            Families pay you directly — this just helps us match you with families whose budget
-            fits yours. You can change it any time, or skip it for now.
+            Families pay you directly — your rate just helps families whose budget fits yours find
+            you on the board. You can change it any time, or skip it for now.
           </p>
           <RateRangeInput role="nanny" value={rate} onChange={setRate} />
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}

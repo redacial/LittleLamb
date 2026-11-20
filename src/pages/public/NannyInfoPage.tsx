@@ -8,9 +8,10 @@ import { cn } from '../../lib/cn'
 
 /**
  * "/for-nannies" info page (CLAUDE.md §1.3 / nanny flow §1.2). Distinct from the family
- * page: it speaks to nannies about joining the network, walks through the application →
- * review → interview (Calendly) → decision path, and describes the platform once approved
- * (profile, availability, bookings, and never being charged). Sends them to /apply?role=nanny.
+ * page: it speaks to sitters about joining the board, walks through the sign-up → profile →
+ * set-hours → get-booked path (no approval gate — Little Lamb is a listing service, not an
+ * agency; D77), and describes the platform (profile, availability, bookings, never charged).
+ * Sends them to /apply?role=nanny.
  *
  * Matches the homepage's Premium Playful quality: asymmetric blob-masked hero, floating
  * sticker credentials, a drawn underline on one keyword, tilt-hover cards, DM-Mono trust
@@ -64,9 +65,9 @@ function Hero() {
             for families who value you.
           </h1>
           <p className={cn('mt-6 max-w-md text-body-lg text-ll-warm-gray', rise)} style={delay(2)}>
-            Little Lamb is a small, vetted network of Santa Barbara nannies. We bring you families
-            who already trust the process, so you can focus on the kids, not on chasing leads or
-            proving yourself from scratch.
+            Little Lamb is a local board of Santa Barbara sitters and nannies. Build a profile, set
+            your own hours, and let families find and book you — so you can focus on the kids, not
+            on chasing leads.
           </p>
 
           <div className={cn('mt-8 flex flex-wrap items-center gap-4', rise)} style={delay(3)}>
@@ -129,9 +130,9 @@ function HeroScene() {
 function Benefits() {
   const benefits = [
     {
-      title: 'Families who already trust you',
+      title: 'Families who come to you',
       tone: 'peri' as const,
-      body: 'Because every nanny here is vetted, families arrive ready to book. The trust work is done before you ever meet, with no awkward proving-yourself stage.',
+      body: 'Families browse the board and book inside your hours, so the right jobs come to you instead of you chasing leads across group chats.',
     },
     {
       title: 'You set your own hours',
@@ -141,7 +142,7 @@ function Benefits() {
     {
       title: 'You are never charged',
       tone: 'terra' as const,
-      body: 'Joining and using Little Lamb is always free for nannies. No membership fees, no cut of your wages. Families pay you directly, and we just handle the matching.',
+      body: 'Joining and using Little Lamb is always free for sitters. No membership fees, no cut of your wages. Families pay you directly.',
     },
     {
       title: 'A profile that shows your best',
@@ -204,38 +205,38 @@ function BenefitCard({
 }
 
 /* ---------------------------------------------------------------------- Process */
-/** The vetting & approval path: application → review → interview (Calendly) → decision. */
+/** How joining works: sign up → build a profile → set hours → get booked. No approval gate. */
 function Process() {
   const steps = [
     {
       n: '01',
-      title: 'Apply',
-      body: 'Tell us about yourself and your experience. It takes a few minutes, and it creates your account so you can check your status any time.',
+      title: 'Sign up',
+      body: 'Create a free account in a few minutes. Anyone in the Santa Barbara area can join as a sitter.',
     },
     {
       n: '02',
-      title: 'Review',
-      body: 'Our founders read every application personally. We will keep you posted by email as your application moves through review.',
+      title: 'Build your profile',
+      body: 'Add a photo, a short bio, a one-minute intro video, and any credentials you hold (TrustLine, CPR, references) — shown to families as self-reported.',
     },
     {
       n: '03',
-      title: 'Interview',
-      body: 'If it is a fit, we will send a link to book a one-on-one interview at a time that works for you. It is a real conversation, not a test.',
+      title: 'Set your hours',
+      body: 'Open the days and times that work for you. Families can only book inside the availability you choose.',
     },
     {
       n: '04',
-      title: 'Decision',
-      body: 'After the interview we make a decision and let you know. Once you are approved, you set up your profile and you are ready to be booked.',
+      title: 'Get booked',
+      body: 'Your profile goes on the board and families book you directly. They pay you directly too — Little Lamb never takes a cut.',
     },
   ]
   return (
     <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8 lg:py-24">
-      <p className="eyebrow text-center">How approval works</p>
+      <p className="eyebrow text-center">How joining works</p>
       <h2 className="mt-2 text-center font-display text-display-lg text-ll-ink">
-        From application to your first booking
+        From sign-up to your first booking
       </h2>
       <p className="mx-auto mt-3 max-w-xl text-center text-body-md text-ll-warm-gray">
-        We keep it personal and transparent. You will always know where you stand.
+        No gatekeeping. Build your profile, set your hours, and you’re on the board.
       </p>
       <ol className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {steps.map((s, i) => (
@@ -321,10 +322,10 @@ function BottomCTA() {
           </span>
         </FloatLoop>
         <h2 className="mx-auto max-w-xl font-display text-display-lg text-ll-ink">
-          Ready to join the Santa Barbara network?
+          Ready to join the Santa Barbara board?
         </h2>
         <p className="mx-auto mt-3 max-w-md text-body-md text-ll-warm-gray">
-          Apply in a few minutes. We review and interview every nanny personally before approval.
+          Sign up in a few minutes, build your profile, and set the hours that work for you.
         </p>
         <motion.div {...btnHover} className="mt-8 inline-block">
           <Link

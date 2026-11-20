@@ -293,10 +293,13 @@ export function NannyOwnProfilePage() {
                 )
               })}
             </div>
-            <CardLabel className="mt-4">Verified by Little Lamb</CardLabel>
+            <CardLabel className="mt-4">Credentials</CardLabel>
             <div className="mt-2 flex flex-wrap gap-2">
               {(nanny?.verifiedBadges ?? []).length === 0 ? (
-                <p className="text-sm text-ll-warm-gray">Assigned by our team after your interview.</p>
+                <p className="text-sm text-ll-warm-gray">
+                  Credentials like TrustLine, CPR, or First Aid you hold. Shown to families as
+                  self-reported — not verified by Little Lamb.
+                </p>
               ) : (
                 nanny!.verifiedBadges.map((b) => <Badge key={b} label={badgeLabel(b)} type="verified" size="sm" />)
               )}

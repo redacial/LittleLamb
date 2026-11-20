@@ -74,7 +74,7 @@ describe('ApplicationPage — the family application reaches the database', () =
     await user.type(screen.getByLabelText(/number of children/i), 'Two kids, ages 3 and 6')
     await user.type(screen.getByLabelText(/special needs or notes/i), 'Peanut allergy.')
 
-    await user.click(screen.getByRole('button', { name: /create account & apply/i }))
+    await user.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => expect(createAccount).toHaveBeenCalled())
     const payload = submittedPayload()
@@ -90,7 +90,7 @@ describe('ApplicationPage — the family application reaches the database', () =
     await fillSharedFields(user)
     await user.type(screen.getByLabelText(/number of children/i), 'One kid, age 4')
 
-    await user.click(screen.getByRole('button', { name: /create account & apply/i }))
+    await user.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => expect(createAccount).toHaveBeenCalled())
     const payload = submittedPayload()
@@ -118,7 +118,7 @@ describe('ApplicationPage — the nanny application reaches the database', () =>
       'I have cared for toddlers for five years.',
     )
 
-    await user.click(screen.getByRole('button', { name: /submit application/i }))
+    await user.click(screen.getByRole('button', { name: /create sitter account/i }))
 
     await waitFor(() => expect(createAccount).toHaveBeenCalled())
     const payload = submittedPayload()
@@ -136,7 +136,7 @@ describe('ApplicationPage — the nanny application reaches the database', () =>
     await fillSharedFields(user)
     await user.type(screen.getByLabelText(/years of childcare experience/i), '2')
 
-    await user.click(screen.getByRole('button', { name: /submit application/i }))
+    await user.click(screen.getByRole('button', { name: /create sitter account/i }))
 
     await waitFor(() => expect(createAccount).toHaveBeenCalled())
     const payload = submittedPayload()
@@ -158,7 +158,7 @@ describe('ApplicationPage — answers are handed over for sanitization', () => {
     await user.click(screen.getByLabelText(/special needs or notes/i))
     await user.paste('Peanut allergy, and a nap at two.')
 
-    await user.click(screen.getByRole('button', { name: /create account & apply/i }))
+    await user.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => expect(createAccount).toHaveBeenCalled())
     expect(submittedPayload().notes).toBe('Peanut allergy, and a nap at two.')

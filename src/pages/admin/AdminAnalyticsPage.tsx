@@ -63,7 +63,7 @@ export function AdminAnalyticsPage() {
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <SummaryCard label="Active families" value={activeFamilies} accent />
                   <SummaryCard label="Active nannies" value={activeNannies} />
-                  <SummaryCard label="Quarterly revenue" value={dollars(revenue)} />
+                  <SummaryCard label="Revenue" value={dollars(revenue)} />
                   <SummaryCard label="Confirmed bookings" value={confirmed} />
                 </div>
               )
@@ -78,7 +78,7 @@ export function AdminAnalyticsPage() {
             if (active === 'Revenue')
               return (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <SummaryCard label="Quarterly revenue" value={dollars(revenue)} accent />
+                  <SummaryCard label="Revenue" value={dollars(revenue)} accent />
                   <SummaryCard label="MRR (subscriptions)" value={dollars((activeFamilies * subscription) / 3)} />
                   <SummaryCard label="Avg revenue / family" value={dollars(activeFamilies ? revenue / activeFamilies : 0)} />
                 </div>
@@ -86,9 +86,9 @@ export function AdminAnalyticsPage() {
             if (active === 'Bookings')
               return (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <SummaryCard label="Confirmed this quarter" value={confirmed} />
+                  <SummaryCard label="Confirmed bookings" value={confirmed} />
                   <SummaryCard label="Completion rate" value={`${completionRate}%`} accent />
-                  <SummaryCard label="Unmatched" value={unmatched} hint="Rising = nanny shortage" />
+                  <SummaryCard label="Open to sitters" value={unmatched} hint="Rising = sitter shortage" />
                   <SummaryCard label="Recurring" value={recurring} />
                 </div>
               )
