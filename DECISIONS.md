@@ -801,3 +801,27 @@ weakest possible footing for the exact liability the listing-service model is bu
 on both paths), `firestore.rules.test.ts` (timestamp accepted, non-timestamp rejected),
 `ApplicationPage.test.tsx` + new `SignupPage.test.tsx` (both signup paths blocked until the box is
 ticked). Closes the "persisted ToS-acceptance checkbox" item deferred under D77.
+
+### D79. The `verifiedBadges`→`selfBadges` "migration" is WON'T-DO — the split is a permission boundary (2026-11-20)
+
+D77 deferred a "drop the `'verified'` BadgeType / migrate `verifiedBadges`→`selfBadges` (a real
+migration)" item. On inspection (David confirmed the call), that migration is **not the right change
+and will not be done** — the note's premise went stale once the D77 badge-modal reframe settled the
+model. Recording so no future session re-attempts it:
+
+- **The two arrays are a permission boundary, not a presentation duplication.** `nannies/{uid}
+  .selfBadges` is **nanny-writable** (traits picked in the setup wizard). `nannies/{uid}
+  .verifiedBadges` is **admin-only + client-immutable** by rule (`firestore.rules` nanny update:
+  `verifiedBadges == existing().verifiedBadges`), written ONLY by `VerifiedBadgesModal` via
+  `useNannyVerifiedBadges.save`. It records the credentials a sitter *reported* holding (TrustLine/
+  CPR/First Aid) — the admin recording lever D77 deliberately KEPT when it dropped the "verified"
+  *claim*. Merging the arrays into `selfBadges` would let a nanny self-add "CPR"/"TrustLine" to her
+  own profile with no record of who entered it — a regression, the opposite of D77's intent.
+- **The only real residue is cosmetic and not worth a migration.** The `BadgeType` discriminant is
+  still literally the string `'verified'` (persisted as metadata in `config/badges`), though it now
+  means "credential chip, self-reported" (periwinkle, no checkmark). That internal value is **never
+  shown to a user** — the chip reads "CPR", and `Badge.tsx` renders the "self-reported, not verified
+  by Little Lamb" tooltip regardless. Renaming it `'credential'` would need a real `config/badges`
+  data migration + back-compat read for zero user-visible gain, so it is left as-is.
+
+Net: KEEP the `selfBadges`/`verifiedBadges` split and the `'verified'` type value. Item closed.

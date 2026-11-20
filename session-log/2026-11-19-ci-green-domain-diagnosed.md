@@ -208,7 +208,18 @@ before). **Not deployed yet** — this is a pre-launch branch; bundle with the n
 Also committed a small chore: `scratchpad/` added to the ESLint ignore (it's gitignored, so CI was
 green but local lint tripped on leftover `.mjs` files).
 
-**Remaining deferred (unchanged, all genuinely separate projects):** `'verified'` BadgeType / badge
-array migration (real data migration); billing-model math for "first two free + yearly" (billing
-gated OFF); prune orphaned `advanceStage`/`useCalendlyConfig`/`config/calendly` + `NannyStage` type
-members (low-value tidy); `www` Firebase re-verify click (David's console task).
+### Badge "migration" closed as WON'T-DO (D79)
+
+Investigated the deferred "`verifiedBadges`→`selfBadges` migration" item next. **Closed without
+doing it** (David confirmed): the note's premise was stale. The two arrays are a **permission
+boundary** — `selfBadges` is nanny-writable; `verifiedBadges` is admin-only + client-immutable (the
+credential-recording lever D77 kept). Merging them would let a nanny self-add "CPR"/"TrustLine" with
+no record of who entered it — a regression. The only residue is cosmetic (the `BadgeType` value is
+still literally `'verified'`, an internal name no user sees), and renaming it would need a real
+`config/badges` migration for zero user-visible gain. KEEP both the split and the value. Full
+rationale in DECISIONS.md D79. No code changed; docs only.
+
+**Remaining deferred (all genuinely separate projects):** billing-model math for "first two free +
+yearly" (billing gated OFF, nothing shows); prune orphaned `advanceStage`/`useCalendlyConfig`/
+`config/calendly` + `NannyStage` type members (low-value tidy); `www` Firebase re-verify click
+(David's console task). (The badge migration is now closed — D79 — not deferred.)
