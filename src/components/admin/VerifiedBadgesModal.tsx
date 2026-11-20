@@ -3,14 +3,12 @@ import { Modal, Button, Badge } from '../ui'
 import { useBadgeCatalog, useNannyVerifiedBadges } from '../../hooks/useAdmin'
 
 /**
- * The post-interview pass: Lucy interviews a nanny offline, then ticks the credentials she
- * actually verified. Writes `verifiedBadges` on nannies/{uid} — admin-only per the deployed
- * rules, and immutable from the nanny's own client, which is what makes a periwinkle chip
- * mean something to a parent.
- *
- * Self-reported badges are deliberately absent: those are the nanny's to claim in her own
- * setup wizard. Mixing them here would let an admin silently edit her self-description and
- * blur the one distinction the two badge colors exist to draw.
+ * Records the credentials a sitter has told us they hold (TrustLine, CPR, First Aid). Writes
+ * `verifiedBadges` on nannies/{uid} — the periwinkle "credential" chips, as opposed to the sage
+ * self-reported traits the sitter picks in her own wizard. The field is admin-written only for
+ * historical reasons; Little Lamb does NOT verify these (D77 — it is a job-listing service), and
+ * the Badge component shows them to families as "self-reported, not verified by Little Lamb".
+ * The admin copy here must match that: this is recording what the sitter reported, not vouching.
  */
 export function VerifiedBadgesModal({
   uid,
@@ -57,10 +55,10 @@ export function VerifiedBadgesModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Verified badges — ${fullName}`}>
+    <Modal open={open} onClose={onClose} title={`Credentials — ${fullName}`}>
       <p className="mb-4 text-sm text-ll-warm-gray">
-        Tick the credentials you confirmed during the interview. These show on {fullName}’s public
-        profile as verified — she can’t add them herself.
+        Tick the credentials {fullName} has told us they hold (TrustLine, CPR, First Aid). These
+        show on their profile as self-reported — Little Lamb does not verify them.
       </p>
 
       {loading || catalogLoading ? (
@@ -86,7 +84,7 @@ export function VerifiedBadgesModal({
           })}
           {catalog.length === 0 && (
             <p className="text-sm text-ll-warm-gray">
-              No verified badges defined yet — add them in Settings → Badges.
+              No credential badges defined yet — add them in Settings → Badges.
             </p>
           )}
         </div>

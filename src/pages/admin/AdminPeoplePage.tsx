@@ -221,12 +221,11 @@ function PersonRow({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <StatusPill status={u.status} tone={u.status === 'approved' ? 'confirmed' : u.status === 'rejected' ? 'cancelled' : 'pending'} />
-        {/* The post-interview pass. Offered on every nanny regardless of status: Lucy
-            often confirms CPR/First Aid during the interview, i.e. BEFORE the approve
-            click, and re-verifies certs that lapse long after. */}
+        {/* Records the credentials a sitter reports holding (TrustLine/CPR/First Aid) onto the
+            profile. Little Lamb does not verify them (D77); the chip shows as self-reported. */}
         {role === 'nanny' && (
           <Button size="sm" variant="ghost" onClick={() => setBadgesOpen(true)}>
-            Badges
+            Credentials
           </Button>
         )}
         {/* Offered for BOTH roles: reviews run in both directions (a nanny reviews the

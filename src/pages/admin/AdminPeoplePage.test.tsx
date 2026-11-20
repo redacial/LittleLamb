@@ -166,20 +166,19 @@ describe('AdminPeoplePage — partial and failed reads', () => {
 })
 
 
-// The post-interview workflow: Lucy interviews a nanny offline, then needs to mark which
-// VERIFIED badges she earned. Before this, no admin surface wrote `verifiedBadges` at all —
-// the field existed on the type and was admin-writable in the rules, but the only way to set
-// it was the Firebase console. This suite pins the whole round trip.
-describe('AdminPeoplePage — assigning verified badges after an interview', () => {
-  it('opens a badge editor for an approved nanny', async () => {
+// Recording the credentials a sitter reports holding (TrustLine/CPR/First Aid) onto the profile.
+// Writes `verifiedBadges` (the periwinkle credential chips) — the only admin surface that sets
+// them. Little Lamb does NOT verify them (D77); the profile shows them as self-reported. This
+// suite pins the whole round trip.
+describe('AdminPeoplePage — recording a sitter credential', () => {
+  it('opens a credential editor for an active sitter', async () => {
     reset({ users: [approvedNanny()], items: [approvedNanny()] })
 
     render(<AdminPeoplePage role="nanny" />)
     await openActiveTab()
-    await userEvent.click(screen.getByRole('button', { name: /badges/i }))
+    await userEvent.click(screen.getByRole('button', { name: /credentials/i }))
 
-    // The dialog must offer every VERIFIED badge as a toggle — that is the whole point of
-    // the post-interview pass.
+    // The dialog must offer every credential badge as a toggle.
     const dialog = await screen.findByRole('dialog')
     for (const b of VERIFIED_BADGES) {
       expect(within(dialog).getByRole('checkbox', { name: new RegExp(b.label, 'i') })).toBeInTheDocument()
@@ -191,7 +190,7 @@ describe('AdminPeoplePage — assigning verified badges after an interview', () 
 
     render(<AdminPeoplePage role="nanny" />)
     await openActiveTab()
-    await userEvent.click(screen.getByRole('button', { name: /badges/i }))
+    await userEvent.click(screen.getByRole('button', { name: /credentials/i }))
 
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).queryByRole('checkbox', { name: /Pet-Friendly/i })).not.toBeInTheDocument()
@@ -203,7 +202,7 @@ describe('AdminPeoplePage — assigning verified badges after an interview', () 
 
     render(<AdminPeoplePage role="nanny" />)
     await openActiveTab()
-    await userEvent.click(screen.getByRole('button', { name: /badges/i }))
+    await userEvent.click(screen.getByRole('button', { name: /credentials/i }))
 
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('checkbox', { name: /CPR/i })).toBeChecked()
@@ -218,7 +217,7 @@ describe('AdminPeoplePage — assigning verified badges after an interview', () 
 
     render(<AdminPeoplePage role="nanny" />)
     await openActiveTab()
-    await userEvent.click(screen.getByRole('button', { name: /badges/i }))
+    await userEvent.click(screen.getByRole('button', { name: /credentials/i }))
 
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('checkbox', { name: /First Aid/i }))
@@ -233,7 +232,7 @@ describe('AdminPeoplePage — assigning verified badges after an interview', () 
 
     render(<AdminPeoplePage role="nanny" />)
     await openActiveTab()
-    await userEvent.click(screen.getByRole('button', { name: /badges/i }))
+    await userEvent.click(screen.getByRole('button', { name: /credentials/i }))
 
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('checkbox', { name: /CPR/i }))
@@ -249,7 +248,7 @@ describe('AdminPeoplePage — assigning verified badges after an interview', () 
     render(<AdminPeoplePage role="family" />)
     await openActiveTab()
 
-    expect(screen.queryByRole('button', { name: /badges/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /credentials/i })).not.toBeInTheDocument()
   })
 })
 
