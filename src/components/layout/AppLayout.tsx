@@ -13,6 +13,10 @@ import { cn } from '../../lib/cn'
  * Persistent role-aware app shell. Sidebar on desktop, slide-in drawer on mobile. The same
  * component serves family, nanny, and admin — the nav set is the only difference, keeping the
  * three experiences visually consistent (a deliberate trust signal, not three different apps).
+ *
+ * Sticky-note design (D77): the whole app sits on paper (bg-ll-paper) with sand borders, so it
+ * reads as the same product as the marketing page. Cards/inputs keep their readable surfaces —
+ * dense data UI (calendar, tables, forms) is NOT sticky-noted, only paper-washed + warm-bordered.
  */
 export function AppLayout() {
   const { profile } = useAuth()
@@ -44,8 +48,8 @@ export function AppLayout() {
               cn(
                 'flex items-center gap-3 rounded-ll-input px-3 py-2.5 text-label font-medium transition-colors',
                 isActive
-                  ? 'bg-ll-sage-light text-ll-sage-deep'
-                  : 'text-ll-warm-gray hover:bg-ll-cream-dark hover:text-ll-ink',
+                  ? 'bg-ll-note-sage text-ll-sage-deep'
+                  : 'text-ll-warm-gray hover:bg-ll-sand hover:text-ll-ink',
               )
             }
           >
@@ -54,10 +58,10 @@ export function AppLayout() {
           </NavLink>
         ))}
       </nav>
-      <div className="border-t-1.5 border-ll-cream-dark p-3">
+      <div className="border-t-1.5 border-ll-sand p-3">
         <button
           onClick={() => signOut()}
-          className="flex w-full items-center gap-3 rounded-ll-input px-3 py-2.5 text-label font-medium text-ll-warm-gray hover:bg-ll-cream-dark hover:text-ll-ink"
+          className="flex w-full items-center gap-3 rounded-ll-input px-3 py-2.5 text-label font-medium text-ll-warm-gray hover:bg-ll-sand hover:text-ll-ink"
         >
           <Icon name="settings" />
           Log out
@@ -67,26 +71,26 @@ export function AppLayout() {
   )
 
   return (
-    <div className="min-h-screen bg-ll-cream lg:grid lg:grid-cols-[16rem_1fr]">
+    <div className="min-h-screen bg-ll-paper lg:grid lg:grid-cols-[16rem_1fr]">
       {/* Skip link — first focusable element, visible only on keyboard focus (WCAG 2.4.1). */}
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-ll-ink focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ll-cream"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-ll-ink focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ll-paper"
       >
         Skip to content
       </a>
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen border-r-1.5 border-ll-cream-dark bg-ll-cream lg:block">
+      <aside className="sticky top-0 hidden h-screen border-r-1.5 border-ll-sand bg-ll-paper lg:block">
         {sidebar}
       </aside>
 
       {/* Mobile top bar */}
-      <header className="flex items-center justify-between border-b-1.5 border-ll-cream-dark bg-ll-cream px-4 py-3 lg:hidden">
+      <header className="flex items-center justify-between border-b-1.5 border-ll-sand bg-ll-paper px-4 py-3 lg:hidden">
         <Logo withSubline={false} />
         <button
           aria-label="Open menu"
           onClick={() => setDrawer(true)}
-          className="rounded-ll-tag p-2 text-ll-ink hover:bg-ll-cream-dark"
+          className="rounded-ll-tag p-2 text-ll-ink hover:bg-ll-sand"
         >
           <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
@@ -108,7 +112,7 @@ export function AppLayout() {
               transition={{ duration: 0.15 }}
             />
             <motion.div
-              className="absolute left-0 top-0 h-full w-72 bg-ll-cream shadow-lift"
+              className="absolute left-0 top-0 h-full w-72 bg-ll-paper shadow-lift"
               initial={prefersReduced ? { opacity: 0 } : { x: '-100%' }}
               animate={prefersReduced ? { opacity: 1 } : { x: 0 }}
               exit={prefersReduced ? { opacity: 0 } : { x: '-100%' }}
@@ -130,7 +134,7 @@ export function AppLayout() {
 /** Standard page header used inside the layout's main column. */
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4 border-b-1.5 border-ll-cream-dark px-6 py-6 sm:px-8">
+    <div className="flex flex-wrap items-end justify-between gap-4 border-b-1.5 border-ll-sand px-6 py-6 sm:px-8">
       <div>
         <h1 className="text-display-lg leading-none">{title}</h1>
         {subtitle && <p className="mt-1 text-ll-warm-gray">{subtitle}</p>}

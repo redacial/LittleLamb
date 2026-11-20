@@ -36,7 +36,7 @@ export function NannyDashboard() {
   return (
     <>
       {/* Warm welcoming dashboard hero — the one place grain + display greeting live. */}
-      <div className="relative overflow-hidden border-b-1.5 border-ll-cream-dark px-6 py-7 sm:px-8">
+      <div className="relative overflow-hidden border-b-1.5 border-ll-sand px-6 py-7 sm:px-8">
         <Grain />
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

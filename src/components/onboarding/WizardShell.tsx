@@ -15,7 +15,7 @@ interface WizardShellProps {
  */
 export function WizardShell({ steps, current, children, voluntary }: WizardShellProps) {
   return (
-    <div className="min-h-screen bg-ll-cream">
+    <div className="min-h-screen bg-ll-paper">
       <header className="border-b border-ll-ink/10 bg-ll-cream/80 px-6 py-4 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <Logo />

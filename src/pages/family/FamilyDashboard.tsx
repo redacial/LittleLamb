@@ -45,7 +45,7 @@ export function FamilyDashboard() {
   return (
     <>
       {/* Warm welcoming dashboard hero — the one place grain + display greeting live. */}
-      <div className="relative overflow-hidden border-b-1.5 border-ll-cream-dark px-6 py-7 sm:px-8">
+      <div className="relative overflow-hidden border-b-1.5 border-ll-sand px-6 py-7 sm:px-8">
         <Grain />
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -62,7 +62,7 @@ export function FamilyDashboard() {
           </div>
           <motion.div {...btnHover} className="inline-block">
             <Link to="/family/calendar">
-              <Button>Book a nanny</Button>
+              <Button>Book a sitter</Button>
             </Link>
           </motion.div>
         </div>
@@ -126,7 +126,7 @@ export function FamilyDashboard() {
             <CardLabel>Upcoming</CardLabel>
             {upcoming.length === 0 ? (
               <p className="mt-2 text-sm text-ll-warm-gray">
-                Nothing booked yet. Tap "Book a nanny" to find someone for your next date.
+                Nothing booked yet. Tap "Book a sitter" to find someone for your next night out.
               </p>
             ) : (
               <ul className="mt-3 divide-y divide-ll-cream-dark">

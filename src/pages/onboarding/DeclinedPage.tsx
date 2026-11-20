@@ -27,7 +27,7 @@ export function DeclinedPage({ role: _role }: { role: 'family' | 'nanny' }) {
   const firstName = profile?.fullName?.split(' ')[0] ?? 'there'
 
   return (
-    <main className="min-h-screen bg-ll-cream">
+    <main className="min-h-screen bg-ll-paper">
       <header className="flex items-center justify-between px-6 py-4">
         <Logo />
         <Button variant="ghost" size="sm" onClick={() => signOut()}>Log out</Button>
