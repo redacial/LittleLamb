@@ -8,11 +8,11 @@ import { Logo } from '../../components/ui'
  */
 export function PublicShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-ll-cream">
+    <div className="min-h-screen bg-ll-paper">
       {/* Skip link — first focusable element, visible only on keyboard focus (WCAG 2.4.1). */}
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ll-ink focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ll-cream"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ll-ink focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ll-paper"
       >
         Skip to content
       </a>
@@ -25,7 +25,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
 
 export function PublicNav() {
   return (
-    <header className="sticky top-0 z-30 border-b-1.5 border-ll-cream-dark bg-ll-cream/90 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b-1.5 border-ll-sand bg-ll-paper/90 backdrop-blur">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8">
         <Link to="/" aria-label="Little Lamb Nannies home">
           <Logo />
@@ -35,7 +35,7 @@ export function PublicNav() {
             to="/for-nannies"
             className="hidden text-label font-medium text-ll-warm-gray hover:text-ll-ink sm:inline"
           >
-            For nannies
+            For sitters
           </Link>
           <Link
             to="/login"
@@ -45,7 +45,7 @@ export function PublicNav() {
           </Link>
           <Link
             to="/apply"
-            className="inline-flex h-10 items-center rounded-full bg-ll-terra-deep px-5 text-label font-medium text-white transition-colors hover:bg-ll-ink"
+            className="inline-flex h-10 items-center rounded-full bg-ll-brand-terra-ink px-5 text-label font-medium text-white transition-colors hover:bg-ll-ink"
           >
             Get started
           </Link>
@@ -57,7 +57,7 @@ export function PublicNav() {
 
 export function PublicFooter() {
   return (
-    <footer className="border-t-1.5 border-ll-cream-dark bg-ll-cream-dark/40">
+    <footer className="border-t-1.5 border-ll-sand bg-ll-sand/60">
       <div className="mx-auto grid max-w-6xl gap-8 px-5 py-12 sm:grid-cols-[1.5fr_1fr_1fr] sm:px-8">
         <div>
           <Logo />
@@ -75,15 +75,15 @@ export function PublicFooter() {
           ]}
         />
         <FooterCol
-          title="Nannies"
+          title="Sitters"
           links={[
             { to: '/for-nannies', label: 'Why join' },
-            { to: '/apply?role=nanny', label: 'Apply now' },
+            { to: '/apply?role=nanny', label: 'Join as a sitter' },
             { to: '/login', label: 'Log in' },
           ]}
         />
       </div>
-      <div className="border-t-1.5 border-ll-cream-dark">
+      <div className="border-t-1.5 border-ll-sand">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-5 py-5 sm:px-8">
           <p className="font-mono text-mono-sm text-ll-warm-gray">
             littlelambnannies.com · Santa Barbara, CA
