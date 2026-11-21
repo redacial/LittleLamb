@@ -5,7 +5,7 @@ import { useFamilyProfile } from '../../hooks/useProfile'
 import { useMediaQuery, LG_QUERY } from '../../hooks/useMediaQuery'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Card, RateDisclaimer, LoadErrorNotice, TruncatedNotice } from '../../components/ui'
-import { NannyCard } from '../../components/NannyCard'
+import { NannyListCard } from '../../components/NannyListCard'
 import { NannyProfilePane } from './NannyProfilePage'
 
 /**
@@ -74,22 +74,21 @@ export function NanniesDirectory() {
             )}
             {nannies.some((n) => n.rateRange) && <RateDisclaimer className="mb-4" />}
 
-            {/* Master-detail: strip + sticky pane on lg; strip-only below. min-w-0 on both columns
-                lets the horizontal strip overflow-scroll instead of blowing out the grid. */}
-            <div className="grid gap-6 lg:grid-cols-[1fr_1.35fr]">
-              {/* LEFT — horizontal card strip */}
-              <div className="min-w-0">
-                <ul className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 lg:grid lg:snap-none lg:grid-cols-2 lg:overflow-visible">
+            {/* Master-detail, Care.com-style: a VERTICAL stack of WIDE result cards on the left
+                that scrolls on its own, and a FIXED profile pane on the right. Only the left
+                column scrolls; the page itself never moves. Below lg it's a single column and a
+                card tap navigates to the full-screen route instead (onSelect omitted there). */}
+            <div className="lg:grid lg:h-[calc(100vh-9.5rem)] lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-6">
+              {/* LEFT — wide Care.com-style cards, scrolls internally on lg. */}
+              <div className="min-w-0 lg:h-full lg:overflow-y-auto lg:pr-2">
+                <ul className="space-y-4">
                   {nannies.map((n) => (
-                    <li
-                      key={n.uid}
-                      className="w-[78%] shrink-0 snap-start sm:w-[320px] lg:w-auto"
-                    >
-                      <NannyCard
+                    <li key={n.uid}>
+                      <NannyListCard
                         nanny={n}
                         profileBase={base}
-                        canBook={!!canBook}
                         budget={budget}
+                        selected={n.uid === selectedId}
                         onSelect={onSelect}
                       />
                     </li>
@@ -97,19 +96,18 @@ export function NanniesDirectory() {
                 </ul>
               </div>
 
-              {/* RIGHT — the profile pane on desktop; empty space (no filler) when nothing picked. */}
-              <aside className="hidden min-w-0 lg:block">
-                <div className="lg:sticky lg:top-6">
-                  {selected ? (
-                    <NannyProfilePane nanny={selected} canBook={!!canBook} />
-                  ) : (
-                    // Intentionally empty — per spec there is no filler when no profile is open.
-                    <div
-                      aria-hidden
-                      className="min-h-[60vh] rounded-ll-card border-1.5 border-dashed border-ll-sand/70"
-                    />
-                  )}
-                </div>
+              {/* RIGHT — the fixed profile pane on desktop; empty space (no filler) when nothing
+                  is picked. */}
+              <aside className="hidden min-w-0 lg:block lg:h-full">
+                {selected ? (
+                  <NannyProfilePane nanny={selected} canBook={!!canBook} />
+                ) : (
+                  // Intentionally empty — per spec there is no filler when no profile is open.
+                  <div
+                    aria-hidden
+                    className="h-full rounded-ll-card border-1.5 border-dashed border-ll-sand/70"
+                  />
+                )}
               </aside>
             </div>
           </>

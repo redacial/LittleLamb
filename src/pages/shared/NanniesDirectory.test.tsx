@@ -90,10 +90,11 @@ describe('NanniesDirectory — master-detail selection', () => {
   it('opens the selected nanny in the pane and puts ?selected in the URL', async () => {
     const user = userEvent.setup()
     show()
-    // Click Maya's View-profile button.
+    // Each list row is a single link; click Maya's row to open her in the pane.
     const cards = screen.getAllByRole('article')
     const mayaCard = cards.find((c) => within(c).queryByText('Maya Brooks'))!
-    await user.click(within(mayaCard).getByRole('link', { name: /view profile/i }))
+    // Each wide result card is a single link; click Maya's to open her in the pane.
+    await user.click(within(mayaCard).getByRole('link'))
 
     // The pane now shows Maya's bookable profile (the Book CTA is pane-owned).
     expect(await screen.findByRole('link', { name: /book this nanny/i })).toHaveAttribute(

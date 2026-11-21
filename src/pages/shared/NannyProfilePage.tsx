@@ -2,7 +2,8 @@ import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useNanny, type DirectoryNanny } from '../../hooks/useNannies'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
-import { Card, CardLabel, Avatar, Badge, Button, RateDisclaimer } from '../../components/ui'
+import { CardLabel, Badge, Button, Avatar, RateDisclaimer } from '../../components/ui'
+import { StickyNote } from '../../components/theme'
 import { IntroVideo } from '../../components/IntroVideo'
 import { AvailabilityNotepad } from '../../components/AvailabilityNotepad'
 import { formatRate } from '../../lib/rates'
@@ -97,132 +98,128 @@ export function NannyProfilePane({ nanny, canBook }: { nanny: DirectoryNanny; ca
     { label: 'Languages', ids: nanny.languages ?? [] },
   ].filter((g) => g.ids.length > 0)
 
+  const allBadges = [...nanny.verifiedBadges, ...nanny.selfBadges]
+  const funFact = composeFunFact(nanny.funFactPrompt, nanny.funFact)
+
   return (
-    <div>
-      {/* Pane heading: name + experience + the Book CTA. On the embedded (desktop pane) path this
-          is the only heading; on the full-screen route the PageHeader also shows the name. */}
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="font-display text-display-md leading-none text-ll-ink">{nanny.fullName}</h2>
-          {experienceText && (
-            <p className="mt-1 text-sm text-ll-warm-gray">{experienceText} of experience</p>
-          )}
-        </div>
-        {canBook && (
-          <Link to={`/family/calendar?nanny=${nanny.uid}`}>
-            <Button>Book this nanny</Button>
-          </Link>
-        )}
-      </div>
+    // Care.com-style profile pane (David's reference). The pane SCROLLS on lg: the top block
+    // (photo + name + chips, the experience|rate stat box, Book, and video + availability) sits
+    // above the fold; everything else (bio, about chips, badges) is below and reached by scrolling
+    // the pane. On the full-screen mobile route the height cap is lg-only, so it flows naturally.
+    <div className="rounded-ll-card border-1.5 border-ll-sand bg-ll-paper shadow-soft lg:h-full lg:overflow-y-auto">
+      <div className="space-y-5 p-5">
+        {/* ── Above the fold ─────────────────────────────────────────────── */}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
-          <div className="space-y-6">
-            <Card tone="peri">
-              <div className="flex items-center gap-4">
-                <Avatar name={nanny.fullName} src={nanny.photoURL} size="lg" />
-                <div>
-                  <p className="font-display text-2xl text-ll-ink">{nanny.fullName}</p>
-                  {composeFunFact(nanny.funFactPrompt, nanny.funFact) ? (
-                    <p className="text-sm font-medium text-ll-ink">
-                      {composeFunFact(nanny.funFactPrompt, nanny.funFact)}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-ll-warm-gray">Santa Barbara</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Facts above the fold. No "background checked / interviewed" claim — Little Lamb
-                  is a listing service and verifies nothing (D77); the sitter's own credentials
-                  are the self-reported badges below. */}
-              <div className="mt-4 flex flex-wrap items-center gap-1.5">
+        {/* Identity: photo + name/chips on the left, the hourly-rate sticky note on the right. */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-4">
+            <Avatar name={nanny.fullName} src={nanny.photoURL} size="lg" />
+            <div className="min-w-0">
+              <h2 className="font-display text-display-md leading-none text-ll-ink">{nanny.fullName}</h2>
+              {experienceText && <p className="mt-1 text-sm text-ll-warm-gray">{experienceText} of experience</p>}
+              {funFact && <p className="mt-1 text-sm font-medium text-ll-ink line-clamp-1">{funFact}</p>}
+              {/* Compliant chips — "Santa Barbara local" + self-reported credentials. NEVER a
+                  "background checked" claim (D77: Little Lamb verifies nothing). */}
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <span className="trust-chip">
                   <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
                     <path d="M8 1.6l1.9 3.9 4.3.6-3.1 3 .8 4.3L8 11.4 4.1 13.4l.8-4.3-3.1-3 4.3-.6L8 1.6z" />
                   </svg>
                   Santa Barbara local
                 </span>
-                {experienceText && (
-                  <span className="trust-chip">{experienceText} experience</span>
-                )}
               </div>
-
-              {nanny.introVideoURL && (
-                <IntroVideo src={nanny.introVideoURL} name={nanny.fullName} className="mt-4" />
-              )}
-            </Card>
-
-            <Card>
-              <CardLabel>Badges</CardLabel>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {nanny.verifiedBadges.map((b) => (
-                  <Badge key={b} label={badgeLabel(b)} type="verified" size="sm" />
-                ))}
-                {nanny.selfBadges.map((b) => (
-                  <Badge key={b} label={badgeLabel(b)} type={badgeType(b)} size="sm" />
-                ))}
-                {nanny.verifiedBadges.length + nanny.selfBadges.length === 0 && (
-                  <p className="text-sm text-ll-warm-gray">No badges yet.</p>
-                )}
-              </div>
-              {nanny.verifiedBadges.length + nanny.selfBadges.length > 0 && (
-                <p className="mt-2 text-xs text-ll-warm-gray">
-                  Self-reported by the sitter — not verified by Little Lamb.
-                </p>
-              )}
-            </Card>
+            </div>
           </div>
+          {/* Hourly rate as a sticky note, top-right next to the name (David). */}
+          {nanny.rateRange && (
+            <StickyNote tone="butter" rotate={-2} className="shrink-0 px-4 py-2 text-center">
+              <p className="eyebrow leading-none">Rate</p>
+              <p className="mt-0.5 font-display text-2xl leading-tight text-ll-ink">
+                {formatRate(nanny.rateRange)}
+              </p>
+            </StickyNote>
+          )}
+        </div>
 
-          <div className="space-y-6">
-            {nanny.bio && (
-              <Card>
-                <CardLabel>About</CardLabel>
-                <p className="mt-1 whitespace-pre-line text-ll-ink">{nanny.bio}</p>
-              </Card>
+        {/* Book — full-width primary, like Care.com's "Contact" button. */}
+        {canBook && (
+          <Link to={`/family/calendar?nanny=${nanny.uid}`} className="block">
+            <Button className="w-full">Book this nanny</Button>
+          </Link>
+        )}
+
+        {/* Video + availability side by side — both visible without scrolling. */}
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="min-w-0">
+            {nanny.introVideoURL ? (
+              <IntroVideo src={nanny.introVideoURL} name={nanny.fullName} className="w-full" />
+            ) : (
+              <div className="grid h-full min-h-[8rem] place-items-center rounded-ll-input border-1.5 border-dashed border-ll-sand text-sm text-ll-warm-gray">
+                No intro video yet
+              </div>
             )}
-
-            {aboutGroups.length > 0 && (
-              <Card className="space-y-3">
-                {aboutGroups.map((g) => (
-                  <div key={g.label}>
-                    <CardLabel>{g.label}</CardLabel>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {g.ids.map((cid) => (
-                        <span
-                          key={cid}
-                          className="rounded-full border-1.5 border-ll-sage bg-ll-sage-light px-3 py-1 font-mono text-mono-sm font-medium text-ll-sage-deep"
-                        >
-                          {optionLabel(cid)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </Card>
-            )}
-
-            {nanny.rateRange && (
-              <Card>
-                <CardLabel>Hourly rate</CardLabel>
-                <p className="mt-1 font-mono text-ll-ink">{formatRate(nanny.rateRange)}</p>
-                <RateDisclaimer className="mt-2" />
-              </Card>
-            )}
-
-            {/* Availability as a lined notepad (cozy aesthetic) rather than a plain card. */}
+          </div>
+          <div className="min-w-0 space-y-4">
             <AvailabilityNotepad availability={nanny.availability} />
-
-            <Card tone="peri">
-              <CardLabel>Families worked with</CardLabel>
-              <p className="mt-2 font-mono text-mono-sm text-ll-peri-deep">
-                Worked with families on Little Lamb
-              </p>
-              <p className="mt-1 text-sm text-ll-warm-gray">
-                A trust signal that grows as this nanny completes bookings on the platform.
-              </p>
-            </Card>
+            {/* The bio on its own scratch-paper notepad, underneath the availability (David). The
+                ruled lines live on the text element itself with NO vertical padding, so each rule
+                lands on a text line (padding would push the text out of phase with the gradient). */}
+            {nanny.bio && (
+              <div className="overflow-hidden rounded-ll-card border-1.5 border-ll-sand bg-ll-paper shadow-soft">
+                <div className="border-b-1.5 border-dashed border-ll-sand bg-ll-note-blush/60 px-5 py-3">
+                  <span className="font-display text-2xl leading-none text-ll-ink">
+                    About {nanny.fullName.split(' ')[0]}
+                  </span>
+                </div>
+                <div className="px-5 pb-4 pt-2">
+                  <p className="scratch-lines whitespace-pre-line text-ll-ink">{nanny.bio}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* ── Below the fold (scroll) ────────────────────────────────────── */}
+        {/* Bio now lives on its own scratch-paper notepad above (next to availability). */}
+
+        {aboutGroups.length > 0 && (
+          <div className="space-y-3">
+            {aboutGroups.map((g) => (
+              <div key={g.label}>
+                <CardLabel>{g.label}</CardLabel>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {g.ids.map((cid) => (
+                    <span
+                      key={cid}
+                      className="rounded-full border-1.5 border-ll-sage bg-ll-sage-light px-3 py-1 font-mono text-mono-sm font-medium text-ll-sage-deep"
+                    >
+                      {optionLabel(cid)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Credentials — mirrors Care.com's honest framing, which happens to match our legal
+            stance exactly (D77): Little Lamb does not verify credentials; families ask for proof. */}
+        <div className="border-t-1.5 border-ll-sand pt-4">
+          <CardLabel>Credentials</CardLabel>
+          <p className="mt-1 text-sm text-ll-warm-gray">
+            Little Lamb does not verify credentials. We recommend asking sitters for proof.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {allBadges.map((b) => (
+              <Badge key={b} label={badgeLabel(b)} type={badgeType(b)} size="sm" />
+            ))}
+            {allBadges.length === 0 && (
+              <span className="text-sm text-ll-warm-gray">None listed yet.</span>
+            )}
+          </div>
+          {nanny.rateRange && <RateDisclaimer className="mt-3" />}
+        </div>
+      </div>
     </div>
   )
 }

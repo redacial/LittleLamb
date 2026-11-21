@@ -88,6 +88,23 @@
     box-shadow: 0 1px 2px rgba(44, 36, 22, 0.08);
   }
 
+  /* Ruled "scratch paper" lines behind prose (e.g. a nanny's bio notepad). The text's line-height
+     IS the rule spacing (1.5rem), and the rule is drawn at the BOTTOM of each line box so the
+     words sit directly on the line — like real ruled paper. The element must have NO vertical
+     padding (padding offsets the text from the gradient, which starts at the box top). */
+  .scratch-lines {
+    font-size: 0.9375rem;
+    line-height: 1.5rem;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(217, 142, 115, 0.22) 0,
+      rgba(217, 142, 115, 0.22) 1px,
+      transparent 1px,
+      transparent 1.5rem
+    );
+    background-position: 0 1.5rem;
+  }
+
 }
 
 /* Hand-drawn underline self-draw (DrawnUnderline). Commits to its end state on
