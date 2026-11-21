@@ -21,6 +21,14 @@ interface NannyCardProps {
   canBook: boolean
   /** The family's budget ceiling, when known — drives the soft out-of-budget label. */
   budget?: RateRange
+  /**
+   * Master-detail directory (desktop only): when provided, clicking the card opens the profile in
+   * the right-side pane IN PLACE instead of navigating. The `to={href}` stays on the links so the
+   * mobile full-screen route, right-click-open, and deep links keep working; onSelect just
+   * intercepts the ordinary left-click. The directory passes this ONLY at lg+ (below lg it omits
+   * it, so the card navigates to the full-screen profile route).
+   */
+  onSelect?: (uid: string) => void
 }
 
 /**
@@ -34,9 +42,18 @@ interface NannyCardProps {
  * where a raw age would read as a dating app. (No "background checked" claim — Little Lamb is a
  * listing service and verifies nothing; credentials are the sitter's own self-reported badges.)
  */
-export function NannyCard({ nanny, profileBase, canBook, budget }: NannyCardProps) {
+export function NannyCard({ nanny, profileBase, canBook, budget, onSelect }: NannyCardProps) {
   const hover = useTiltHover()
   const href = `${profileBase}/nannies/${nanny.uid}`
+  // Intercept a plain left-click when the directory wants in-place selection. Let modified clicks
+  // (new tab / middle-click) and right-click fall through to the real navigation.
+  const selectInPlace = onSelect
+    ? (e: React.MouseEvent) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+        e.preventDefault()
+        onSelect(nanny.uid)
+      }
+    : undefined
   const badges = [...nanny.verifiedBadges, ...nanny.selfBadges].slice(0, 4)
   // Prefer the selected experience band (new onboarding); fall back to legacy free-text years.
   const experienceText = nanny.experienceBand
@@ -54,7 +71,7 @@ export function NannyCard({ nanny, profileBase, canBook, budget }: NannyCardProp
       className="group flex flex-col overflow-hidden rounded-ll-card border-1.5 border-ll-peri-soft bg-ll-cream-dark shadow-soft transition-shadow hover:shadow-pop-peri"
     >
       {/* Photo + overlaid identity. The whole photo links to the profile (large target, Fitts). */}
-      <Link to={href} className="relative block aspect-[4/5] overflow-hidden focus-visible:outline-none">
+      <Link to={href} onClick={selectInPlace} className="relative block aspect-[4/5] overflow-hidden focus-visible:outline-none">
         {nanny.photoURL ? (
           <img
             src={nanny.photoURL}
@@ -125,7 +142,7 @@ export function NannyCard({ nanny, profileBase, canBook, budget }: NannyCardProp
         )}
 
         <div className="mt-4 flex gap-2 pt-1">
-          <Link to={href} className="flex-1" tabIndex={-1}>
+          <Link to={href} onClick={selectInPlace} className="flex-1" tabIndex={-1}>
             <Button variant="secondary" size="sm" className="w-full">View profile</Button>
           </Link>
           {canBook && (

@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { NannyCard } from './NannyCard'
 import type { DirectoryNanny } from '../hooks/useNannies'
@@ -92,5 +93,25 @@ describe('NannyCard', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
     const article = screen.getByRole('article')
     expect(within(article).getByText('MB')).toBeInTheDocument()
+  })
+
+  // Master-detail directory (desktop): when the directory passes onSelect, clicking a card opens
+  // the profile in the right-side pane IN PLACE instead of navigating. The href stays on the link
+  // (mobile full-screen path + right-click-open + the route assertions above), but the click is
+  // intercepted. onSelect fires with the nanny's uid.
+  it('calls onSelect with the uid when provided, instead of navigating', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    renderCard({ onSelect })
+    // Clicking the View-profile button (one of the two profile links) selects in place.
+    await user.click(screen.getByRole('link', { name: /view profile/i }))
+    expect(onSelect).toHaveBeenCalledWith('nanny-7')
+  })
+
+  it('still navigates (no onSelect) when none is provided — the mobile/route path', () => {
+    renderCard() // no onSelect
+    const links = screen.getAllByRole('link')
+    expect(links.filter((a) => a.getAttribute('href') === '/family/nannies/nanny-7').length)
+      .toBeGreaterThanOrEqual(2)
   })
 })

@@ -1,15 +1,14 @@
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { useNanny } from '../../hooks/useNannies'
+import { useNanny, type DirectoryNanny } from '../../hooks/useNannies'
 import { PageHeader, PageBody } from '../../components/layout/AppLayout'
 import { Card, CardLabel, Avatar, Badge, Button, RateDisclaimer } from '../../components/ui'
 import { IntroVideo } from '../../components/IntroVideo'
+import { AvailabilityNotepad } from '../../components/AvailabilityNotepad'
 import { formatRate } from '../../lib/rates'
 import { badgeLabel, badgeType } from '../../lib/badges'
 import { optionLabel, experienceLabel } from '../../lib/nannyProfileOptions'
 import { composeFunFact } from '../../lib/funFact'
-import { DAYS } from '../../components/onboarding/AvailabilityEditor'
-import { to12h } from '../../lib/format'
 
 /**
  * Full nanny profile — shared by families and nannies. Booking buttons show for families only.
@@ -35,6 +34,15 @@ import { to12h } from '../../lib/format'
  * Until that exists, families use "Book this nanny", which lands on the calendar with the nanny
  * preselected and works today.
  */
+/**
+ * The route-level profile page: `/{role}/nannies/:id`. A thin wrapper that reads the id from the
+ * URL, fetches the nanny, and renders the shared <NannyProfilePane> full-screen with a PageHeader.
+ *
+ * This route is the MOBILE path (tapping a directory card on a phone navigates here for a
+ * full-screen read) and the deep-link / shared-URL / right-click-open path. On desktop the same
+ * pane is embedded in the directory's right column instead (see NanniesDirectory), where it is
+ * handed the already-loaded nanny object as a prop — no second fetch.
+ */
 export function NannyProfilePage() {
   const { id } = useParams()
   const { profile } = useAuth()
@@ -44,12 +52,44 @@ export function NannyProfilePage() {
   if (loading) return <PageBody><p className="text-ll-warm-gray">Loading…</p></PageBody>
   if (!nanny) return <PageBody><p>Profile not found.</p></PageBody>
 
-  // Prefer the selected experience band (new onboarding); fall back to legacy free-text years.
-  const experienceText = nanny.experienceBand
+  // The pane owns the name + experience + Book CTA (so the embedded directory version has them),
+  // so the route wrapper renders a minimal breadcrumb-style PageHeader WITHOUT a duplicate Book
+  // action — just a back link to the directory.
+  return (
+    <>
+      <PageHeader
+        title="Sitter profile"
+        action={
+          <Link to={`/${canBook ? 'family' : 'nanny'}/nannies`}>
+            <Button variant="secondary">Back to sitters</Button>
+          </Link>
+        }
+      />
+      <PageBody>
+        <NannyProfilePane nanny={nanny} canBook={canBook} />
+      </PageBody>
+    </>
+  )
+}
+
+/** Prefer the selected experience band (new onboarding); fall back to legacy free-text years. */
+function experienceOf(nanny: DirectoryNanny): string {
+  return nanny.experienceBand
     ? experienceLabel(nanny.experienceBand)
     : nanny.yearsExperience
-    ? `${nanny.yearsExperience} years`
-    : ''
+      ? `${nanny.yearsExperience} years`
+      : ''
+}
+
+/**
+ * The full nanny profile, driven entirely by a `nanny` PROP (no route, no fetch) so it can be
+ * rendered two ways: full-screen by the route wrapper above, or embedded in the directory's
+ * right-side pane on desktop. It carries its OWN name/experience/Book heading (the route wrapper's
+ * PageHeader repeats the name on the full-screen path, which is fine — the pane heading is what the
+ * embedded version needs).
+ */
+export function NannyProfilePane({ nanny, canBook }: { nanny: DirectoryNanny; canBook: boolean }) {
+  const experienceText = experienceOf(nanny)
   const aboutGroups: { label: string; ids: string[] }[] = [
     { label: 'Great with', ids: nanny.specialties ?? [] },
     { label: 'Activities', ids: nanny.activities ?? [] },
@@ -58,20 +98,24 @@ export function NannyProfilePage() {
   ].filter((g) => g.ids.length > 0)
 
   return (
-    <>
-      <PageHeader
-        title={nanny.fullName}
-        subtitle={experienceText ? `${experienceText} of experience` : undefined}
-        action={
-          canBook ? (
-            <Link to={`/family/calendar?nanny=${nanny.uid}`}>
-              <Button>Book this nanny</Button>
-            </Link>
-          ) : undefined
-        }
-      />
-      <PageBody>
-        <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
+    <div>
+      {/* Pane heading: name + experience + the Book CTA. On the embedded (desktop pane) path this
+          is the only heading; on the full-screen route the PageHeader also shows the name. */}
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="font-display text-display-md leading-none text-ll-ink">{nanny.fullName}</h2>
+          {experienceText && (
+            <p className="mt-1 text-sm text-ll-warm-gray">{experienceText} of experience</p>
+          )}
+        </div>
+        {canBook && (
+          <Link to={`/family/calendar?nanny=${nanny.uid}`}>
+            <Button>Book this nanny</Button>
+          </Link>
+        )}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
           <div className="space-y-6">
             <Card tone="peri">
               <div className="flex items-center gap-4">
@@ -165,22 +209,8 @@ export function NannyProfilePage() {
               </Card>
             )}
 
-            <Card>
-              <CardLabel>Weekly availability</CardLabel>
-              <ul className="mt-2 divide-y divide-ll-cream-dark">
-                {DAYS.map((label, day) => {
-                  const block = nanny.availability?.find((a) => a.day === day)
-                  return (
-                    <li key={label} className="flex items-center justify-between py-2 text-sm">
-                      <span className="font-semibold text-ll-ink">{label}</span>
-                      <span className={block ? 'font-mono text-ll-ink' : 'text-ll-warm-gray'}>
-                        {block ? `${to12h(block.start)} – ${to12h(block.end)}` : 'Unavailable'}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-            </Card>
+            {/* Availability as a lined notepad (cozy aesthetic) rather than a plain card. */}
+            <AvailabilityNotepad availability={nanny.availability} />
 
             <Card tone="peri">
               <CardLabel>Families worked with</CardLabel>
@@ -193,7 +223,6 @@ export function NannyProfilePage() {
             </Card>
           </div>
         </div>
-      </PageBody>
-    </>
+    </div>
   )
 }
