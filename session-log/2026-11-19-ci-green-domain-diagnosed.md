@@ -243,3 +243,52 @@ wanted; it is cosmetic.
 yearly" (billing gated OFF, nothing shows); the tier-2 `NannyStage`/notification removal above
 (cross-package, cosmetic); `www` Firebase re-verify click (David's console task). (The badge
 migration is closed — D79 — not deferred.)
+
+---
+
+## 2026-11-20 (pt 2) — Front-end overhaul: lighter signup + Care.com-style directory
+
+A planned multi-phase front-end overhaul (plan file: `recreate-the-plan-i-ve-agile-orbit.md`).
+Research-backed (progressive profiling + goal-gradient; no third-party UI lib — built on the
+existing D77 sticky-note system). Shipped so far:
+
+**Phase 1+2 — lighter nanny signup (`a340f58`), test-first.** Intro video, photo, AND availability
+are now OPTIONAL in NannySetupWizard (David approved all three). Video step CTA reads "Skip for
+now"; copy names the optionality. Steps made optional, NOT removed — hardcoded step indices
+untouched. WizardShell gained a goal-gradient nudge ("One step to go" / "Last step!") + moved to the
+paper aesthetic. 3 fail-first tests; removed the stale "still requires a photo" test.
+
+**Phase 3+4 — master-detail directory + notepad (`830717f`), then Care.com refinement (`6c0fea4`).**
+The Our Nannies page is now master-detail: a scrolling LEFT list (1/3→40%) + a FIXED right profile
+pane (2/3→60%); only the left scrolls, the page doesn't. Deep-linked via `?selected=<uid>` (resolved
+from the in-memory list — no second fetch; sidesteps useNanny's missing error field). Mobile: a card
+tap navigates to the full-screen `/:id` route (new `useMediaQuery` gates onSelect to lg+). After
+several rounds of David's layout feedback (he sent Care.com screenshots as the reference), the final
+shape:
+- LEFT: `NannyListCard` — wide Care.com-style result cards (square photo, name+experience+credential
+  chip, rate top-right, bio snippet). Replaced + removed the old tall `NannyCard` (+ its test).
+- RIGHT pane (`NannyProfilePane`, a prop-driven split-out of `NannyProfilePage`; the route is now a
+  thin wrapper): identity row with the rate as a sticky-note top-right; Book button; video + the
+  `AvailabilityNotepad` above the fold, with the bio on its own ruled "scratch paper" (`.scratch-lines`
+  CSS) under availability; Credentials block uses Care.com's own honest "we don't verify, ask for
+  proof" line (= our D77 stance). Scrollable pane.
+- Compliance held throughout: no "background checked" claim, no star rating/location/hire-count (we
+  don't store those; reviews are admin-only).
+
+**State:** 494 client tests green (net: +7 behavioral tests across phases, −9 from the pruned
+NannyCard test file, +2 earlier), typecheck + lint + build all clean. Pushed to
+`landing-page-prelaunch`. NOT deployed (pre-launch branch).
+
+**Overhaul NOT yet done — Phase 5:** the page-by-page cozy re-skin of the ~20 other logged-in pages
+(dashboards → profiles → billing → admin → rest), cream `Card`/`Modal` → paper/sticky-note. David
+chose a per-page sweep (not a shared-component re-skin). Ship in small per-role batches. This is the
+largest remaining phase and was explicitly left for a future session.
+
+**Also this session:** fixed a real crash found in the demo — `NannyProfilePage`/`NannyCard` did
+`.map`/spread on `nanny.verifiedBadges` which is `undefined` on every wizard-created profile (it's
+admin-only). Fixed at the read boundary (`normalizeNanny` in useNannies defaults both badge arrays).
+Swept for the same bug class — badges were the only instance (`bf2d96d`). Added the ToS-acceptance
+checkbox (D78, `f59ae84`) and closed the badge migration as WON'T-DO (D79, `e7cd110`).
+
+**Demo note:** David runs `npm run demo` in his own terminal (localhost:5180); assistant-backgrounded
+emulators die at end of turn. The Emulator UI port bumped around when a demo was already running.
