@@ -146,9 +146,9 @@ export function NannySetupWizard() {
   }
 
   async function nextFromBio() {
-    // Photo stays required (families need a real face per the design system); everything else on
-    // this step is optional now — experience band, bio, and the fun fact are all tap-or-skip.
-    if (!photoURL) return setError('Please add a profile photo.')
+    // Everything on this step is optional now (lighter signup, D-overhaul): photo, experience band,
+    // bio, and the fun fact are all tap-or-skip. A missing photo falls back to avatar initials, so a
+    // sitter is never blocked from finishing. (She can add a photo later from My Profile.)
     const cleanBio = cleanText(bio, BIO_MAX)
     const ok = await persist({
       fullName: profile?.fullName ?? '',
@@ -168,8 +168,9 @@ export function NannySetupWizard() {
   }
 
   async function nextFromVideo() {
-    if (!videoURL) return setError('Please upload a short intro video to continue.')
-    // The URL itself was already saved by onVideo; this records only the position.
+    // The intro video is OPTIONAL (lighter signup, D-overhaul) — a sitter can skip it and add one
+    // later from My Profile. If she did upload, onVideo already saved the URL; this records only the
+    // position. The step stays in the flow (indices unchanged); it's just no longer a gate.
     void persist({ wizardStep: 2 })
     setStep(2)
   }
@@ -188,7 +189,9 @@ export function NannySetupWizard() {
   }
 
   async function nextFromAvailability() {
-    if (!availability.length) return setError('Please set availability for at least one day.')
+    // Availability is OPTIONAL now (lighter signup, D-overhaul). A sitter with no days set is simply
+    // not-yet-bookable — the directory shows her but a family can't land a slot until she adds hours
+    // (from My Profile or here later). Better to let her finish and appear than to block setup.
     const ok = await persist({ availability, wizardStep: 4 })
     if (ok) setStep(4)
   }
@@ -317,7 +320,9 @@ export function NannySetupWizard() {
           <h1 className="text-display-md">Record a one-minute intro</h1>
           <p className="text-ll-warm-gray">
             Say your name, your years of experience, and a little about yourself. Keep it under a
-            minute — families love seeing a friendly face before they book.
+            minute — families love seeing a friendly face before they book.{' '}
+            <span className="font-semibold text-ll-ink">This is optional</span> — you can skip it now
+            and add one later from your profile.
           </p>
           {videoURL ? (
             <video src={videoURL} controls className="w-full rounded-ll-card bg-ll-ink/5" />
@@ -333,7 +338,11 @@ export function NannySetupWizard() {
           {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => goBack(0)}>Back</Button>
-            <Button onClick={nextFromVideo} loading={busy}>Continue</Button>
+            {/* The CTA names the optionality: "Skip for now" until a video is uploaded, then
+                "Continue". Either way it advances — the video is no longer a gate. */}
+            <Button onClick={nextFromVideo} loading={busy}>
+              {videoURL ? 'Continue' : 'Skip for now'}
+            </Button>
           </div>
         </motion.div>
       )}

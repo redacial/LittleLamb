@@ -152,15 +152,8 @@ describe('NannySetupWizard — selection-first step 0 (experience band + optiona
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('still requires a photo before continuing', async () => {
-    const user = userEvent.setup()
-    stored.current = { uid: 'nanny-1' } // no photo
-    show()
-    await user.click(await screen.findByRole('button', { name: /continue/i }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/photo/i)
-    expect(savedDoc().wizardStep).toBeUndefined()
-  })
+  // Photo is now OPTIONAL (lighter signup) — the no-photo advance is covered in the
+  // "softened signup gates" block above. The old "still requires a photo" test was removed.
 
   it('persists an optional bio when one is written', async () => {
     const user = userEvent.setup()
@@ -171,6 +164,56 @@ describe('NannySetupWizard — selection-first step 0 (experience band + optiona
 
     await waitFor(() => expect(save).toHaveBeenCalled())
     expect(savedDoc().bio).toBe('I love tide-pools.')
+  })
+})
+
+// Lighter signup (2026-11, David): three nanny gates softened to OPTIONAL so a sitter can finish
+// setup and start getting found without being blocked. Photo, intro video, and availability are
+// all skippable now — the avatar-initials fallback covers a missing photo, and an
+// empty-availability sitter is simply not-yet-bookable (the directory handles that). The steps are
+// made optional, NOT removed — step indices are unchanged.
+describe('NannySetupWizard — softened signup gates (video / photo / availability optional)', () => {
+  it('lets a nanny continue past the intro-video step with NO video', async () => {
+    const user = userEvent.setup()
+    // Sitting on the video step (step 1), photo done, no video.
+    stored.current = { uid: 'nanny-1', photoURL: 'https://example.test/photo.jpg', wizardStep: 1 }
+    show()
+    await screen.findByRole('heading', { name: /record a one-minute intro/i })
+    // With no video the CTA reads "Skip for now" (it still advances — video is optional).
+    await user.click(screen.getByRole('button', { name: /skip for now/i }))
+
+    await waitFor(() => expect(save).toHaveBeenCalled())
+    expect(savedDoc().wizardStep).toBe(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('lets a nanny continue step 0 with NO photo (photo now optional)', async () => {
+    const user = userEvent.setup()
+    stored.current = { uid: 'nanny-1' } // no photo
+    show()
+    await user.click(await screen.findByRole('button', { name: /continue/i }))
+
+    await waitFor(() => expect(save).toHaveBeenCalled())
+    expect(savedDoc().wizardStep).toBe(1)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('lets a nanny continue past availability with NO days set', async () => {
+    const user = userEvent.setup()
+    // Sitting on the availability step (step 3), nothing set.
+    stored.current = {
+      uid: 'nanny-1',
+      photoURL: 'https://example.test/photo.jpg',
+      introVideoURL: 'https://example.test/video.mp4',
+      wizardStep: 3,
+    }
+    show()
+    await screen.findByRole('heading', { name: /set your weekly availability/i })
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => expect(save).toHaveBeenCalled())
+    expect(savedDoc().wizardStep).toBe(4)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })
 

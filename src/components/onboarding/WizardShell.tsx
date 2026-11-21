@@ -16,11 +16,18 @@ interface WizardShellProps {
 export function WizardShell({ steps, current, children, voluntary }: WizardShellProps) {
   return (
     <div className="min-h-screen bg-ll-paper">
-      <header className="border-b border-ll-ink/10 bg-ll-cream/80 px-6 py-4 backdrop-blur">
+      <header className="border-b-1.5 border-ll-sand bg-ll-paper/90 px-6 py-4 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <Logo />
+          {/* Goal-gradient nudge: a count-down of what's left reads as "almost done" and lifts
+              completion more than a bare "step N of M" as the end nears (Kivetz et al. 2006). */}
           <span className="font-mono text-sm text-ll-warm-gray">
-            Step {current + 1} of {steps.length}
+            {(() => {
+              const left = steps.length - 1 - current
+              if (left <= 0) return 'Last step!'
+              if (left === 1) return 'One step to go'
+              return `Step ${current + 1} of ${steps.length}`
+            })()}
           </span>
         </div>
       </header>
